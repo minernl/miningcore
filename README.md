@@ -6,11 +6,11 @@ MinerNL - Miningcore 2.0 Stratum Pool
 
 ![Miningcore running ubuntu](http://i.imgur.com/sYF5s2c.jpg)
 
+
 ### Changes in this Miningcore release
 - Added total 90 coins supported by Miningcore. Thanks to AlphaX
 - Added PROP Payment Scheme. Now we support PPLNS, PROP, SOLO
 - Added Connected Workers to the API Statistics 
-
 
 ### Features
 
@@ -21,16 +21,21 @@ MinerNL - Miningcore 2.0 Stratum Pool
 - Session management for purging DDoS/flood initiated zombie workers
 - Payment processing
 - Banning System
-- Live Stats [API](https://github.com/coinfoundry/miningcore/wiki/API) on Port 4000
+- Live Stats [API](https://github.com/minernl/miningcore/wiki/API) on Port 4000
 - WebSocket streaming of notable events like Blocks found, Blocks unlocked, Payments and more
 - POW (proof-of-work) & POS (proof-of-stake) support
 - Detailed per-pool logging to console & filesystem
 - Runs on Linux and Windows
+- [Discord Channel](https://discordapp.com/widget?id=612336178896830494&theme=dark) preferred<br>
 - [Gitter Channel](https://gitter.im/miningcore/Lobby)
+
+
 
 ### Supported Coins
 
-Refer to [this file](https://github.com/minernl/miningcore/blob/master/src/Miningcore/Crypto/Coins/Readme.me) for a complete list.
+In our wiki we have a complete list of supported coins.
+
+[Checkout the coins list here](https://github.com/minernl/miningcore/wiki/Supported-Coins)
 
 
 ### Donations
@@ -45,6 +50,7 @@ You can also send donations directly to the developemers using the following acc
 * ETC:  `0xF4BFFC324bbeB63348F137B84f8d1Ade17B507E4`
 * XMR: `44riGcQcDp4EsboDJP284CFCnJ2qP7y8DAqGC4D9WtVbEqzxQ3qYXAUST57u5FkrVF7CXhsEc63QNWazJ5b9ygwBJBtB2kT`
 * ZEC:  `t1JtJtxTdgXCaYm1wzRfMRkGTJM4qLcm4FQ`
+
 
 ### Running Miningcore on Windows
 
