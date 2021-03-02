@@ -314,7 +314,6 @@ namespace Miningcore.Persistence.Postgres.Repositories
             return tmp;
         }
 
-		// ToDo: Check why db id is included.
         public async Task<MinerWorkerPerformanceStats[]> PagePoolMinersByHashrateAsync(IDbConnection con, string poolId, DateTime from, int page, int pageSize)
         {
             logger.LogInvoke(new[] { (object) poolId, from, page, pageSize });

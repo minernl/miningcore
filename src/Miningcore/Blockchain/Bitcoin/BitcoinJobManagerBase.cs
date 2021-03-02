@@ -386,7 +386,6 @@ namespace Miningcore.Blockchain.Bitcoin
 
                 //BlockchainStats.NetworkHashrate = miningInfoResponse.NetworkHashps;
                 BlockchainStats.ConnectedPeers = (int) (long) connectionCountResponse;
-                // added 022021 ToDo: Check if needed
                 BlockchainStats.NetworkHashrate = miningInfoResponse.NetmHashps *= 1000000;
             }
 
