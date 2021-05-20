@@ -1,23 +1,3 @@
-/*
-Copyright 2017 Coin Foundry (coinfoundry.org)
-Authors: Oliver Weichhold (oliver@weichhold.com)
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-associated documentation files (the "Software"), to deal in the Software without restriction,
-including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
-subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial
-portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
 using System;
 using System.Linq;
 using System.Reactive;
@@ -53,25 +33,25 @@ namespace Miningcore.Blockchain.Bitcoin
 
         private BitcoinTemplate coin;
 
-        protected async Task<DaemonResponse<BlockTemplate>> GetBlockTemplateAsync()
+        protected async Task<DaemonResponse<BitcoinBlockResponse>> GetBlockTemplateAsync()
         {
             logger.LogInvoke();
 
-            var result = await daemon.ExecuteCmdAnyAsync<BlockTemplate>(logger,
+            var result = await daemon.ExecuteCmdAnyAsync<BitcoinBlockResponse>(logger,
                 BitcoinCommands.GetBlockTemplate, extraPoolConfig?.GBTArgs ?? (object) getBlockTemplateParams);
 
             return result;
         }
 
-        protected DaemonResponse<BlockTemplate> GetBlockTemplateFromJson(string json)
+        protected DaemonResponse<BitcoinBlockResponse> GetBlockTemplateFromJson(string json)
         {
             logger.LogInvoke();
 
             var result = JsonConvert.DeserializeObject<JsonRpcResponse>(json);
 
-            return new DaemonResponse<BlockTemplate>
+            return new DaemonResponse<BitcoinBlockResponse>
             {
-                Response = result.ResultAs<BlockTemplate>(),
+                Response = result.ResultAs<BitcoinBlockResponse>(),
             };
         }
 
@@ -181,7 +161,7 @@ namespace Miningcore.Blockchain.Bitcoin
             return job?.GetJobParams(isNew);
         }
 
-        #region API-Surface
+        //#region API-Surface
 
         public override void Configure(PoolConfig poolConfig, ClusterConfig clusterConfig)
         {
@@ -300,6 +280,6 @@ namespace Miningcore.Blockchain.Bitcoin
 
         public double ShareMultiplier => coin.ShareMultiplier;
 
-        #endregion // API-Surface
+        //#endregion // API-Surface
     }
 }

@@ -53,7 +53,7 @@ namespace Miningcore.Tests.Blockchain.Equihash
         {
             var job = new EquihashJob();
 
-            var bt = new EquihashBlockTemplate
+            var bt = new EquihashBlockResponse
             {
                 Target = "0000407f43000000000000000000000000000000000000000000000000000000",
                 PreviousBlockhash = "000003be5873fc64b1b784318e3226a1ab2a1805bebba5a0d670be54ff7772e8",

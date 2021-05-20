@@ -11,8 +11,6 @@ namespace Miningcore.PoolCore
 {
     class PoolLogo
     {
-
-
         public static void Logo()
         {
             Console.WriteLine($@"
@@ -42,7 +40,5 @@ namespace Miningcore.PoolCore
             Console.WriteLine();
             Console.ResetColor();
         }
-
-
     }
 }

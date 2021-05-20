@@ -370,7 +370,6 @@ namespace Miningcore.Stratum
             return tmp.Select(x => func(x));
         }
 
-        protected abstract Task OnRequestAsync(StratumClient client,
-            Timestamped<JsonRpcRequest> request, CancellationToken ct);
+        protected abstract Task OnRequestAsync(StratumClient client, Timestamped<JsonRpcRequest> request, CancellationToken ct);
     }
 }

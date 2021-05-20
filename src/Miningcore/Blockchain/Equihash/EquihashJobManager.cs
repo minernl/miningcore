@@ -49,13 +49,13 @@ namespace Miningcore.Blockchain.Equihash
             base.PostChainIdentifyConfigure();
         }
 
-        private async Task<DaemonResponse<EquihashBlockTemplate>> GetBlockTemplateAsync()
+        private async Task<DaemonResponse<EquihashBlockResponse>> GetBlockTemplateAsync()
         {
             logger.LogInvoke();
 
             var subsidyResponse = await daemon.ExecuteCmdAnyAsync<ZCashBlockSubsidy>(logger, BitcoinCommands.GetBlockSubsidy);
 
-            var result = await daemon.ExecuteCmdAnyAsync<EquihashBlockTemplate>(logger,
+            var result = await daemon.ExecuteCmdAnyAsync<EquihashBlockResponse>(logger,
                 BitcoinCommands.GetBlockTemplate, extraPoolConfig?.GBTArgs ?? (object) getBlockTemplateParams);
 
             if(subsidyResponse.Error == null && result.Error == null && result.Response != null)
@@ -66,15 +66,15 @@ namespace Miningcore.Blockchain.Equihash
             return result;
         }
 
-        private DaemonResponse<EquihashBlockTemplate> GetBlockTemplateFromJson(string json)
+        private DaemonResponse<EquihashBlockResponse> GetBlockTemplateFromJson(string json)
         {
             logger.LogInvoke();
 
             var result = JsonConvert.DeserializeObject<JsonRpcResponse>(json);
 
-            return new DaemonResponse<EquihashBlockTemplate>
+            return new DaemonResponse<EquihashBlockResponse>
             {
-                Response = result.ResultAs<EquihashBlockTemplate>(),
+                Response = result.ResultAs<EquihashBlockResponse>(),
             };
         }
 
@@ -203,7 +203,7 @@ namespace Miningcore.Blockchain.Equihash
             return job?.GetJobParams(isNew);
         }
 
-        #region API-Surface
+        //#region API-Surface
 
         public override void Configure(PoolConfig poolConfig, ClusterConfig clusterConfig)
         {
@@ -332,6 +332,6 @@ namespace Miningcore.Blockchain.Equihash
         }
 
 
-        #endregion // API-Surface
+        //#endregion // API-Surface
     }
 }

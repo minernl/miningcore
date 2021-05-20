@@ -301,9 +301,9 @@ namespace Miningcore.Blockchain.Equihash
             }
         }
 
-        #region API-Surface
+        //#region API-Surface
 
-        public virtual void Init(EquihashBlockTemplate blockTemplate, string jobId,
+        public virtual void Init(EquihashBlockResponse blockTemplate, string jobId,
             PoolConfig poolConfig, ClusterConfig clusterConfig, IMasterClock clock,
             IDestination poolAddressDestination, Network network,
             EquihashSolver solver)
@@ -424,7 +424,7 @@ namespace Miningcore.Blockchain.Equihash
             };
         }
 
-        public EquihashBlockTemplate BlockTemplate { get; protected set; }
+        public EquihashBlockResponse BlockTemplate { get; protected set; }
         public double Difficulty { get; protected set; }
 
         public string JobId { get; protected set; }
@@ -490,6 +490,6 @@ namespace Miningcore.Blockchain.Equihash
             return result;
         }
 
-        #endregion // API-Surface
+        //#endregion // API-Surface
     }
 }

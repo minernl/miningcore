@@ -1,23 +1,3 @@
-/*
-Copyright 2017 Coin Foundry (coinfoundry.org)
-Authors: Oliver Weichhold (oliver@weichhold.com)
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-associated documentation files (the "Software"), to deal in the Software without restriction,
-including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
-subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial
-portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
 using System;
 using System.Linq;
 using System.Numerics;
@@ -96,7 +76,7 @@ namespace Miningcore.Blockchain.Ethereum
             context.IsNiceHashClient = true;
         }
 
-        #region EthereumStratum/1.0.0
+        //#region EthereumStratum/1.0.0
         private async Task OnAuthorizeAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest)
         {
             var request = tsRequest.Value;
@@ -358,9 +338,9 @@ namespace Miningcore.Blockchain.Ethereum
 
             return Task.WhenAll(tasks);
         }
-        #endregion
+        //#endregion
 
-        #region Overrides
+        //#region Overrides
 
         // Overrides PoolBase SetupJobManager
         protected override async Task SetupJobManager(CancellationToken ct)
@@ -414,8 +394,9 @@ namespace Miningcore.Blockchain.Ethereum
             return new EthereumWorkerContext();
         }
 
-        protected override async Task OnRequestAsync(StratumClient client,
-            Timestamped<JsonRpcRequest> tsRequest, CancellationToken ct)
+
+        // Overrides StratumServer OnRequestAsync
+        protected override async Task OnRequestAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest, CancellationToken ct)
         {
             var request = tsRequest.Value;
 
@@ -423,7 +404,7 @@ namespace Miningcore.Blockchain.Ethereum
             {
                 switch(request.Method)
                 {
-                    #region EthereumStratum/1.0.0
+                    //#region EthereumStratum/1.0.0
                     case EthereumStratumMethods.Subscribe:
                         await OnSubscribeAsync(client, tsRequest);
                         break;
@@ -439,9 +420,9 @@ namespace Miningcore.Blockchain.Ethereum
                     case EthereumStratumMethods.ExtraNonceSubscribe:
                         await client.RespondErrorAsync(StratumError.Other, "not supported", request.Id, false);
                         break;
-                    #endregion
+                    //#endregion
 
-                    #region Stratum-Proxy
+                    //#region Stratum-Proxy
                     case EthereumStratumMethods.SubmitLogin:
                         await OnSubmitLoginAsync(client, tsRequest);
                         break;
@@ -457,7 +438,7 @@ namespace Miningcore.Blockchain.Ethereum
                     case EthereumStratumMethods.SubmitWork:
                         await OnSubmitAsync(client, tsRequest, ct);
                         break;
-                    #endregion  
+                    //#endregion  
 
                     default:
                         logger.Debug(() => $"[{client.ConnectionId}] Unsupported RPC request: {JsonConvert.SerializeObject(request, serializerSettings)}");
@@ -506,6 +487,6 @@ namespace Miningcore.Blockchain.Ethereum
                 logger.ThrowLogPoolStartupException("\"paymentProcessing.coinbasePassword\" pool-configuration property missing or empty (required for unlocking wallet during payment processing)");
         }
 
-        #endregion // Overrides
+        //#endregion // Overrides
     }
 }

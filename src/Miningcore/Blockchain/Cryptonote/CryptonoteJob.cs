@@ -1,4 +1,3 @@
-
 using System;
 using System.Linq;
 using System.Threading;
@@ -16,7 +15,7 @@ namespace Miningcore.Blockchain.Cryptonote
 {
     public class CryptonoteJob
     {
-        public CryptonoteJob(GetBlockTemplateResponse blockTemplate, byte[] instanceId, string jobId, PoolConfig poolConfig, ClusterConfig clusterConfig, string prevHash)
+        public CryptonoteJob(CryptonoteBlockResponse blockTemplate, byte[] instanceId, string jobId, PoolConfig poolConfig, ClusterConfig clusterConfig, string prevHash)
         {
             Contract.RequiresNonNull(blockTemplate, nameof(blockTemplate));
             Contract.RequiresNonNull(poolConfig, nameof(poolConfig));
@@ -108,10 +107,10 @@ namespace Miningcore.Blockchain.Cryptonote
             LibCryptonote.CryptonightHashFast(block, result);
         }
 
-        #region API-Surface
+        //#region API-Surface
 
         public string PrevHash { get; }
-        public GetBlockTemplateResponse BlockTemplate { get; }
+        public CryptonoteBlockResponse BlockTemplate { get; }
 
         public void PrepareWorkerJob(CryptonoteWorkerJob workerJob, out string blob, out string target)
         {
@@ -251,6 +250,6 @@ namespace Miningcore.Blockchain.Cryptonote
             return (result, blob.ToHexString());
         }
 
-        #endregion // API-Surface
+        //#endregion // API-Surface
     }
 }

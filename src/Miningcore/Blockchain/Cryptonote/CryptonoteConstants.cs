@@ -9,12 +9,6 @@ using NBitcoin.BouncyCastle.Math;
 
 namespace Miningcore.Blockchain.Cryptonote
 {
-    public enum CryptonoteNetworkType
-    {
-        Main = 1,
-        Test
-    }
-
     public class CryptonoteConstants
     {
         public const string WalletDaemonCategory = "wallet";
@@ -47,25 +41,5 @@ namespace Miningcore.Blockchain.Cryptonote
         public const int BlobNonceOffset = 39;
 
         public const decimal StaticTransactionFeeReserve = 0.03m; // in monero
-    }
-
-    public static class CryptonoteCommands
-    {
-        public const string GetInfo = "get_info";
-        public const string GetBlockTemplate = "getblocktemplate";
-        public const string SubmitBlock = "submitblock";
-        public const string GetBlockHeaderByHash = "getblockheaderbyhash";
-        public const string GetBlockHeaderByHeight = "getblockheaderbyheight";
-    }
-
-    public static class CryptonoteWalletCommands
-    {
-        public const string GetBalance = "get_balance";
-        public const string GetAddress = "getaddress";
-        public const string Transfer = "transfer";
-        public const string TransferSplit = "transfer_split";
-        public const string GetTransfers = "get_transfers";
-        public const string SplitIntegratedAddress = "split_integrated_address";
-        public const string Store = "store";
     }
 }

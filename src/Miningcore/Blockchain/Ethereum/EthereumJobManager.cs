@@ -1,23 +1,3 @@
-/*
-Copyright 2017 Coin Foundry (coinfoundry.org)
-Authors: Oliver Weichhold (oliver@weichhold.com)
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-associated documentation files (the "Software"), to deal in the Software without restriction,
-including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
-subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial
-portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -80,7 +60,7 @@ namespace Miningcore.Blockchain.Ethereum
         private EthashFull ethash;
         private readonly IMasterClock clock;
         private readonly EthereumExtraNonceProvider extraNonceProvider = new EthereumExtraNonceProvider();
-
+        
         private const int MaxBlockBacklog = 3;
         protected readonly Dictionary<string, EthereumJob> validJobs = new Dictionary<string, EthereumJob>();
         private EthereumPoolConfigExtra extraPoolConfig;
@@ -219,7 +199,7 @@ namespace Miningcore.Blockchain.Ethereum
 
             // extract results
             var work = results[0].Response.ToObject<string[]>();
-            var block = results[1].Response.ToObject<Block>();
+            var block = results[1].Response.ToObject<EthereumBlockResponse>();
 
             // append blockheight (parity returns this as 4th element in the getWork response, geth does not)
             if(work.Length < 4)
@@ -269,7 +249,7 @@ namespace Miningcore.Blockchain.Ethereum
                     return;
 
                 var syncStates = responses.Where(x => x.Error == null && x.Response != null && firstValidResponse is JObject)
-                    .Select(x => ((JObject) x.Response).ToObject<SyncState>())
+                    .Select(x => ((JObject) x.Response).ToObject<EthereumSyncState>())
                     .ToArray();
 
                 if(syncStates.Any())
@@ -322,7 +302,7 @@ namespace Miningcore.Blockchain.Ethereum
                 }
 
                 var peerCount = results[0].Response.ToObject<string>().IntegralFromHex<int>();
-                var latestBlockInfo = results[1].Response.ToObject<Block>();
+                var latestBlockInfo = results[1].Response.ToObject<EthereumBlockResponse>();
 
                 var latestBlockHeight = latestBlockInfo.Height.Value;
                 var latestBlockTimestamp = latestBlockInfo.Timestamp;
@@ -331,7 +311,7 @@ namespace Miningcore.Blockchain.Ethereum
                 // get sample block info (latestBlock-50)
                 ulong sampleBlockCount = 50;
                 var sampleBlockNumber = latestBlockHeight - sampleBlockCount;
-                var sampleBlockResults = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) sampleBlockNumber.ToStringHexWithPrefix(), true });
+                var sampleBlockResults = await daemon.ExecuteCmdAllAsync<DaemonResponses.EthereumBlockResponse>(logger, EthCommands.GetBlockByNumber, new[] { (object) sampleBlockNumber.ToStringHexWithPrefix(), true });
                 var sampleBlockHeight = sampleBlockResults.First(x => x.Error == null && x.Response?.Height != null).Response.Height.Value;
                 var sampleBlockTimestamp = sampleBlockResults.First(x => x.Error == null && x.Response?.Height != null).Response.Timestamp;
                 
@@ -521,9 +501,6 @@ namespace Miningcore.Blockchain.Ethereum
 
         public BlockchainStats BlockchainStats { get; } = new BlockchainStats();
 
-   
-
-   
         protected override void ConfigureDaemons()
         {
             var jsonSerializerSettings = ctx.Resolve<JsonSerializerSettings>();
@@ -534,7 +511,7 @@ namespace Miningcore.Blockchain.Ethereum
 
         protected override async Task<bool> AreDaemonsHealthyAsync()
         {
-            var responses = await daemon.ExecuteCmdAllAsync<Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
+            var responses = await daemon.ExecuteCmdAllAsync<EthereumBlockResponse>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
 
             if(responses.Where(x => x.Error?.InnerException?.GetType() == typeof(DaemonClientException))
                 .Select(x => (DaemonClientException) x.Error.InnerException)

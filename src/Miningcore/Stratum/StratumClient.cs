@@ -31,6 +31,8 @@ namespace Miningcore.Stratum
 {
     public class StratumClient
     {
+        private static readonly Encoding UTF8Encoding = new UTF8Encoding(false);
+
         public StratumClient(ILogger logger, IMasterClock clock, string connectionId)
         {
             this.logger = logger;
@@ -242,7 +244,7 @@ namespace Miningcore.Stratum
                 // read from network directly into pipe memory
                 var cb = await networkStream.ReadAsync(memory, cts.Token);
 
-                logger.Trace(() => $"[{ConnectionId}] [1] [FILL RECEIVE PIPE] Received data: {StratumConstants.Encoding.GetString(memory.ToArray(), 0, cb)}");
+                logger.Trace(() => $"[{ConnectionId}] [1] [FILL RECEIVE PIPE] Received data: {UTF8Encoding.GetString(memory.ToArray(), 0, cb)}");
 
                 if(cb == 0)
                     break; // EOF
@@ -269,7 +271,7 @@ namespace Miningcore.Stratum
                 var buffer = result.Buffer;
                 SequencePosition? position = null;
 
-                logger.Trace(() => $"[{ConnectionId}] [2] [PROCESS RECEIVE PIPE] Received data: {result.Buffer.AsString(StratumConstants.Encoding)}");
+                logger.Trace(() => $"[{ConnectionId}] [2] [PROCESS RECEIVE PIPE] Received data: {result.Buffer.AsString(UTF8Encoding)}");
 
                 if(buffer.Length > MaxInboundRequestLength)
                     throw new InvalidDataException($"Incoming data exceeds maximum of {MaxInboundRequestLength}");
@@ -320,7 +322,7 @@ namespace Miningcore.Stratum
                 using(var stream = new MemoryStream(buffer, true))
                 {
                     // serialize
-                    using(var writer = new StreamWriter(stream, StratumConstants.Encoding, MaxOutboundRequestLength, true))
+                    using(var writer = new StreamWriter(stream, UTF8Encoding, MaxOutboundRequestLength, true))
                     {
                         serializer.Serialize(writer, msg);
                     }
@@ -349,7 +351,7 @@ namespace Miningcore.Stratum
 
         private async Task ProcessRequestAsync(Func<StratumClient, JsonRpcRequest, CancellationToken, Task> onRequestAsync, ReadOnlySequence<byte> lineBuffer)
         {
-            using(var reader = new JsonTextReader(new StreamReader(new MemoryStream(lineBuffer.ToArray()), StratumConstants.Encoding)))
+            using(var reader = new JsonTextReader(new StreamReader(new MemoryStream(lineBuffer.ToArray()), UTF8Encoding)))
             {
                 var request = serializer.Deserialize<JsonRpcRequest>(reader);
 
@@ -368,7 +370,7 @@ namespace Miningcore.Stratum
         {
             expectingProxyHeader = false;
 
-            var line = seq.AsString(StratumConstants.Encoding);
+            var line = seq.AsString(UTF8Encoding);
             var peerAddress = RemoteEndpoint.Address;
 
             if(line.StartsWith("PROXY "))

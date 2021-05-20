@@ -120,7 +120,7 @@ namespace Miningcore.PoolCore
                 //-----------------------------------------------------------------------------
                 ZcashNetworks.Instance.EnsureRegistered();
 
-                // Service collection
+                // Autofac Service collection
                 var builder = new ContainerBuilder();
                 builder.RegisterAssemblyModules(typeof(AutofacModule).GetTypeInfo().Assembly);
                 builder.RegisterInstance(clusterConfig);
@@ -212,6 +212,7 @@ namespace Miningcore.PoolCore
         // **************************************************************************
         private static async Task StartMiningcorePoolServices()
         {
+            // Loading coins from coins.json
             var coinTemplates = PoolCoinTemplates.LoadCoinTemplates();
             logger.Info($"{coinTemplates.Keys.Count} coins loaded from {string.Join(", ", clusterConfig.CoinTemplates)}");
 

@@ -139,7 +139,7 @@ namespace Miningcore.Blockchain.Equihash.Custom.VerusCoin
             return (result, null);
         }
 
-        public override void Init(EquihashBlockTemplate blockTemplate, string jobId,
+        public override void Init(EquihashBlockResponse blockTemplate, string jobId,
             PoolConfig poolConfig, ClusterConfig clusterConfig, IMasterClock clock,
             IDestination poolAddressDestination, Network network,
             EquihashSolver solver)

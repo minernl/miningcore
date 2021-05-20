@@ -18,7 +18,7 @@ namespace Miningcore.Banning
             ExpirationScanFrequency = TimeSpan.FromSeconds(10)
         });
 
-        #region Implementation of IBanManager
+        // Implementation of IBanManager
 
         public bool IsBanned(IPAddress address)
         {
@@ -38,6 +38,5 @@ namespace Miningcore.Banning
             cache.Set(address.ToString(), string.Empty, duration);
         }
 
-        #endregion
     }
 }

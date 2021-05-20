@@ -19,12 +19,7 @@ namespace Miningcore.Blockchain.Ethereum
         public const decimal StaticTransactionFeeReserve = 0.0025m; // in ETH
         public const string BlockTypeUncle = "uncle";
         public static double StratumDiffFactor = 4294901760.0;
-
-#if !DEBUG
         public const int MinPayoutPeerCount = 1;
-#else
-        public const int MinPayoutPeerCount = 1;
-#endif
 
         public static readonly Regex ValidAddressPattern = new Regex("^0x[0-9a-fA-F]{40}$", RegexOptions.Compiled);
         public static readonly Regex ZeroHashPattern = new Regex("^0?x?0+$", RegexOptions.Compiled);
@@ -43,76 +38,5 @@ namespace Miningcore.Blockchain.Ethereum
         public const decimal JoysBlockReward = 2.0m;
 
         public const int MinConfimations = 16;
-    }
-
-    public class EthereumClassicConstants
-    {
-        public const decimal BaseRewardInitial = 5;
-        public const decimal BasePercent = 0.8m;
-        public const int BlockPerEra = 5000000;
-        public const decimal UnclePercent = 0.03125m;
-    }
-
-    public class CallistoConstants
-    {
-        public const decimal BaseRewardInitial = 600;
-        public const decimal TreasuryPercent = 0.3m;
-    }
-
-    public enum EthereumNetworkType
-    {
-        Main = 1,
-        Morden = 2,
-        Ropsten = 3,
-        Rinkeby = 4,
-        Kovan = 42,
-        Galilei = 7919,
-        Joys = 35855456,
-
-        Unknown = -1,
-    }
-
-    public enum ParityChainType
-    {
-        Foundation,
-        Olympic,
-        Frontier,
-        Homestead,
-        Mainnet,
-        Morden,
-        Ropsten,
-        Classic,
-        Expanse,
-        Ellaism,
-        CallistoTestnet,
-        Callisto,
-        Joys,
-
-        Unknown = -1,
-    }
-
-    public static class EthCommands
-    {
-        public const string GetWork = "eth_getWork";
-        public const string SubmitWork = "eth_submitWork";
-        public const string Sign = "eth_sign";
-        public const string GetNetVersion = "net_version";
-        public const string GetClientVersion = "web3_clientVersion";
-        public const string GetCoinbase = "eth_coinbase";
-        public const string GetAccounts = "eth_accounts";
-        public const string GetPeerCount = "net_peerCount";
-        public const string GetSyncState = "eth_syncing";
-        public const string GetBlockNumber = "eth_blockNumber";      // MinerNL added
-        public const string GetBlockByNumber = "eth_getBlockByNumber";
-        public const string GetBlockByHash = "eth_getBlockByHash";
-        public const string GetUncleByBlockNumberAndIndex = "eth_getUncleByBlockNumberAndIndex";
-        public const string GetTxReceipt = "eth_getTransactionReceipt";
-        public const string SendTx = "eth_sendTransaction";
-        public const string UnlockAccount = "personal_unlockAccount";
-        public const string Subscribe = "eth_subscribe";
-
-        public const string ParityVersion = "parity_versionInfo";
-        public const string ParityChain = "parity_chain";
-        public const string ParitySubscribe = "parity_subscribe";
     }
 }

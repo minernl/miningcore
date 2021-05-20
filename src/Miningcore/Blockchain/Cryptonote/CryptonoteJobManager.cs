@@ -117,7 +117,7 @@ namespace Miningcore.Blockchain.Cryptonote
             return false;
         }
 
-        private async Task<DaemonResponse<GetBlockTemplateResponse>> GetBlockTemplateAsync()
+        private async Task<DaemonResponse<CryptonoteBlockResponse>> GetBlockTemplateAsync()
         {
             logger.LogInvoke();
 
@@ -127,18 +127,18 @@ namespace Miningcore.Blockchain.Cryptonote
                 ReserveSize = CryptonoteConstants.ReserveSize
             };
 
-            return await daemon.ExecuteCmdAnyAsync<GetBlockTemplateResponse>(logger, CryptonoteCommands.GetBlockTemplate, request);
+            return await daemon.ExecuteCmdAnyAsync<CryptonoteBlockResponse>(logger, CryptonoteCommands.GetBlockTemplate, request);
         }
 
-        private DaemonResponse<GetBlockTemplateResponse> GetBlockTemplateFromJson(string json)
+        private DaemonResponse<CryptonoteBlockResponse> GetBlockTemplateFromJson(string json)
         {
             logger.LogInvoke();
 
             var result = JsonConvert.DeserializeObject<JsonRpcResponse>(json);
 
-            return new DaemonResponse<GetBlockTemplateResponse>
+            return new DaemonResponse<CryptonoteBlockResponse>
             {
-                Response = result.ResultAs<GetBlockTemplateResponse>(),
+                Response = result.ResultAs<CryptonoteBlockResponse>(),
             };
         }
 
@@ -349,7 +349,7 @@ namespace Miningcore.Blockchain.Cryptonote
 
 
 
-        #region Overrides
+        //#region Overrides
 
         protected override void ConfigureDaemons()
         {
@@ -415,7 +415,7 @@ namespace Miningcore.Blockchain.Cryptonote
                     ReserveSize = CryptonoteConstants.ReserveSize
                 };
 
-                var responses = await daemon.ExecuteCmdAllAsync<GetBlockTemplateResponse>(logger,
+                var responses = await daemon.ExecuteCmdAllAsync<CryptonoteBlockResponse>(logger,
                     CryptonoteCommands.GetBlockTemplate, request);
 
                 var isSynched = responses.All(x => x.Error == null || x.Error.Code != -9);
@@ -621,6 +621,6 @@ namespace Miningcore.Blockchain.Cryptonote
                 .RefCount();
         }
 
-        #endregion // Overrides
+        //#endregion // Overrides
     }
 }

@@ -657,12 +657,12 @@ namespace Miningcore.Blockchain.Bitcoin
 
         #region API-Surface
 
-        public BlockTemplate BlockTemplate { get; protected set; }
+        public BitcoinBlockResponse BlockTemplate { get; protected set; }
         public double Difficulty { get; protected set; }
 
         public string JobId { get; protected set; }
 
-        public void Init(BlockTemplate blockTemplate, string jobId,
+        public void Init(BitcoinBlockResponse blockTemplate, string jobId,
             PoolConfig poolConfig, BitcoinPoolConfigExtra extraPoolConfig,
             ClusterConfig clusterConfig, IMasterClock clock,
             IDestination poolAddressDestination, Network network,

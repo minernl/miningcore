@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFrameworks>netcoreapp2.1;netcoreapp3.1</TargetFrameworks>
+    <AssemblyName>Miningcore.Equihash</AssemblyName>
+    <RootNamespace>Miningcore.Equihash</RootNamespace>
+  </PropertyGroup>
+
+</Project>

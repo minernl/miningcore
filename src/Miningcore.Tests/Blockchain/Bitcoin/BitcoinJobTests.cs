@@ -42,7 +42,7 @@ namespace Miningcore.Tests.Blockchain.Bitcoin
                 ExtraNonce1 = "01000058",
             });
 
-            var bt = JsonConvert.DeserializeObject<Miningcore.Blockchain.Bitcoin.DaemonResponses.BlockTemplate>(
+            var bt = JsonConvert.DeserializeObject<Miningcore.Blockchain.Bitcoin.DaemonResponses.BitcoinBlockResponse>(
                 "{\"Version\":536870912,\"PreviousBlockhash\":\"000000000909578519b5be7b37fdc53b2923817921c43108a907b72264da76bb\",\"CoinbaseValue\":5000000000,\"Target\":\"7fffff0000000000000000000000000000000000000000000000000000000000\",\"NonceRange\":\"00000000ffffffff\",\"CurTime\":1508869874,\"Bits\":\"207fffff\",\"Height\":14,\"Transactions\":[],\"CoinbaseAux\":{\"Flags\":\"0b2f454231362f414431322f\"},\"default_witness_commitment\":null}");
 
             var job = new BitcoinJob();
@@ -77,7 +77,7 @@ namespace Miningcore.Tests.Blockchain.Bitcoin
                 ExtraNonce1 = "01000058",
             });
 
-            var bt = JsonConvert.DeserializeObject<Miningcore.Blockchain.Bitcoin.DaemonResponses.BlockTemplate>(
+            var bt = JsonConvert.DeserializeObject<Miningcore.Blockchain.Bitcoin.DaemonResponses.BitcoinBlockResponse>(
                 "{\"Version\":536870912,\"PreviousBlockhash\":\"000000000909578519b5be7b37fdc53b2923817921c43108a907b72264da76bb\",\"CoinbaseValue\":5000000000,\"Target\":\"7fffff0000000000000000000000000000000000000000000000000000000000\",\"NonceRange\":\"00000000ffffffff\",\"CurTime\":1508869874,\"Bits\":\"207fffff\",\"Height\":14,\"Transactions\":[],\"CoinbaseAux\":{\"Flags\":\"0b2f454231362f414431322f\"},\"default_witness_commitment\":null}");
 
             var job = new BitcoinJob();

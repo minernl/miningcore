@@ -1,4 +1,3 @@
-
 using System;
 using System.Globalization;
 using System.Reactive;
@@ -347,6 +346,8 @@ namespace Miningcore.Blockchain.Cryptonote
             return new CryptonoteWorkerContext();
         }
 
+
+        // Overrides StratumServer OnRequestAsync
         protected override async Task OnRequestAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest, CancellationToken ct)
         {
             var request = tsRequest.Value;

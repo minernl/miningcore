@@ -90,7 +90,7 @@ namespace Miningcore.Blockchain.Equihash
             set => nTime = Utils.DateTimeToUnixTime(value);
         }
 
-        #region IBitcoinSerializable Members
+        //#region IBitcoinSerializable Members
 
         public void ReadWrite(BitcoinStream stream)
         {
@@ -107,7 +107,7 @@ namespace Miningcore.Blockchain.Equihash
 			stream.ReadWrite(ref solutionBytes);									
         }
 
-        #endregion
+        //#endregion
 
         public static EquihashBlockHeader Parse(string hex)
         {

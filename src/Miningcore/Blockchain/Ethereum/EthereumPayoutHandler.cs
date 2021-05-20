@@ -62,7 +62,7 @@ namespace Miningcore.Blockchain.Ethereum
 
         protected override string LogCategory => "Ethereum Payout Handler";
 
-        #region IPayoutHandler
+        //#region IPayoutHandler
 
         public async Task ConfigureAsync(ClusterConfig clusterConfig, PoolConfig poolConfig)
         {
@@ -94,7 +94,7 @@ namespace Miningcore.Blockchain.Ethereum
             var coin = poolConfig.Template.As<EthereumCoinTemplate>();
             var pageSize = 100;
             var pageCount = (int) Math.Ceiling(blocks.Length / (double) pageSize);
-            var blockCache = new Dictionary<long, DaemonResponses.Block>();
+            var blockCache = new Dictionary<long, DaemonResponses.EthereumBlockResponse>();
             var result = new List<Block>();
 
             for(var i = 0; i < pageCount; i++)
@@ -106,7 +106,7 @@ namespace Miningcore.Blockchain.Ethereum
                     .ToArray();
 
                 // get latest block
-                var latestBlockResponses = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
+                var latestBlockResponses = await daemon.ExecuteCmdAllAsync<DaemonResponses.EthereumBlockResponse>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
                 var latestBlockHeight = latestBlockResponses.First(x => x.Error == null && x.Response?.Height != null).Response.Height.Value;
 
                 // execute batch
@@ -214,7 +214,7 @@ namespace Miningcore.Blockchain.Ethereum
                             logger.Info(() => $"[{LogCategory}] Fetched {uncleResponses.Count(x => x.Error == null && x.Response != null)} uncles for block {blockInfo2.Height}");
 
                             var uncle = uncleResponses.Where(x => x.Error == null && x.Response != null)
-                                .Select(x => x.Response.ToObject<DaemonResponses.Block>())
+                                .Select(x => x.Response.ToObject<DaemonResponses.EthereumBlockResponse>())
                                 .FirstOrDefault(x => string.Equals(x.Miner, poolConfig.Address, StringComparison.OrdinalIgnoreCase));
 
                             if(uncle != null)
@@ -305,9 +305,9 @@ namespace Miningcore.Blockchain.Ethereum
                 NotifyPayoutSuccess(poolConfig.Id, balances, txHashes.ToArray(), null);
         }
 
-        #endregion // IPayoutHandler
+        //#endregion // IPayoutHandler
 
-        private async Task<DaemonResponses.Block[]> FetchBlocks(Dictionary<long, DaemonResponses.Block> blockCache, params long[] blockHeights)
+        private async Task<DaemonResponses.EthereumBlockResponse[]> FetchBlocks(Dictionary<long, DaemonResponses.EthereumBlockResponse> blockCache, params long[] blockHeights)
         {
             var cacheMisses = blockHeights.Where(x => !blockCache.ContainsKey(x)).ToArray();
 
@@ -324,7 +324,7 @@ namespace Miningcore.Blockchain.Ethereum
 
                 var transformed = tmp
                     .Where(x => x.Error == null && x.Response != null)
-                    .Select(x => x.Response?.ToObject<DaemonResponses.Block>())
+                    .Select(x => x.Response?.ToObject<DaemonResponses.EthereumBlockResponse>())
                     .Where(x => x != null)
                     .ToArray();
 
@@ -374,7 +374,7 @@ namespace Miningcore.Blockchain.Ethereum
             }
         }
 
-        private async Task<decimal> GetTxRewardAsync(DaemonResponses.Block blockInfo)
+        private async Task<decimal> GetTxRewardAsync(DaemonResponses.EthereumBlockResponse blockInfo)
         {
             // fetch all tx receipts in a single RPC batch request
             var batch = blockInfo.Transactions.Select(tx => new DaemonCmd(EthCommands.GetTxReceipt, new[] { tx.Hash }))
@@ -386,7 +386,7 @@ namespace Miningcore.Blockchain.Ethereum
                 throw new Exception($"Error fetching tx receipts: {string.Join(", ", results.Where(x => x.Error != null).Select(y => y.Error.Message))}");
 
             // create lookup table
-            var gasUsed = results.Select(x => x.Response.ToObject<TransactionReceipt>())
+            var gasUsed = results.Select(x => x.Response.ToObject<EthereumTransactionReceipt>())
                 .ToDictionary(x => x.TransactionHash, x => x.GasUsed);
 
             // accumulate

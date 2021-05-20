@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -38,14 +38,17 @@
     <Compile Remove="Blockchain\Bitcoin\Transactions\**" />
     <Compile Remove="DataAccess\**" />
     <Compile Remove="Maintenance\**" />
+    <Compile Remove="Stats\**" />
     <EmbeddedResource Remove="Api\Notifications\**" />
     <EmbeddedResource Remove="Blockchain\Bitcoin\Transactions\**" />
     <EmbeddedResource Remove="DataAccess\**" />
     <EmbeddedResource Remove="Maintenance\**" />
+    <EmbeddedResource Remove="Stats\**" />
     <None Remove="Api\Notifications\**" />
     <None Remove="Blockchain\Bitcoin\Transactions\**" />
     <None Remove="DataAccess\**" />
     <None Remove="Maintenance\**" />
+    <None Remove="Stats\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -106,11 +109,6 @@
     <None Update="coins.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Crypto\Coins\" />
-    <Folder Include="Stats\" />
   </ItemGroup>
 
   <!-- Copy pre-built library binaries on Windows  -->
