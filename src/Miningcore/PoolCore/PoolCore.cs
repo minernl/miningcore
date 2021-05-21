@@ -302,7 +302,8 @@ namespace Miningcore.PoolCore
                 statsRecorder?.AttachPool(stratumPool);
                 //apiServer?.AttachPool(stratumPool);
 
-                await stratumPool.StartAsync(cts.Token);
+                // Start Stratum Pool Server
+                await stratumPool.StartPoolAsync(cts.Token);
             }));
 
             // keep running

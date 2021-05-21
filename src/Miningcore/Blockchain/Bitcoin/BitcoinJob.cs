@@ -329,8 +329,7 @@ namespace Miningcore.Blockchain.Bitcoin
             return blockHeader.ToBytes();
         }
 
-        protected virtual (Share Share, string BlockHex) ProcessShareInternal(
-            StratumClient worker, string extraNonce2, uint nTime, uint nonce, uint? versionBits)
+        protected virtual (Share Share, string BlockHex) ProcessShareInternal(StratumClient worker, string extraNonce2, uint nTime, uint nonce, uint? versionBits)
         {
             var context = worker.ContextAs<BitcoinWorkerContext>();
             var extraNonce1 = context.ExtraNonce1;
@@ -763,8 +762,7 @@ namespace Miningcore.Blockchain.Bitcoin
             return jobParams;
         }
 
-        public virtual (Share Share, string BlockHex) ProcessShare(StratumClient worker,
-            string extraNonce2, string nTime, string nonce, string versionBits = null)
+        public virtual (Share Share, string BlockHex) ProcessShare(StratumClient worker, string extraNonce2, string nTime, string nonce, string versionBits = null)
         {
             Contract.RequiresNonNull(worker, nameof(worker));
             Contract.Requires<ArgumentException>(!string.IsNullOrEmpty(extraNonce2), $"{nameof(extraNonce2)} must not be empty");

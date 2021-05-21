@@ -79,11 +79,17 @@ namespace Miningcore.Blockchain.Cryptonote
                 var job = currentJob;
                 var newHash = blockTemplate.Blob.HexToByteArray().Slice(7, 32).ToHexString();
 
-                logger.Debug(()=> $"[JobManager] Block blob: {blockTemplate.Blob}");
-                logger.Debug(()=> $"[JobManager] newHash: {newHash}");
-                logger.Debug(()=> $"[JobManager] SeedHash: {blockTemplate.SeedHash}");
-                logger.Debug(()=> $"[JobManager] SeedHeight: {blockTemplate.SeedHeight}");
-
+                logger.Debug(() => $"[JobManager] --- UPDATE JOB ---");
+                logger.Debug(() => $"[JobManager] ---------------------------------------------------------------------------------------------------------");
+                logger.Debug(() => $"[JobManager] Block Height   : {blockTemplate.Height}");
+                logger.Debug(() => $"[JobManager] Hashblob       : {blockTemplate.HashBlob}");
+                logger.Debug(() => $"[JobManager] newHash        : {newHash}");
+                logger.Debug(() => $"[JobManager] SeedHash       : {blockTemplate.SeedHash}");
+                logger.Debug(() => $"[JobManager] SeedHeight     : {blockTemplate.SeedHeight}");
+                logger.Debug(() => $"[JobManager] NextSeedHash   : {blockTemplate.NextSeedHash}");
+                logger.Debug(() => $"[JobManager] ExpectedReward : {blockTemplate.ExpectedReward}");
+                logger.Debug(() => $"[JobManager] ---------------------------------------------------------------------------------------------------------");
+                
                 var isNew = job == null || newHash != job.PrevHash;
 
                 if(isNew)

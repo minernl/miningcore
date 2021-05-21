@@ -63,7 +63,7 @@ namespace Miningcore.Mining
         protected readonly CompositeDisposable disposables = new CompositeDisposable();
         protected BlockchainStats blockchainStats;
         protected PoolConfig poolConfig;
-        protected static readonly TimeSpan maxShareAge = TimeSpan.FromSeconds(6);
+        protected static readonly TimeSpan maxShareAge = TimeSpan.FromSeconds(10);
         protected static readonly Regex regexStaticDiff = new Regex(@";?d=(\d*(\.\d+)?)", RegexOptions.Compiled);
         protected const string PasswordControlVarsSeparator = ";";
 
@@ -94,6 +94,8 @@ namespace Miningcore.Mining
             return null;
         }
 
+
+        // Overrides StratumServer OnConnect
         protected override void OnConnect(StratumClient client, IPEndPoint ipEndPoint)
         {
             // client setup
@@ -112,12 +114,8 @@ namespace Miningcore.Mining
                 }
             }
 
-            // expect miner to establish communication within a certain time
-            EnsureNoZombieClient(client);
-        }
-
-        private void EnsureNoZombieClient(StratumClient client)
-        {
+            // expect miner to establish communication within 10s, else disconnect them
+            // EnsureNoZombieClient(client);
             Observable.Timer(clock.UtcNow.AddSeconds(10))
                 .TakeUntil(client.Terminated)
                 .Where(_ => client.IsAlive)
@@ -127,7 +125,7 @@ namespace Miningcore.Mining
                     {
                         if(client.LastReceive == null)
                         {
-                            logger.Info(() => $"[{client.ConnectionId}] Booting zombie-worker (post-connect silence)");
+                            logger.Info(() => $"[{client.ConnectionId}] Disconnecting zombie-worker (post-connect 10s silence)");
 
                             DisconnectClient(client);
                         }
@@ -139,7 +137,7 @@ namespace Miningcore.Mining
                     }
                 }, ex =>
                 {
-                    logger.Error(ex, nameof(EnsureNoZombieClient));
+                    logger.Error(ex);
                 });
         }
 
@@ -339,7 +337,7 @@ Pool Fee:               {(poolConfig.RewardRecipients?.Any() == true ? poolConfi
 
         public abstract double HashrateFromShares(double shares, double interval);
 
-        public virtual async Task StartAsync(CancellationToken ct)
+        public virtual async Task StartPoolAsync(CancellationToken ct)
         {
             Contract.RequiresNonNull(poolConfig, nameof(poolConfig));
 
@@ -357,7 +355,7 @@ Pool Fee:               {(poolConfig.RewardRecipients?.Any() == true ? poolConfi
                         .Select(port => PoolEndpoint2IPEndpoint(port, poolConfig.Ports[port]))
                         .ToArray();
 
-                    StartListeners(ipEndpoints);
+                    StartStratumServerListeners(ipEndpoints);
                 }
 
                 logger.Info(() => $"Pool Online");

@@ -5,6 +5,7 @@ using Miningcore.Blockchain.Cryptonote.DaemonResponses;
 using Miningcore.Configuration;
 using Miningcore.Extensions;
 using Miningcore.Native;
+using Miningcore.Crypto.Hashing.Algorithms;
 using Miningcore.Stratum;
 using Miningcore.Util;
 using NBitcoin.BouncyCastle.Math;
@@ -47,7 +48,9 @@ namespace Miningcore.Blockchain.Cryptonote
                     break;
 
                 case CryptonightHashType.RandomX:
-                    hashFunc = LibCryptonight.CryptonightRandomX;
+                    //hashFunc = LibCryptonight.CryptonightRandomX;
+                    RandomX.Create();
+
                     break;
             }
         }
@@ -125,8 +128,13 @@ namespace Miningcore.Blockchain.Cryptonote
             target = EncodeTarget(workerJob.Difficulty);
         }
 
+
+        // ------------------------------
+        // Process Share
+        // ------------------------------
         public (Share Share, string BlobHex) ProcessShare(string nonce, uint workerExtraNonce, string workerHash, StratumClient worker)
         {
+            // Check data
             Contract.Requires<ArgumentException>(!string.IsNullOrEmpty(nonce), $"{nameof(nonce)} must not be empty");
             Contract.Requires<ArgumentException>(!string.IsNullOrEmpty(workerHash), $"{nameof(workerHash)} must not be empty");
             Contract.Requires<ArgumentException>(workerExtraNonce != 0, $"{nameof(workerExtraNonce)} must not be empty");
@@ -137,24 +145,25 @@ namespace Miningcore.Blockchain.Cryptonote
             if(!CryptonoteConstants.RegexValidNonce.IsMatch(nonce))
                 throw new StratumException(StratumError.MinusOne, "malformed nonce");
 
-            // clone template
+            // blob clone from template
             Span<byte> blob = stackalloc byte[blobTemplate.Length];
             blobTemplate.CopyTo(blob);
 
-            // inject extranonce
+            // blob inject extranonce
             var extraNonceBytes = BitConverter.GetBytes(workerExtraNonce.ToBigEndian());
             extraNonceBytes.CopyTo(blob.Slice(BlockTemplate.ReservedOffset, extraNonceBytes.Length));
 
-            // inject nonce
+            // blob inject nonce
             var nonceBytes = nonce.HexToByteArray();
             nonceBytes.CopyTo(blob.Slice(CryptonoteConstants.BlobNonceOffset, nonceBytes.Length));
 
-            // convert
+            // blob convert
             var blobConverted = LibCryptonote.ConvertBlob(blob, blobTemplate.Length);
             if(blobConverted == null)
                 throw new StratumException(StratumError.MinusOne, "malformed blob");
 
-            Console.WriteLine($"Coin: {coin.Name} Symbol: {coin.Symbol} Family: {coin.Family} Hash: {coin.Hash} Variant: {coin.HashVariant}");
+            // DEBUG info
+            Console.WriteLine($"|Coin: {coin.Name} |Symbol: {coin.Symbol} |Family: {coin.Family} |Hash: {coin.Hash} |Variant: {coin.HashVariant} |");
             Console.WriteLine("------------------------------------------------------------------------------------------------------------");
             Console.WriteLine($"blob Converted: {blobConverted[0]}");
 

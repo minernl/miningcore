@@ -76,13 +76,13 @@ namespace Miningcore.Stratum
         protected IBanManager banManager;
         protected ILogger logger;
 
-        public void StartListeners(params (IPEndPoint IPEndPoint, PoolEndpoint PoolEndpoint)[] stratumPorts)
+        public void StartStratumServerListeners(params (IPEndPoint IPEndPoint, PoolEndpoint PoolEndpoint)[] stratumPorts)
         {
             Contract.RequiresNonNull(stratumPorts, nameof(stratumPorts));
 
             Task.Run(async () =>
             {
-                // Setup sockets
+                // Setup sockets Array of all pool ports
                 var sockets = stratumPorts.Select(port =>
                 {
                     // Setup socket
@@ -101,7 +101,7 @@ namespace Miningcore.Stratum
 
                 logger.Info(() => $"Pool Stratum ports {string.Join(", ", stratumPorts.Select(x => $"{x.IPEndPoint.Address}:{x.IPEndPoint.Port}").ToArray())} online");
 
-                // Setup accept tasks
+                // Setup Socket Accept Connections Tasks
                 var tasks = sockets.Select(socket => socket.AcceptAsync()).ToArray();
 
                 while(true)
@@ -121,9 +121,49 @@ namespace Miningcore.Stratum
                             if(!(task.IsCompleted || task.IsFaulted || task.IsCanceled))
                                 continue;
 
-                            // accept connection if successful
+                            // Accept Socket Connection if Successful
                             if(task.IsCompletedSuccessfully)
-                                AcceptConnection(task.Result, port);
+                            {
+                                //  AcceptSocketConnection(task.Result, port);
+                                // -------------------------------------------------------
+                                Socket socket = task.Result;
+                                var remoteEndpoint = (IPEndPoint) socket.RemoteEndPoint;
+                                
+                                // get rid of banned clients as early as possible
+                                // IsBanned Check
+                                if(banManager?.IsBanned(remoteEndpoint.Address) == true)
+                                {
+                                    logger.Info(() => $"Disconnecting banned ip {remoteEndpoint.Address}");
+                                    socket.Close();
+                                    return;
+                                }
+
+                                // Setup TLS Certificate
+                                X509Certificate2 cert = null;
+                                if(port.PoolEndpoint.Tls)
+                                {
+                                    if(!certs.TryGetValue(port.PoolEndpoint.TlsPfxFile, out cert))
+                                        cert = AddCert(port);
+                                }
+
+                                // Setup Stratum Client
+                                var connectionId = CorrelationIdGenerator.GetNextId();
+                                var stratumClient = new StratumClient(logger, clock, connectionId);
+
+                                // Register Client
+                                Contract.RequiresNonNull(stratumClient, nameof(stratumClient));
+                                lock(clients)
+                                {
+                                    clients[connectionId] = stratumClient;
+                                }
+
+                                OnConnect(stratumClient, port.IPEndPoint);
+
+                                stratumClient.Run(socket, port, cert, OnClientRequest, OnClientComplete, OnClientError);
+
+                                // ------------------------------------------------
+                            }
+
 
                             // Refresh task
                             tasks[i] = sockets[i].AcceptAsync();
@@ -144,36 +184,7 @@ namespace Miningcore.Stratum
             });
         }
 
-        private void AcceptConnection(Socket socket, (IPEndPoint IPEndPoint, PoolEndpoint PoolEndpoint) port)
-        {
-            var remoteEndpoint = (IPEndPoint) socket.RemoteEndPoint;
-            var connectionId = CorrelationIdGenerator.GetNextId();
-
-            // get rid of banned clients as early as possible
-            if(banManager?.IsBanned(remoteEndpoint.Address) == true)
-            {
-                logger.Info(() => $"Disconnecting banned ip {remoteEndpoint.Address}");
-                socket.Close();
-                return;
-            }
-
-            // TLS cert loading
-            X509Certificate2 cert = null;
-
-            if(port.PoolEndpoint.Tls)
-            {
-                if(!certs.TryGetValue(port.PoolEndpoint.TlsPfxFile, out cert))
-                    cert = AddCert(port);
-            }
-
-            // setup client
-            var client = new StratumClient(logger, clock, connectionId);
-
-            RegisterClient(client, connectionId);
-            OnConnect(client, port.IPEndPoint);
-            client.Run(socket, port, cert, OnRequestAsync, OnClientComplete, OnClientError);
-        }
-
+ 
         public void StopListeners()
         {
             lock(ports)
@@ -186,16 +197,6 @@ namespace Miningcore.Stratum
 
                     socket.Close();
                 }
-            }
-        }
-
-        protected virtual void RegisterClient(StratumClient client, string connectionId)
-        {
-            Contract.RequiresNonNull(client, nameof(client));
-
-            lock(clients)
-            {
-                clients[connectionId] = client;
             }
         }
 
@@ -214,9 +215,12 @@ namespace Miningcore.Stratum
             }
         }
 
-        protected abstract void OnConnect(StratumClient client, IPEndPoint portItem1);
 
-        protected async Task OnRequestAsync(StratumClient client, JsonRpcRequest request, CancellationToken ct)
+        // Will be overwritten by PoolBase OnConnect 
+        protected abstract void OnConnect(StratumClient client, IPEndPoint portItem);
+
+
+        protected async Task OnClientRequest(StratumClient client, JsonRpcRequest request, CancellationToken ct)
         {
             // boot pre-connected clients
             if(banManager?.IsBanned(client.RemoteEndpoint.Address) == true)
@@ -226,11 +230,13 @@ namespace Miningcore.Stratum
                 return;
             }
 
-            logger.Debug(() => $"[{client.ConnectionId}] Dispatching request '{request.Method}' [{request.Id}]");
+            logger.Info(() =>  $"[{client.ConnectionId}] Request '{request.Method}' [{request.Id}]");
             logger.Trace(() => $"[{client.ConnectionId}] [STRATUM OnRequest]: {JsonConvert.SerializeObject(request)}");
 
             await OnRequestAsync(client, new Timestamped<JsonRpcRequest>(request, clock.UtcNow), ct);
         }
+
+        protected abstract Task OnRequestAsync(StratumClient client, Timestamped<JsonRpcRequest> request, CancellationToken ct);
 
         protected virtual void OnClientError(StratumClient client, Exception ex)
         {
@@ -370,6 +376,6 @@ namespace Miningcore.Stratum
             return tmp.Select(x => func(x));
         }
 
-        protected abstract Task OnRequestAsync(StratumClient client, Timestamped<JsonRpcRequest> request, CancellationToken ct);
+      
     }
 }

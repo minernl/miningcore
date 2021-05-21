@@ -54,8 +54,7 @@ namespace Miningcore.Blockchain.Ethereum
             }
         }
 
-        public async ValueTask<(Share Share, string FullNonceHex, string HeaderHash, string MixHash)> ProcessShareAsync(
-            StratumClient worker, string nonce, EthashFull ethash, CancellationToken ct)
+        public async ValueTask<(Share Share, string FullNonceHex, string HeaderHash, string MixHash)> ProcessShareAsync(StratumClient worker, string nonce, EthashFull ethash, CancellationToken ct)
         {
             // duplicate nonce?
             lock(workerNonces)

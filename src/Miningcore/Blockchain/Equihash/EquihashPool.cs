@@ -39,7 +39,7 @@ namespace Miningcore.Blockchain.Equihash
         {
         }
 
-        protected EquihashJobManager manager;
+        protected EquihashJobManager jobManager;
         protected object currentJobParams;
         private double hashrateDivisor;
         private EquihashPoolConfigExtra extraConfig;
@@ -59,16 +59,16 @@ namespace Miningcore.Blockchain.Equihash
         /// <inheritdoc />
         protected override async Task SetupJobManager(CancellationToken ct)
         {
-            manager = ctx.Resolve<EquihashJobManager>(
+            jobManager = ctx.Resolve<EquihashJobManager>(
                 new TypedParameter(typeof(IExtraNonceProvider), new EquihashExtraNonceProvider()));
 
-            manager.Configure(poolConfig, clusterConfig);
+            jobManager.Configure(poolConfig, clusterConfig);
 
-            await manager.StartAsync(ct);
+            await jobManager.StartAsync(ct);
 
             if(poolConfig.EnableInternalStratum == true)
             {
-                disposables.Add(manager.Jobs
+                disposables.Add(jobManager.Jobs
                     .Select(job => Observable.FromAsync(async () =>
                     {
                         try
@@ -88,23 +88,23 @@ namespace Miningcore.Blockchain.Equihash
                     }));
 
                 // we need work before opening the gates
-                await manager.Jobs.Take(1).ToTask(ct);
+                await jobManager.Jobs.Take(1).ToTask(ct);
             }
 
             else
             {
                 // keep updating NetworkStats
-                disposables.Add(manager.Jobs.Subscribe());
+                disposables.Add(jobManager.Jobs.Subscribe());
             }
 
-            hashrateDivisor = (double) new BigRational(manager.ChainConfig.Diff1BValue, EquihashConstants.ZCashDiff1b);
+            hashrateDivisor = (double) new BigRational(jobManager.ChainConfig.Diff1BValue, EquihashConstants.ZCashDiff1b);
         }
 
         protected override async Task InitStatsAsync()
         {
             await base.InitStatsAsync();
 
-            blockchainStats = manager.BlockchainStats;
+            blockchainStats = jobManager.BlockchainStats;
         }
 
         protected async Task OnSubscribeAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest)
@@ -121,7 +121,7 @@ namespace Miningcore.Blockchain.Equihash
                 {
                     client.ConnectionId,
                 }
-                .Concat(manager.GetSubscriberData(client))
+                .Concat(jobManager.GetSubscriberData(client))
                 .ToArray();
 
             await client.RespondAsync(data, request.Id);
@@ -150,7 +150,7 @@ namespace Miningcore.Blockchain.Equihash
             var workerName = split?.Skip(1).FirstOrDefault()?.Trim() ?? string.Empty;
 
             // assumes that workerName is an address
-            context.IsAuthorized = !string.IsNullOrEmpty(minerName) && await manager.ValidateAddressAsync(minerName, ct);
+            context.IsAuthorized = !string.IsNullOrEmpty(minerName) && await jobManager.ValidateAddressAsync(minerName, ct);
             context.Miner = minerName;
             context.Worker = workerName;
 
@@ -228,7 +228,7 @@ namespace Miningcore.Blockchain.Equihash
                 var requestParams = request.ParamsAs<string[]>();
                 var poolEndpoint = poolConfig.Ports[client.PoolEndpoint.Port];
 
-                var share = await manager.SubmitShareAsync(client, requestParams, poolEndpoint.Difficulty, ct);
+                var share = await jobManager.SubmitShareAsync(client, requestParams, poolEndpoint.Difficulty, ct);
 
                 await client.RespondAsync(true, request.Id);
 
@@ -280,7 +280,7 @@ namespace Miningcore.Blockchain.Equihash
             {
                 if(System.Numerics.BigInteger.TryParse(target, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var targetBig))
                 {
-                    var newDiff = (double) new BigRational(manager.ChainConfig.Diff1BValue, targetBig);
+                    var newDiff = (double) new BigRational(jobManager.ChainConfig.Diff1BValue, targetBig);
                     var poolEndpoint = poolConfig.Ports[client.PoolEndpoint.Port];
 
                     if(newDiff >= poolEndpoint.Difficulty)
@@ -416,7 +416,7 @@ namespace Miningcore.Blockchain.Equihash
 
         private string EncodeTarget(double difficulty)
         {
-            return EquihashUtils.EncodeTarget(difficulty, manager.ChainConfig);
+            return EquihashUtils.EncodeTarget(difficulty, jobManager.ChainConfig);
         }
     }
 }

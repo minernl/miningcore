@@ -38,20 +38,65 @@ namespace Miningcore.Blockchain.Cryptonote
         }
 
         private long currentJobId;
+        private CryptonoteJobManager jobManager;
 
-        private CryptonoteJobManager manager;
 
-
-        // OnLogin & Authorize
-        private async Task OnLoginAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest)
+        // Overrides StratumServer OnRequestAsync
+        protected override async Task OnRequestAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest, CancellationToken ct)
         {
-            var request = tsRequest.Value;
+            //var request = tsRequest.Value;
             var context = client.ContextAs<CryptonoteWorkerContext>();
 
-            if(request.Id == null)
+            logger.Trace(() => $"[{client.ConnectionId}] RPC request: {JsonConvert.SerializeObject(tsRequest.Value, serializerSettings)}");
+
+            try
+            {
+                switch(tsRequest.Value.Method)
+                {
+                    case CryptonoteStratumMethods.Login:
+                        await OnLoginAsync(client, tsRequest);
+                        break;
+
+                    case CryptonoteStratumMethods.GetJob:
+                        await OnGetJobAsync(client, tsRequest);
+                        break;
+
+                    case CryptonoteStratumMethods.Submit:
+                        await OnSubmitAsync(client, tsRequest, ct);
+                        break;
+
+                    case CryptonoteStratumMethods.KeepAlive:
+                        // recognize activity
+                        context.LastActivity = clock.UtcNow;
+                        break;
+
+                    default:
+                        logger.Info(() => $"[{client.ConnectionId}] Unsupported RPC request: {JsonConvert.SerializeObject(tsRequest.Value, serializerSettings)}");
+
+                        await client.RespondErrorAsync(StratumError.Other, $"Unsupported request {tsRequest.Value.Method}", tsRequest.Value.Id);
+                        break;
+                }
+            }
+
+            catch(StratumException ex)
+            {
+                await client.RespondErrorAsync(ex.Code, ex.Message, tsRequest.Value.Id, false);
+            }
+        }
+
+
+        // -----------------------
+        // OnLogin & Authorize
+        // -----------------------
+        private async Task OnLoginAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest)
+        {
+            //var request = tsRequest.Value;
+            var context = client.ContextAs<CryptonoteWorkerContext>();
+
+            if(tsRequest.Value.Id == null)
                 throw new StratumException(StratumError.MinusOne, "missing request id");
 
-            var loginRequest = request.ParamsAs<CryptonoteLoginRequest>();
+            var loginRequest = tsRequest.Value.ParamsAs<CryptonoteLoginRequest>();
 
             if(string.IsNullOrEmpty(loginRequest?.Login))
                 throw new StratumException(StratumError.MinusOne, "missing login");
@@ -80,7 +125,7 @@ namespace Miningcore.Blockchain.Cryptonote
             }
 
             // validate login
-            var result = manager.ValidateAddress(addressToValidate);
+            var result = jobManager.ValidateAddress(addressToValidate);
             if(!result)
                 throw new StratumException(StratumError.MinusOne, "invalid login");
 
@@ -105,7 +150,7 @@ namespace Miningcore.Blockchain.Cryptonote
                 Job = CreateWorkerJob(client)
             };
 
-            await client.RespondAsync(loginResponse, request.Id);
+            await client.RespondAsync(loginResponse, tsRequest.Value.Id);
 
             // log association
             if(!string.IsNullOrEmpty(context.Worker))
@@ -114,16 +159,18 @@ namespace Miningcore.Blockchain.Cryptonote
                 logger.Info(() => $"[{client.ConnectionId}] Authorized miner {context.Miner}");
         }
 
+        // -----------------------
         // OnGetJob
+        // -----------------------
         private async Task OnGetJobAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest)
         {
-            var request = tsRequest.Value;
+            //var request = tsRequest.Value;
             var context = client.ContextAs<CryptonoteWorkerContext>();
 
-            if(request.Id == null)
+            if(tsRequest.Value.Id == null)
                 throw new StratumException(StratumError.MinusOne, "missing request id");
 
-            var getJobRequest = request.ParamsAs<CryptonoteGetJobRequest>();
+            var getJobRequest = tsRequest.Value.ParamsAs<CryptonoteGetJobRequest>();
 
             // validate worker
             if(client.ConnectionId != getJobRequest?.WorkerId || !context.IsAuthorized)
@@ -131,15 +178,116 @@ namespace Miningcore.Blockchain.Cryptonote
 
             // respond
             var job = CreateWorkerJob(client);
-            await client.RespondAsync(job, request.Id);
+            await client.RespondAsync(job, tsRequest.Value.Id);
         }
+
+        // -----------------------
+        // OnSubmit
+        // -----------------------
+        private async Task OnSubmitAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest, CancellationToken ct)
+        {
+            //var request = tsRequest.Value;
+            var context = client.ContextAs<CryptonoteWorkerContext>();
+
+            try
+            {
+                // Check request Id exists
+                if(tsRequest.Value.Id == null)
+                    throw new StratumException(StratumError.MinusOne, "missing request id");
+
+                // check age of submission (aged submissions are usually caused by high server load)
+                var requestAge = clock.UtcNow - tsRequest.Timestamp.UtcDateTime;
+                if(requestAge > maxShareAge)
+                {
+                    logger.Warn(() => $"[{client.ConnectionId}] Dropping share submission request (maxShareAge exided {maxShareAge} sec)");
+                    return;
+                }
+
+                // Get data for submitRequest
+                var submitRequest = tsRequest.Value.ParamsAs<CryptonoteSubmitShareRequest>();
+
+                // validate worker
+                if(client.ConnectionId != submitRequest?.WorkerId || !context.IsAuthorized)
+                    throw new StratumException(StratumError.MinusOne, "unauthorized");
+
+                // recognize activity
+                context.LastActivity = clock.UtcNow;
+
+                // Setup Cryptonote Worker Job
+                CryptonoteWorkerJob job;
+
+                lock(context)
+                {
+                    //var jobId = submitRequest?.JobId;
+                    if((job = context.FindJob(submitRequest?.JobId)) == null)
+                        throw new StratumException(StratumError.MinusOne, "invalid jobid");
+                }
+
+                // dupe check & Add submitRequest to Job Que
+                //var nonceLower = submitRequest.Nonce.ToLower();
+                lock(job)
+                {
+                    if(job.Submissions.Contains(submitRequest.Nonce.ToLower()))
+                        throw new StratumException(StratumError.MinusOne, "duplicate share");
+
+                    job.Submissions.Add(submitRequest.Nonce.ToLower());
+                }
+
+                var poolEndpoint = poolConfig.Ports[client.PoolEndpoint.Port];
+
+                // Submit Share
+                var share = await jobManager.SubmitShareAsync(client, submitRequest, job, poolEndpoint.Difficulty, ct);
+
+                // Wait for Share Submit Reponse
+                await client.RespondAsync(new CryptonoteResponseBase(), tsRequest.Value.Id);
+
+                // Publish Share Submition
+                messageBus.SendMessage(new ClientShare(client, share));
+
+                // telemetry
+                PublishTelemetry(TelemetryCategory.Share, clock.UtcNow - tsRequest.Timestamp.UtcDateTime, true);
+
+                logger.Info(() => $"[{client.ConnectionId}] Share accepted: D={Math.Round(share.Difficulty, 3)}");
+
+                // Update Pool Block Stats
+                if(share.IsBlockCandidate)
+                    poolStats.LastPoolBlockTime = clock.UtcNow;
+
+                // update client stats
+                context.Stats.ValidShares++;
+                await UpdateVarDiffAsync(client);
+            }
+
+            catch(StratumException ex)
+            {
+                // telemetry
+                PublishTelemetry(TelemetryCategory.Share, clock.UtcNow - tsRequest.Timestamp.UtcDateTime, false);
+
+                // update client stats
+                context.Stats.InvalidShares++;
+                logger.Info(() => $"[{client.ConnectionId}] Share rejected: {ex.Message}");
+
+                // banning
+                ConsiderBan(client, context, poolConfig.Banning);
+
+                throw;
+            }
+        }
+
+
+
+
+
+
+
 
         private CryptonoteJobParams CreateWorkerJob(StratumClient client)
         {
             var context = client.ContextAs<CryptonoteWorkerContext>();
-            var job = new CryptonoteWorkerJob(NextJobId(), context.Difficulty);
+            // NextJobId (Increment Current Job Id)
+            var job = new CryptonoteWorkerJob(Interlocked.Increment(ref currentJobId).ToString(CultureInfo.InvariantCulture), context.Difficulty);
 
-            manager.PrepareWorkerJob(job, out var blob, out var target);
+            jobManager.PrepareWorkerJob(job, out var blob, out var target);
 
             // should never happen
             if(string.IsNullOrEmpty(blob) || string.IsNullOrEmpty(blob))
@@ -164,98 +312,44 @@ namespace Miningcore.Blockchain.Cryptonote
         }
 
 
-        // OnSubmit
-        private async Task OnSubmitAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest, CancellationToken ct)
+        // Overrides PoolBase SetupJobManager
+        protected override async Task SetupJobManager(CancellationToken ct)
         {
-            var request = tsRequest.Value;
-            var context = client.ContextAs<CryptonoteWorkerContext>();
+            jobManager = ctx.Resolve<CryptonoteJobManager>();
+            jobManager.Configure(poolConfig, clusterConfig);
 
-            try
+            await jobManager.StartAsync(ct);
+
+            if(poolConfig.EnableInternalStratum == true)
             {
-                if(request.Id == null)
-                    throw new StratumException(StratumError.MinusOne, "missing request id");
+                disposables.Add(jobManager.Blocks
+                    .Select(_ => Observable.FromAsync(async () =>
+                    {
+                        try
+                        {
+                            await OnNewJobAsync();
+                        }
 
-                // check age of submission (aged submissions are usually caused by high server load)
-                var requestAge = clock.UtcNow - tsRequest.Timestamp.UtcDateTime;
+                        catch(Exception ex)
+                        {
+                            logger.Debug(() => $"{nameof(OnNewJobAsync)}: {ex.Message}");
+                        }
+                    }))
+                    .Concat()
+                    .Subscribe(_ => { }, ex =>
+                    {
+                        logger.Debug(ex, nameof(OnNewJobAsync));
+                    }));
 
-                if(requestAge > maxShareAge)
-                {
-                    logger.Warn(() => $"[{client.ConnectionId}] Dropping stale share submission request (server overloaded?)");
-                    return;
-                }
-
-                // check request
-                var submitRequest = request.ParamsAs<CryptonoteSubmitShareRequest>();
-
-                // validate worker
-                if(client.ConnectionId != submitRequest?.WorkerId || !context.IsAuthorized)
-                    throw new StratumException(StratumError.MinusOne, "unauthorized");
-
-                // recognize activity
-                context.LastActivity = clock.UtcNow;
-
-                CryptonoteWorkerJob job;
-
-                lock(context)
-                {
-                    var jobId = submitRequest?.JobId;
-
-                    if((job = context.FindJob(jobId)) == null)
-                        throw new StratumException(StratumError.MinusOne, "invalid jobid");
-                }
-
-                // dupe check
-                var nonceLower = submitRequest.Nonce.ToLower();
-
-                lock(job)
-                {
-                    if(job.Submissions.Contains(nonceLower))
-                        throw new StratumException(StratumError.MinusOne, "duplicate share");
-
-                    job.Submissions.Add(nonceLower);
-                }
-
-                var poolEndpoint = poolConfig.Ports[client.PoolEndpoint.Port];
-
-                var share = await manager.SubmitShareAsync(client, submitRequest, job, poolEndpoint.Difficulty, ct);
-                await client.RespondAsync(new CryptonoteResponseBase(), request.Id);
-
-                // publish
-                messageBus.SendMessage(new ClientShare(client, share));
-
-                // telemetry
-                PublishTelemetry(TelemetryCategory.Share, clock.UtcNow - tsRequest.Timestamp.UtcDateTime, true);
-
-                logger.Info(() => $"[{client.ConnectionId}] Share accepted: D={Math.Round(share.Difficulty, 3)}");
-
-                // update pool stats
-                if (share.IsBlockCandidate)
-                    poolStats.LastPoolBlockTime = clock.UtcNow;
-
-                // update client stats
-                context.Stats.ValidShares++;
-                await UpdateVarDiffAsync(client);
+                // we need work before opening the gates
+                await jobManager.Blocks.Take(1).ToTask(ct);
             }
 
-            catch(StratumException ex)
+            else
             {
-                // telemetry
-                PublishTelemetry(TelemetryCategory.Share, clock.UtcNow - tsRequest.Timestamp.UtcDateTime, false);
-
-                // update client stats
-                context.Stats.InvalidShares++;
-                logger.Info(() => $"[{client.ConnectionId}] Share rejected: {ex.Message}");
-
-                // banning
-                ConsiderBan(client, context, poolConfig.Banning);
-
-                throw;
+                // keep updating NetworkStats
+                disposables.Add(jobManager.Blocks.Subscribe());
             }
-        }
-
-        private string NextJobId()
-        {
-            return Interlocked.Increment(ref currentJobId).ToString(CultureInfo.InvariantCulture);
         }
 
 
@@ -293,109 +387,31 @@ namespace Miningcore.Blockchain.Cryptonote
         }
 
 
-
-        // Overrides PoolBase SetupJobManager
-        protected override async Task SetupJobManager(CancellationToken ct)
-        {
-            manager = ctx.Resolve<CryptonoteJobManager>();
-            manager.Configure(poolConfig, clusterConfig);
-
-            await manager.StartAsync(ct);
-
-            if(poolConfig.EnableInternalStratum == true)
-            {
-                disposables.Add(manager.Blocks
-                    .Select(_ => Observable.FromAsync(async () =>
-                    {
-                        try
-                        {
-                            await OnNewJobAsync();
-                        }
-
-                        catch(Exception ex)
-                        {
-                            logger.Debug(() => $"{nameof(OnNewJobAsync)}: {ex.Message}");
-                        }
-                    }))
-                    .Concat()
-                    .Subscribe(_ => { }, ex =>
-                    {
-                        logger.Debug(ex, nameof(OnNewJobAsync));
-                    }));
-
-                // we need work before opening the gates
-                await manager.Blocks.Take(1).ToTask(ct);
-            }
-
-            else
-            {
-                // keep updating NetworkStats
-                disposables.Add(manager.Blocks.Subscribe());
-            }
-        }
-
+        // Overwrites PoolBase InitStatsAsync
         protected override async Task InitStatsAsync()
         {
             await base.InitStatsAsync();
 
-            blockchainStats = manager.BlockchainStats;
+            blockchainStats = jobManager.BlockchainStats;
         }
 
+
+        // Overwrites PoolBase CreateClientContext
         protected override WorkerContextBase CreateClientContext()
         {
             return new CryptonoteWorkerContext();
         }
 
 
-        // Overrides StratumServer OnRequestAsync
-        protected override async Task OnRequestAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest, CancellationToken ct)
-        {
-            var request = tsRequest.Value;
-            var context = client.ContextAs<CryptonoteWorkerContext>();
-
-            logger.Trace(() => $"[{client.ConnectionId}] RPC request: {JsonConvert.SerializeObject(request, serializerSettings)}");
-
-            try
-            {
-                switch(request.Method)
-                {
-                    case CryptonoteStratumMethods.Login:
-                        await OnLoginAsync(client, tsRequest);
-                        break;
-
-                    case CryptonoteStratumMethods.GetJob:
-                        await OnGetJobAsync(client, tsRequest);
-                        break;
-
-                    case CryptonoteStratumMethods.Submit:
-                        await OnSubmitAsync(client, tsRequest, ct);
-                        break;
-
-                    case CryptonoteStratumMethods.KeepAlive:
-                        // recognize activity
-                        context.LastActivity = clock.UtcNow;
-                        break;
-
-                    default:
-                        logger.Info(() => $"[{client.ConnectionId}] Unsupported RPC request: {JsonConvert.SerializeObject(request, serializerSettings)}");
-
-                        await client.RespondErrorAsync(StratumError.Other, $"Unsupported request {request.Method}", request.Id);
-                        break;
-                }
-            }
-
-            catch(StratumException ex)
-            {
-                await client.RespondErrorAsync(ex.Code, ex.Message, request.Id, false);
-            }
-        }
-
+        // Overwrites PoolBase HashrateFromShare
         public override double HashrateFromShares(double shares, double interval)
         {
             var result = shares / interval;
             return result;
         }
 
+
+        // Overwrites PoolBase OnVarDiffUpdateAsync
         protected override async Task OnVarDiffUpdateAsync(StratumClient client, double newDiff)
         {
             await base.OnVarDiffUpdateAsync(client, newDiff);

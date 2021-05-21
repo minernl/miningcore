@@ -40,7 +40,7 @@ namespace Miningcore.Blockchain.Bitcoin
         }
 
         protected object currentJobParams;
-        protected BitcoinJobManager manager;
+        protected BitcoinJobManager jobManager;
         private BitcoinTemplate coin;
         public int submitcount = 0;
 
@@ -62,7 +62,7 @@ namespace Miningcore.Blockchain.Bitcoin
                         new object[] { BitcoinStratumMethods.MiningNotify, client.ConnectionId }
                     }
                 }
-                .Concat(manager.GetSubscriberData(client))
+                .Concat(jobManager.GetSubscriberData(client))
                 .ToArray();
 
             await client.RespondAsync(data, request.Id);
@@ -95,7 +95,7 @@ namespace Miningcore.Blockchain.Bitcoin
             var workerName = split?.Skip(1).FirstOrDefault()?.Trim() ?? string.Empty;
 
             // assumes that workerName is an address
-            context.IsAuthorized = !string.IsNullOrEmpty(minerName) && await manager.ValidateAddressAsync(minerName, ct);
+            context.IsAuthorized = !string.IsNullOrEmpty(minerName) && await jobManager.ValidateAddressAsync(minerName, ct);
             context.Miner = minerName;
             context.Worker = workerName;
 
@@ -169,7 +169,7 @@ namespace Miningcore.Blockchain.Bitcoin
                 var requestParams = request.ParamsAs<string[]>();
                 var poolEndpoint = poolConfig.Ports[client.PoolEndpoint.Port];
 
-                var share = await manager.SubmitShareAsync(client, requestParams, poolEndpoint.Difficulty, ct);
+                var share = await jobManager.SubmitShareAsync(client, requestParams, poolEndpoint.Difficulty, ct);
 
                 await client.RespondAsync(true, request.Id);
 
@@ -369,13 +369,13 @@ namespace Miningcore.Blockchain.Bitcoin
         // Overrides PoolBase SetupJobManager
         protected override async Task SetupJobManager(CancellationToken ct)
         {
-            manager = ctx.Resolve<BitcoinJobManager>(new TypedParameter(typeof(IExtraNonceProvider), new BitcoinExtraNonceProvider()));
-            manager.Configure(poolConfig, clusterConfig);
-            await manager.StartAsync(ct);
+            jobManager = ctx.Resolve<BitcoinJobManager>(new TypedParameter(typeof(IExtraNonceProvider), new BitcoinExtraNonceProvider()));
+            jobManager.Configure(poolConfig, clusterConfig);
+            await jobManager.StartAsync(ct);
 
             if(poolConfig.EnableInternalStratum == true)
             {
-                disposables.Add(manager.Jobs
+                disposables.Add(jobManager.Jobs
                     .Select(job => Observable.FromAsync(async () =>
                     {
                         try
@@ -395,13 +395,13 @@ namespace Miningcore.Blockchain.Bitcoin
                     }));
 
                 // we need work before opening the gates
-                await manager.Jobs.Take(1).ToTask(ct);
+                await jobManager.Jobs.Take(1).ToTask(ct);
             }
 
             else
             {
                 // keep updating NetworkStats
-                disposables.Add(manager.Jobs.Subscribe());
+                disposables.Add(jobManager.Jobs.Subscribe());
             }
         }
 
@@ -409,7 +409,7 @@ namespace Miningcore.Blockchain.Bitcoin
         {
             await base.InitStatsAsync();
 
-            blockchainStats = manager.BlockchainStats;
+            blockchainStats = jobManager.BlockchainStats;
         }
 
         protected override WorkerContextBase CreateClientContext()

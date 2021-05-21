@@ -459,7 +459,6 @@ namespace Miningcore.Blockchain.Ethereum
                     job = jobResult.Value;
                 }
             }
-
             else
             {
                 jobId = request[1];

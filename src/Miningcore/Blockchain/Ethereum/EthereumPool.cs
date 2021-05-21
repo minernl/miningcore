@@ -39,7 +39,72 @@ namespace Miningcore.Blockchain.Ethereum
         }
 
         private object currentJobParams;
-        private EthereumJobManager manager;
+        private EthereumJobManager jobManager;
+
+
+        // Overrides StratumServer OnRequestAsync
+        protected override async Task OnRequestAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest, CancellationToken ct)
+        {
+            var request = tsRequest.Value;
+
+            logger.Trace(() => $"[{client.ConnectionId}] RPC request: {JsonConvert.SerializeObject(request, serializerSettings)}");
+
+            try
+            {
+                switch(request.Method)
+                {
+                    //#region EthereumStratum/1.0.0
+                    case EthereumStratumMethods.Subscribe:
+                        await OnSubscribeAsync(client, tsRequest);
+                        break;
+
+                    case EthereumStratumMethods.Authorize:
+                        await OnAuthorizeAsync(client, tsRequest);
+                        break;
+
+                    case EthereumStratumMethods.SubmitShare:
+                        await OnSubmitAsync(client, tsRequest, ct);
+                        break;
+
+                    case EthereumStratumMethods.ExtraNonceSubscribe:
+                        await client.RespondErrorAsync(StratumError.Other, "not supported", request.Id, false);
+                        break;
+                    //#endregion
+
+                    //#region Stratum-Proxy
+                    case EthereumStratumMethods.SubmitLogin:
+                        await OnSubmitLoginAsync(client, tsRequest);
+                        break;
+
+                    case EthereumStratumMethods.GetWork:
+                        await OnGetWorkAsync(client, tsRequest);
+                        break;
+
+                    case EthereumStratumMethods.SubmitHasrate:
+                        await OnSubmitHashrateAsync(client, tsRequest);
+                        break;
+
+                    case EthereumStratumMethods.SubmitWork:
+                        await OnSubmitAsync(client, tsRequest, ct);
+                        break;
+                    //#endregion  
+
+                    default:
+                        logger.Debug(() => $"[{client.ConnectionId}] Unsupported RPC request: {JsonConvert.SerializeObject(request, serializerSettings)}");
+
+                        await client.RespondErrorAsync(StratumError.Other, $"Unsupported request {request.Method}", request.Id);
+                        break;
+                }
+            }
+
+            catch(StratumException ex)
+            {
+                await client.RespondErrorAsync(ex.Code, ex.Message, request.Id, false);
+            }
+        }
+
+
+
 
         private async Task OnSubscribeAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest)
         {
@@ -54,7 +119,7 @@ namespace Miningcore.Blockchain.Ethereum
             if(requestParams == null || requestParams.Length < 2 || requestParams.Any(string.IsNullOrEmpty))
                 throw new StratumException(StratumError.MinusOne, "invalid request");
 
-            manager.PrepareWorker(client);
+            jobManager.PrepareWorker(client);
 
             var data = new object[]
                 {
@@ -96,7 +161,7 @@ namespace Miningcore.Blockchain.Ethereum
             var workerName = workerParts?.Length > 1 ? workerParts[1].Trim() : "0";
 
             // assumes that workerName is an address
-            context.IsAuthorized = !string.IsNullOrEmpty(minerName) && manager.ValidateAddress(minerName);
+            context.IsAuthorized = !string.IsNullOrEmpty(minerName) && jobManager.ValidateAddress(minerName);
             context.Miner = minerName;
             context.Worker = workerName;
             context.IsNiceHashClient = true;
@@ -134,32 +199,29 @@ namespace Miningcore.Blockchain.Ethereum
 
                 // check age of submission (aged submissions are usually caused by high server load)
                 var requestAge = clock.UtcNow - tsRequest.Timestamp.UtcDateTime;
-
                 if(requestAge > maxShareAge)
                 {
-                    logger.Warn(() => $"[{client.ConnectionId}] Dropping stale share submission request (server overloaded?)");
+                    logger.Warn(() => $"[{client.ConnectionId}] Dropping share submission request (maxShareAge exided {maxShareAge} sec)");
                     return;
                 }
 
                 // validate worker
                 if(!context.IsAuthorized)
                     throw new StratumException(StratumError.UnauthorizedWorker, "unauthorized worker");
-                else if(!context.IsSubscribed)
+                if(!context.IsSubscribed)
                     throw new StratumException(StratumError.NotSubscribed, "not subscribed");
 
                 // check request
                 var submitRequest = request.ParamsAs<string[]>();
-
-                if(submitRequest.Length != 3 ||
-                    submitRequest.Any(string.IsNullOrEmpty))
-                    throw new StratumException(StratumError.MinusOne, "malformed PoW result");
+                if(submitRequest.Length != 3 || submitRequest.Any(string.IsNullOrEmpty))
+                    throw new StratumException(StratumError.MinusOne, "malformed submitRequest");
 
                 // recognize activity
                 context.LastActivity = clock.UtcNow;
 
                 var poolEndpoint = poolConfig.Ports[client.PoolEndpoint.Port];
 
-                var share = await manager.SubmitShareAsync(client, submitRequest, ct);
+                var share = await jobManager.SubmitShareAsync(client, submitRequest, ct);
 
                 await client.RespondAsync(true, request.Id);
 
@@ -243,7 +305,7 @@ namespace Miningcore.Blockchain.Ethereum
             var workerName = workerParts?.Length > 1 ? workerParts[1].Trim() : "0";
 
             // assumes that workerName is an address
-            context.IsAuthorized = !string.IsNullOrEmpty(minerName) && manager.ValidateAddress(minerName);
+            context.IsAuthorized = !string.IsNullOrEmpty(minerName) && jobManager.ValidateAddress(minerName);
             context.Miner = minerName.ToLower();
             context.Worker = workerName;
             context.IsNiceHashClient = false;
@@ -345,14 +407,14 @@ namespace Miningcore.Blockchain.Ethereum
         // Overrides PoolBase SetupJobManager
         protected override async Task SetupJobManager(CancellationToken ct)
         {
-            manager = ctx.Resolve<EthereumJobManager>();
-            manager.Configure(poolConfig, clusterConfig);
+            jobManager = ctx.Resolve<EthereumJobManager>();
+            jobManager.Configure(poolConfig, clusterConfig);
 
-            await manager.StartAsync(ct);
+            await jobManager.StartAsync(ct);
 
             if(poolConfig.EnableInternalStratum == true)
             {
-                disposables.Add(manager.Jobs
+                disposables.Add(jobManager.Jobs
                     .Select(job => Observable.FromAsync(async () =>
                     {
                         try
@@ -372,13 +434,13 @@ namespace Miningcore.Blockchain.Ethereum
                     }));
 
                 // we need work before opening the gates
-                await manager.Jobs.Take(1).ToTask(ct);
+                await jobManager.Jobs.Take(1).ToTask(ct);
             }
 
             else
             {
                 // keep updating NetworkStats
-                disposables.Add(manager.Jobs.Subscribe());
+                disposables.Add(jobManager.Jobs.Subscribe());
             }
         }
 
@@ -386,7 +448,7 @@ namespace Miningcore.Blockchain.Ethereum
         {
             await base.InitStatsAsync();
 
-            blockchainStats = manager.BlockchainStats;
+            blockchainStats = jobManager.BlockchainStats;
         }
 
         protected override WorkerContextBase CreateClientContext()
@@ -395,64 +457,7 @@ namespace Miningcore.Blockchain.Ethereum
         }
 
 
-        // Overrides StratumServer OnRequestAsync
-        protected override async Task OnRequestAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest, CancellationToken ct)
-        {
-            var request = tsRequest.Value;
-
-            try
-            {
-                switch(request.Method)
-                {
-                    //#region EthereumStratum/1.0.0
-                    case EthereumStratumMethods.Subscribe:
-                        await OnSubscribeAsync(client, tsRequest);
-                        break;
-
-                    case EthereumStratumMethods.Authorize:
-                        await OnAuthorizeAsync(client, tsRequest);
-                        break;
-
-                    case EthereumStratumMethods.SubmitShare:
-                        await OnSubmitAsync(client, tsRequest, ct);
-                        break;
-
-                    case EthereumStratumMethods.ExtraNonceSubscribe:
-                        await client.RespondErrorAsync(StratumError.Other, "not supported", request.Id, false);
-                        break;
-                    //#endregion
-
-                    //#region Stratum-Proxy
-                    case EthereumStratumMethods.SubmitLogin:
-                        await OnSubmitLoginAsync(client, tsRequest);
-                        break;
-
-                    case EthereumStratumMethods.GetWork:
-                        await OnGetWorkAsync(client, tsRequest);
-                        break;
-
-                    case EthereumStratumMethods.SubmitHasrate:
-                        await OnSubmitHashrateAsync(client, tsRequest);
-                        break;
-
-                    case EthereumStratumMethods.SubmitWork:
-                        await OnSubmitAsync(client, tsRequest, ct);
-                        break;
-                    //#endregion  
-
-                    default:
-                        logger.Debug(() => $"[{client.ConnectionId}] Unsupported RPC request: {JsonConvert.SerializeObject(request, serializerSettings)}");
-
-                        await client.RespondErrorAsync(StratumError.Other, $"Unsupported request {request.Method}", request.Id);
-                        break;
-                }
-            }
-
-            catch(StratumException ex)
-            {
-                await client.RespondErrorAsync(ex.Code, ex.Message, request.Id, false);
-            }
-        }
+        
 
         public override double HashrateFromShares(double shares, double interval)
         {

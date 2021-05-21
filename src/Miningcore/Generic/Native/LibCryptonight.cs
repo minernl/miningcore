@@ -77,7 +77,7 @@ namespace Miningcore.Native
         private static extern void cryptonight_free_context(IntPtr ptr);
 
         [DllImport("libcryptonight", EntryPoint = "cryptonight_export", CallingConvention = CallingConvention.Cdecl)]
-        private static extern int cryptonight(IntPtr ctx, byte* input, byte* output, uint inputLength, CryptonightVariant variant, ulong height);
+        private static extern int libcryptonight_cryptonight(IntPtr ctx, byte* input, byte* output, uint inputLength, CryptonightVariant variant, ulong height);
 
         [DllImport("libcryptonight", EntryPoint = "cryptonight_light_export", CallingConvention = CallingConvention.Cdecl)]
         private static extern int cryptonight_light(IntPtr ctx, byte* input, byte* output, uint inputLength, CryptonightVariant variant, ulong height);
@@ -141,7 +141,7 @@ namespace Miningcore.Native
                 {
                     fixed (byte* output = result)
                     {
-                        cryptonight(ctx.Value, input, output, (uint) data.Length, variant, height);
+                        libcryptonight_cryptonight(ctx.Value, input, output, (uint) data.Length, variant, height);
                     }
                 }
             }
@@ -249,7 +249,9 @@ namespace Miningcore.Native
                 {
                     fixed(byte* output = result)
                     {
-                        cryptonight(ctx.Value, input, output, (uint) data.Length, variant, height);
+
+                        // TODO: Change in RamdomX
+                        libcryptonight_cryptonight(ctx.Value, input, output, (uint) data.Length, variant, height);
                     }
                 }
             }
