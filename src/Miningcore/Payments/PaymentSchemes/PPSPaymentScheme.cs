@@ -120,8 +120,10 @@ namespace Miningcore.Payments.PaymentSchemes
                 var  pageTask = shareReadFaultPolicy.Execute(() =>
                     cf.Run(con => shareRepo.ReadSharesBeforeCreatedAsync(con, poolConfig.Id, before, false, pageSize)));
 
+
+                Task.WaitAll(pageTask);
                 
-                var page = pageTask.WaitAndUnwrapException();
+                var page = pageTask.Result;
 
                 currentPage++;
 
@@ -131,8 +133,8 @@ namespace Miningcore.Payments.PaymentSchemes
 
                     // build address
                     var address = share.Miner;
-                    if (!string.IsNullOrEmpty(share.PayoutInfo))
-                        address += PayoutConstants.PayoutInfoSeperator + share.PayoutInfo;
+                    if (!string.IsNullOrEmpty(share.Miner))  // TODO is share.Miner the walletID?
+                        address += PayoutConstants.PayoutInfoSeperator + share.Miner;
 
                     // record attributed shares for diagnostic purposes
                     if (!shares.ContainsKey(address))
@@ -178,8 +180,11 @@ namespace Miningcore.Payments.PaymentSchemes
             {
                 logger.Info(() => $"Fetching page {currentPage} of shares for pool {poolConfig.Id}, block {block.BlockHeight}");
 
-                var page = shareReadFaultPolicy.Execute(() =>
-                    cf.Run(con => shareRepo.ReadSharesBeforeCreated(con, poolConfig.Id, before, inclusive, pageSize)));
+                var pageTask = shareReadFaultPolicy.Execute(() =>
+                    cf.Run(con => shareRepo.ReadSharesBeforeCreatedAsync(con, poolConfig.Id, before, inclusive, pageSize)));
+
+                Task.WaitAll(pageTask);
+                var page = pageTask.Result;
 
                 inclusive = false;
                 currentPage++;
@@ -196,8 +201,8 @@ namespace Miningcore.Payments.PaymentSchemes
                         shares[address] += share.Difficulty;
 
                     // determine a share's overall score
-                    //var score = (decimal)(share.Difficulty / share.NetworkDifficulty);
-                    var score = (decimal)(share.Difficulty / Blockchain.Ethereum.EthereumConstants.ScoreFactor);
+                    var score = (decimal)(share.Difficulty / share.NetworkDifficulty);
+                    //var score = (decimal)(share.Difficulty / Blockchain.Ethereum.EthereumConstants.ScoreFactor);
 
                     if (!scores.ContainsKey(address))
                         scores[address] = score;
