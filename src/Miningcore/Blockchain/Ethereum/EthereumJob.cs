@@ -87,7 +87,8 @@ namespace Miningcore.Blockchain.Ethereum
             var shareDiff = (double) BigInteger.Divide(EthereumConstants.BigMaxValue, resultValueBig) / EthereumConstants.Pow2x32;
             var stratumDifficulty = context.Difficulty;
             var ratio = shareDiff / stratumDifficulty;
-            var isBlockCandidate = resultValue <= blockTarget;
+            // Marking all shares as block so we can pay them ASAP
+            var isBlockCandidate = true; //resultValue <= blockTarget;
             logger.Info($"Calc share for {context.Miner}|{context.UserAgent}, Val:{resultValue}, Tar:{blockTarget}, Bh:{BlockTemplate.Height}, " +
                         $"Bc:{isBlockCandidate}");
 
