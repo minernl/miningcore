@@ -165,6 +165,7 @@ namespace Miningcore.Payments.PaymentSchemes
             var pageSize = 50000;
             var currentPage = 0;
             var accumulatedScore = 0.0m;
+            var accumulatedRewards = 0.0m;
             var blockRewardRemaining = blockReward;
             DateTime? shareCutOffDate = null;
             var scores = new Dictionary<string, decimal>();
@@ -201,6 +202,7 @@ namespace Miningcore.Payments.PaymentSchemes
 
                     //TODO: Paying flat 3 cents until block calc is finalized
                     rewards[address] = rewards.ContainsKey(address) ? rewards[address] + fixedReward : fixedReward;
+                    accumulatedRewards += rewards[address];
 
                     // set the cutoff date to clean up old shares after a successful payout
                     if(shareCutOffDate == null || share.Created > shareCutOffDate)
@@ -247,7 +249,8 @@ namespace Miningcore.Payments.PaymentSchemes
             if(blockRewardRemaining <= 0 && !done)
                 throw new OverflowException("blockRewardRemaining < 0");
 
-            logger.Info(() => $"Balance-calculation for pool {poolConfig.Id}, block {block?.BlockHeight} completed with accumulated score {accumulatedScore:0.####} ({accumulatedScore * 100:0.#}%)");
+            //logger.Info(() => $"Balance-calculation for pool {poolConfig.Id}, block {block?.BlockHeight} completed with accumulated score {accumulatedScore:0.####} ({accumulatedScore * 100:0.#}%)");
+            logger.Info(() => $"Balance-calculation for pool {poolConfig.Id} completed with accumulated rewards of {accumulatedRewards:0.####}");
 
             return shareCutOffDate;
         }
