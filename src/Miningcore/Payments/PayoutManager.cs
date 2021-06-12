@@ -202,7 +202,7 @@ namespace Miningcore.Payments
                 logger.Info(() => $"No updated blocks for pool {pool.Id} but still payment processed");
                 await cf.RunTx(async (con, tx) =>
                 {
-                    await scheme.UpdateBalancesAsync(con, tx, pool, handler, null, 0);
+                    await scheme.UpdateBalancesAsync(con, tx, pool, handler, null, 1);
                 });
             }
         }
