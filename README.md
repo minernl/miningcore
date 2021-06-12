@@ -1,7 +1,7 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/github/minernl/miningcore?branch=master&svg=true)](https://ci.appveyor.com/project/minernl/miningcore)
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg)]()
 
-MinerNL - Miningcore 2.0 Stratum Pool
+Miningcore 2.0 Stratum Pool
 =================================
 
 ![Miningcore running ubuntu](http://i.imgur.com/sYF5s2c.jpg)
@@ -17,7 +17,7 @@ If you already running a build with postgres database. You need to update you da
 
 In this release we use a new column "connectedworkers" in table "poolstats"
 ````console
-sudo wget https://raw.githubusercontent.com/minernl/miningcore/master/src/Miningcore/DataStore/Postgres/Scripts/db_change_20210225.sql
+sudo wget https://raw.githubusercontent.com/FishyJoel/miningcore/master/src/Miningcore/DataStore/Postgres/Scripts/db_change_20210225.sql
 
 sudo -u postgres -i
 psql -d miningcore -f db_change_20210225.sql
@@ -33,7 +33,7 @@ exit
 - Session management for purging DDoS/flood initiated zombie workers
 - Payment processing
 - Banning System
-- Live Stats [API](https://github.com/minernl/miningcore/wiki/API) on Port 4000
+- Live Stats [API](https://github.com/FishyJoel/miningcore/wiki/API) on Port 4000
 - WebSocket streaming of notable events like Blocks found, Blocks unlocked, Payments and more
 - POW (proof-of-work) & POS (proof-of-stake) support
 - Detailed per-pool logging to console & filesystem
@@ -49,20 +49,6 @@ In our wiki we have a complete list of supported coins.
 [Checkout the coins list here](https://github.com/minernl/miningcore/wiki/Supported-Coins)
 
 
-### Donations
-
-This software comes with a built-in donation of 0.1% per block-reward to support the ongoing development of this project. 
-You can also send donations directly to the developemers using the following accounts:
-
-* BTC:  `3QT2WreQtanPHcMneg9LT2aH3s5nrSZsxr`
-* LTC:  `LTVnLEv8Xj6emGbf981nTyN54Mnyjbfgrg`
-* DASH: `Xc2vm9SfRn8t1hyQgqi8Zrt3oFeGcQtw`
-* ETH:  `0xBfD360CDd9014Bc5B348B65cBf79F78381694f4E`
-* ETC:  `0xF4BFFC324bbeB63348F137B84f8d1Ade17B507E4`
-* XMR: `44riGcQcDp4EsboDJP284CFCnJ2qP7y8DAqGC4D9WtVbEqzxQ3qYXAUST57u5FkrVF7CXhsEc63QNWazJ5b9ygwBJBtB2kT`
-* ZEC:  `t1JtJtxTdgXCaYm1wzRfMRkGTJM4qLcm4FQ`
-
-
 ### Running Miningcore on Windows
 
 - [.Net Core 3.1 Runtime](https://www.microsoft.com/net/download/core)
@@ -74,7 +60,7 @@ You can also send donations directly to the developemers using the following acc
 - Download miningcore-win-x64.zip from the latest [Release](https://github.com/minernl/miningcore/releases)
 - Extract the Archive
 - Setup the database as outlined below
-- Create a configuration file <code>config.json</code> as described [here](https://github.com/minernl/miningcore/wiki/Configuration)
+- Create a configuration file <code>config.json</code> as described [here](https://github.com/FishyJoel/miningcore/wiki/Configuration)
 - Run <code>dotnet Miningcore.dll -c config.json</code>
 
 
@@ -146,7 +132,7 @@ $ exit
 
 - Import Miningcore database tables
 ````console
-sudo wget https://raw.githubusercontent.com/minernl/miningcore/master/src/Miningcore/DataStore/Postgres/Scripts/createdb.sql
+sudo wget https://raw.githubusercontent.com/FishyJoel/miningcore/master/src/Miningcore/DataStore/Postgres/Scripts/createdb.sql
 
 sudo -u postgres -i
 psql -d miningcore -f createdb.sql
@@ -187,21 +173,21 @@ lookup for the pools id in you config.json file. In this example pools id is Ver
 ````console
 sudo apt-get update -y
 sudo apt-get install git cmake build-essential libssl-dev pkg-config libboost-all-dev libsodium-dev libzmq5
-sudo git clone https://github.com/minernl/miningcore
+sudo git clone https://github.com/FishyJoel/miningcore
 cd miningcore/src/Miningcore
 dotnet publish -c Release --framework netcoreapp3.1  -o ../../build
 ````
 - Running Miningcore
 
-  Create a configuration file <code>config.json</code> as described [here](https://github.com/minernl/miningcore/wiki/Configuration)
+  Create a configuration file <code>config.json</code> as described [here](https://github.com/FishyJoel/miningcore/wiki/Configuration)
 ````console
 cd ../../build
 dotnet Miningcore.dll -c config.json
 ````
 
-### [Configuration](https://github.com/minernl/miningcore/wiki/Configuration)
+### [Configuration](https://github.com/FishyJoel/miningcore/wiki/Configuration)
 
-### [API](https://github.com/minernl/miningcore/wiki/API)
+### [API](https://github.com/FishyJoel/miningcore/wiki/API)
 
 
 #### Building on Windows
@@ -209,7 +195,7 @@ dotnet Miningcore.dll -c config.json
 Download and install the [.Net Core 3.1 SDK](https://www.microsoft.com/net/download/core)
 
 ````console
-git clone https://github.com/minernl/miningcore
+git clone https://github.com/FishyJoel/miningcore
 cd miningcore/src/Miningcore
 dotnet publish -c Release --framework netcoreapp3.1  -o ..\..\build
 ````
@@ -225,7 +211,7 @@ dotnet publish -c Release --framework netcoreapp3.1  -o ..\..\build
 
 #### Running Miningcore
 
-Create a configuration file <code>config.json</code> as described [here](https://github.com/minernl/miningcore/wiki/Configuration)
+Create a configuration file <code>config.json</code> as described [here](https://github.com/FishyJoel/miningcore/wiki/Configuration)
 
 ````console
 cd ../../build
@@ -233,7 +219,7 @@ dotnet Miningcore.dll -c config.json
 ````
 
 A public production pool requires a web-frontend for your users to check their hashrate, earnings etc. 
-You can use the web frontend that come with this fork [Miningcore.Web](https://github.com/minernl/miningcore/src/Miningcore.WebUI)
+You can use the web frontend that come with this fork [Miningcore.Web](https://github.com/FishyJoel/miningcore/src/Miningcore.WebUI)
 
 ## ShareRelay (ZeroMQ) needs .NET core 2.1 runtime
 
