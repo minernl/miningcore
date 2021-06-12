@@ -53,6 +53,7 @@ namespace Miningcore.Payments.PaymentSchemes
         private class Config
         {
             public decimal Factor { get; set; }
+            public decimal FixedReward { get; set; }
         }
 
         #region IPayoutScheme
@@ -60,22 +61,22 @@ namespace Miningcore.Payments.PaymentSchemes
         public async Task UpdateBalancesAsync(IDbConnection con, IDbTransaction tx, PoolConfig poolConfig,
             IPayoutHandler payoutHandler, Block block, decimal blockReward)
         {
-            var payoutConfig = poolConfig.PaymentProcessing.PayoutSchemeConfig;
+            var payoutConfig = poolConfig.PaymentProcessing.PayoutSchemeConfig?.ToObject<Config>();
 
             // PPLNS window (see https://bitcointalk.org/index.php?topic=39832)
-            var window = payoutConfig?.ToObject<Config>()?.Factor ?? 2.0m;
+            var window = payoutConfig?.Factor ?? 2.0m;
+            var fixedReward = payoutConfig?.FixedReward ?? 0.03m;
 
             // calculate rewards
             var shares = new Dictionary<string, double>();
             var rewards = new Dictionary<string, decimal>();
             var paidUntil = DateTime.Now;
-            var shareCutOffDate = await CalculateRewards(poolConfig, block, blockReward, shares, rewards, paidUntil);
+            var shareCutOffDate = await CalculateRewards(poolConfig, block, blockReward, shares, rewards, paidUntil, fixedReward);
 
             // update balances
             foreach(var address in rewards.Keys)
             {
-                //TODO: Paying flat 3 cents untll we finalize block calc
-                var amount = 0.03m;//rewards[address];
+                var amount = rewards[address];
 
                 if(amount <= 0) continue;
                 logger.Info(() => $"Adding {payoutHandler.FormatAmount(amount)} to balance of {address} for {FormatUtil.FormatQuantity(shares[address])} ({shares[address]}) shares for block {block?.BlockHeight}");
@@ -156,7 +157,7 @@ namespace Miningcore.Payments.PaymentSchemes
         }
 
         private async Task<DateTime?> CalculateRewards(PoolConfig poolConfig, Block block, decimal blockReward,
-             IDictionary<string, double> shares, IDictionary<string, decimal> rewards, DateTime paidUntil)
+             IDictionary<string, double> shares, IDictionary<string, decimal> rewards, DateTime paidUntil, decimal fixedReward)
         {
             var done = false;
             var before = paidUntil;
@@ -166,7 +167,7 @@ namespace Miningcore.Payments.PaymentSchemes
             var accumulatedScore = 0.0m;
             var blockRewardRemaining = blockReward;
             DateTime? shareCutOffDate = null;
-            Dictionary<string, decimal> scores = new Dictionary<string, decimal>();
+            var scores = new Dictionary<string, decimal>();
 
             while(!done)
             {
@@ -198,35 +199,39 @@ namespace Miningcore.Payments.PaymentSchemes
                         scores[address] += score;
                     accumulatedScore += score;
 
+                    //TODO: Paying flat 3 cents until block calc is finalized
+                    rewards[address] = rewards.ContainsKey(address) ? rewards[address] + fixedReward : fixedReward;
+
                     // set the cutoff date to clean up old shares after a successful payout
                     if(shareCutOffDate == null || share.Created > shareCutOffDate)
                         shareCutOffDate = share.Created;
                 }
 
-                if(accumulatedScore > 0)
-                {
-                    var rewardPerScorePoint = blockReward / accumulatedScore;
+                // TODO: Disabling score based reward until block calc is finalized
+                //if(accumulatedScore > 0)
+                //{
+                //    var rewardPerScorePoint = blockReward / accumulatedScore;
 
-                    // build rewards for all addresses that contributed to the round
-                    foreach(var address in scores.Select(x => x.Key).Distinct())
-                    {
-                        // loop all scores for the current address
-                        foreach(var score in scores.Where(x => x.Key == address))
-                        {
-                            var reward = score.Value * rewardPerScorePoint;
-                            if(reward > 0)
-                            {
-                                // accumulate miner reward
-                                if(!rewards.ContainsKey(address))
-                                    rewards[address] = reward;
-                                else
-                                    rewards[address] += reward;
-                            }
-                            //TODO: Disabling until we finalize block calculation 
-                            //blockRewardRemaining -= reward;
-                        }
-                    }
-                }
+                //    // build rewards for all addresses that contributed to the round
+                //    foreach(var address in scores.Select(x => x.Key).Distinct())
+                //    {
+                //        // loop all scores for the current address
+                //        foreach(var score in scores.Where(x => x.Key == address))
+                //        {
+                //            var reward = score.Value * rewardPerScorePoint;
+                //            if(reward > 0)
+                //            {
+                //                // accumulate miner reward
+                //                if(!rewards.ContainsKey(address))
+                //                    rewards[address] = reward;
+                //                else
+                //                    rewards[address] += reward;
+                //            }
+
+                //            blockRewardRemaining -= reward;
+                //        }
+                //    }
+                //}
 
                 if(page.Length < pageSize)
                 {
