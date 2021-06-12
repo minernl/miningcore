@@ -203,11 +203,13 @@ namespace Miningcore.Payments.PaymentSchemes
                     //TODO: Paying flat 3 cents until block calc is finalized
                     rewards[address] = rewards.ContainsKey(address) ? rewards[address] + fixedReward : fixedReward;
                     accumulatedRewards += rewards[address];
+                    logger.Info(() => $"{rewards[address]} rewards for {address} with total {accumulatedRewards:0.####}");
 
                     // set the cutoff date to clean up old shares after a successful payout
                     if(shareCutOffDate == null || share.Created > shareCutOffDate)
                         shareCutOffDate = share.Created;
                 }
+                logger.Info(() => $"{accumulatedRewards:0.####} balance accumulated from {page.Length} shares for pool {poolConfig.Id} and page {currentPage}");
 
                 // TODO: Disabling score based reward until block calc is finalized
                 //if(accumulatedScore > 0)
@@ -250,7 +252,7 @@ namespace Miningcore.Payments.PaymentSchemes
                 throw new OverflowException("blockRewardRemaining < 0");
 
             //logger.Info(() => $"Balance-calculation for pool {poolConfig.Id}, block {block?.BlockHeight} completed with accumulated score {accumulatedScore:0.####} ({accumulatedScore * 100:0.#}%)");
-            logger.Info(() => $"Balance-calculation for pool {poolConfig.Id} completed with accumulated rewards of {accumulatedRewards:0.####}");
+            logger.Info(() => $"Balance-calculation for pool {poolConfig.Id} completed with accumulated rewards {accumulatedRewards:0.####}");
 
             return shareCutOffDate;
         }
