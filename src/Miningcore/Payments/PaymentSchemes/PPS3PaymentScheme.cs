@@ -250,7 +250,7 @@ namespace Miningcore.Payments.PaymentSchemes
                 throw new OverflowException("blockRewardRemaining < 0");
 
             //logger.Info(() => $"Balance-calculation for pool {poolConfig.Id}, block {block?.BlockHeight} completed with accumulated score {accumulatedScore:0.####} ({accumulatedScore * 100:0.#}%)");
-            logger.Info(() => $"Balance-calculation for pool {poolConfig.Id} completed with accumulated rewards of ${accumulatedRewards:0.####}");
+            logger.Info(() => $"Balance-calculation for pool {poolConfig.Id} completed with accumulated rewards of ${accumulatedRewards:0.######}");
 
             return shareCutOffDate;
         }
