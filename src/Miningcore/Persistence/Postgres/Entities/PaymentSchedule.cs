@@ -18,21 +18,14 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN 
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-using System.Data;
-using System.Threading.Tasks;
-using Miningcore.Persistence.Model;
-using Miningcore.Persistence.Model.Projections;
+using System;
 
-namespace Miningcore.Persistence.Repositories
+namespace Miningcore.Persistence.Postgres.Entities
 {
-    public interface IPaymentRepository
+    public class PaymentSchedule
     {
-        Task InsertAsync(IDbConnection con, IDbTransaction tx, Payment payment);
-
-        Task<Payment[]> PagePaymentsAsync(IDbConnection con, string poolId, string address, int page, int pageSize);
-        Task<BalanceChange[]> PageBalanceChangesAsync(IDbConnection con, string poolId, string address, int page, int pageSize);
-        Task<AmountByDate[]> PageMinerPaymentsByDayAsync(IDbConnection con, string poolId, string address, int page, int pageSize);
-        Task<PaymentSchedule> GetPaymentScheduleAsync(IDbConnection con, string poolId, string miner);
-        Task UpdatePaymentScheduleAsync(IDbConnection con, IDbTransaction tx, PaymentSchedule paymentSchedule);
+        public string PoolId { get; set; }
+        public string Miner { get; set; }
+        public DateTime PaidUntil { get; set; }
     }
 }

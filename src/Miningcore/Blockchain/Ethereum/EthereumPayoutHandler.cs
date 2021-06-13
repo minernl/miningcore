@@ -462,6 +462,10 @@ namespace Miningcore.Blockchain.Ethereum
                     null
                 });
 
+                if(unlockResponse.Error != null || unlockResponse.Response == null || (bool) unlockResponse.Response == false)
+                {
+                    logger.Warn(() => $"[{LogCategory}] Account Unlock failed. Code={unlockResponse.Error.Code}, Data={unlockResponse.Error.Data}, Msg={unlockResponse.Error.Message}");
+                }
                 //if(unlockResponse.Error != null || unlockResponse.Response == null || (bool) unlockResponse.Response == false)
                 //    throw new Exception("Unable to unlock coinbase account for sending transaction");
             }
@@ -469,7 +473,7 @@ namespace Miningcore.Blockchain.Ethereum
             {
                 throw new Exception("Unable to unlock coinbase account for sending transaction");
             }
-
+            
             // send transaction
             logger.Info(() => $"[{LogCategory}] Sending {FormatAmount(balance.Amount)} {balance.Amount} to {balance.Address}");
 
