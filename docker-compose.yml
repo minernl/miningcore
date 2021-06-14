@@ -1,0 +1,10 @@
+version: '3.4'
+
+services:
+  miningcore:
+    image: miningcore
+    ports:
+     - "3072:3072"
+    build:
+      context: .
+      dockerfile: src/Miningcore/Dockerfile
