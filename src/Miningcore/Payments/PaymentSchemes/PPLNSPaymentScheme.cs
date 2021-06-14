@@ -177,6 +177,11 @@ namespace Miningcore.Payments.PaymentSchemes
         private async Task<DateTime?> CalculateRewardsAsync(PoolConfig poolConfig, decimal window, Block block, decimal blockReward,
             Dictionary<string, double> shares, Dictionary<string, decimal> rewards)
         {
+            if(null == block)
+            {
+                logger.Debug(() => $"No Block found so nothing to do under PPLNS.");
+                return null;
+            }
             var done = false;
             var before = block.Created;
             var inclusive = true;
