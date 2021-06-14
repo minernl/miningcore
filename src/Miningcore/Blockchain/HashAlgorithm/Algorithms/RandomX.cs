@@ -1,7 +1,7 @@
 using System;
 using System.Security.Cryptography;
 using System.Collections.Generic;
-using Miningcore.Native.LibRandomX;
+using Miningcore.Native;
 
 namespace Miningcore.Crypto.Hashing.Algorithms
 {
@@ -85,8 +85,7 @@ namespace Miningcore.Crypto.Hashing.Algorithms
 
         public static class RecommendedFlags
         {
-            public static Flags Flags =>
-                LibRandomx.Instance.randomx_get_flags();
+            public static Flags Flags => LibRandomx.Instance.randomx_get_flags();
         }
 
 

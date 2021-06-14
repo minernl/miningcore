@@ -1,9 +1,25 @@
 using System;
+using System.Runtime.InteropServices;
 using AdvancedDLSupport;
 using Miningcore.Crypto.Hashing.Algorithms;
 
-namespace Miningcore.Native.LibRandomX
+namespace Miningcore.Native
 {
+
+    public static unsafe class LibRandomX
+    {
+        [DllImport("randomx", EntryPoint = "randomx_get_flags", CallingConvention = CallingConvention.Cdecl)]
+        public static extern Flags randomx_get_flags();
+
+        [DllImport("randomx", EntryPoint = "randomx_alloc_cache", CallingConvention = CallingConvention.Cdecl)]
+        public static extern IntPtr randomx_alloc_cache(Flags flags);
+
+        [DllImport("randomx", EntryPoint = "randomx_init_cache", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void randomx_init_cache(IntPtr cache, byte[] key, uint keySize);
+
+    }
+
+
     internal static class LibRandomx
     {
         public static ILibRandomx Instance { get; }
@@ -13,6 +29,10 @@ namespace Miningcore.Native.LibRandomX
             Instance = NativeLibraryBuilder.Default.ActivateInterface<ILibRandomx>("randomx");
         }
     }
+
+
+
+
 
     internal interface ILibRandomx
     {

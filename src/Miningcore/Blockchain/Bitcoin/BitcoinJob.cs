@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -37,7 +38,8 @@ namespace Miningcore.Blockchain.Bitcoin
         protected PoolConfig poolConfig;
         protected BitcoinTemplate coin;
         private BitcoinTemplate.BitcoinNetworkParams networkParams;
-        protected readonly HashSet<string> submissions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		protected readonly ConcurrentDictionary<string, bool> submissions = new(StringComparer.OrdinalIgnoreCase);
+        //protected readonly HashSet<string> submissions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         protected uint256 blockTargetValue;
         protected byte[] coinbaseFinal;
         protected string coinbaseFinalHex;
@@ -229,7 +231,7 @@ namespace Miningcore.Blockchain.Bitcoin
             ops.Add(Op.GetPushOp(BlockTemplate.Height));
 
             // optionally push aux-flags
-            if(!string.IsNullOrEmpty(BlockTemplate.CoinbaseAux?.Flags))
+            if(!coin.CoinbaseIgnoreAuxFlags && !string.IsNullOrEmpty(BlockTemplate.CoinbaseAux?.Flags))
                 ops.Add(Op.GetPushOp(BlockTemplate.CoinbaseAux.Flags.HexToByteArray()));
 
             // push timestamp
@@ -254,7 +256,14 @@ namespace Miningcore.Blockchain.Bitcoin
             // Treasury check for Globaltoken
             if(coin.HasTreasury)
                 rewardToPool = CreateTreasuryOutputs(tx, rewardToPool);
+			
+			if(coin.HasPayee)
+                rewardToPool = CreatePayeeOutput(tx, rewardToPool);
 
+            if(coin.HasMasterNodes)
+                rewardToPool = CreateMasternodeOutputs(tx, rewardToPool);
+			
+			// Remaining amount goes to pool
             tx.Outputs.Add(rewardToPool, poolAddressDestination);
 
             // CoinbaseDevReward check for Freecash
@@ -292,14 +301,7 @@ namespace Miningcore.Blockchain.Bitcoin
                 .Append(nonce.ToLower()) // lowercase as we don't want to accept case-sensitive values as valid.
                 .ToString();
 
-            lock(submissions)
-            {
-                if(submissions.Contains(key))
-                    return false;
-
-                submissions.Add(key);
-                return true;
-            }
+            return submissions.TryAdd(key, true);
         }
 
         protected byte[] SerializeHeader(Span<byte> coinbaseHash, uint nTime, uint nonce, uint? versionMask, uint? versionBits)
@@ -687,7 +689,10 @@ namespace Miningcore.Blockchain.Bitcoin
             this.poolAddressDestination = poolAddressDestination;
             BlockTemplate = blockTemplate;
             JobId = jobId;
-            Difficulty = new Target(new NBitcoin.BouncyCastle.Math.BigInteger(BlockTemplate.Target, 16)).Difficulty;
+
+            //Difficulty = new Target(new NBitcoin.BouncyCastle.Math.BigInteger(BlockTemplate.Target, 16)).Difficulty;
+            Difficulty = new Target(System.Numerics.BigInteger.Parse(BlockTemplate.Target, NumberStyles.HexNumber)).Difficulty;
+
             extraNoncePlaceHolderLength = BitcoinConstants.ExtranoncePlaceHolderLength;
             this.isPoS = isPoS;
             this.shareMultiplier = shareMultiplier;

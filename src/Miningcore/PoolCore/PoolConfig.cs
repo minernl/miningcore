@@ -79,8 +79,8 @@ namespace Miningcore.PoolCore
             // set some defaults
             foreach(var config in clusterConfig.Pools)
             {
-                if(!config.EnableInternalStratum.HasValue)
-                    config.EnableInternalStratum = clusterConfig.ShareRelays == null || clusterConfig.ShareRelays.Length == 0;
+                // rm1406:  if(!config.EnableInternalStratum.HasValue)
+                config.EnableInternalStratum = clusterConfig.ShareRelays == null || clusterConfig.ShareRelays.Length == 0;
             }
 
             try

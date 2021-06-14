@@ -32,7 +32,22 @@ namespace Miningcore.Blockchain.Bitcoin
         }
 
         private BitcoinTemplate coin;
+		
+		protected override object[] GetBlockTemplateParams()
+        {
+            var result = base.GetBlockTemplateParams();
 
+            if(coin.BlockTemplateRpcExtraParams != null)
+            {
+                if(coin.BlockTemplateRpcExtraParams.Type == JTokenType.Array)
+                    result = result.Concat(coin.BlockTemplateRpcExtraParams.ToObject<object[]>()).ToArray();
+                else
+                    result = result.Concat(new []{ coin.BlockTemplateRpcExtraParams.ToObject<object>()}).ToArray();
+            }
+
+            return result;
+        }
+		
         protected async Task<DaemonResponse<BitcoinBlockResponse>> GetBlockTemplateAsync()
         {
             logger.LogInvoke();
@@ -139,6 +154,14 @@ namespace Miningcore.Blockchain.Bitcoin
                         BlockchainStats.NetworkDifficulty = job.Difficulty;
                         BlockchainStats.NextNetworkTarget = blockTemplate.Target;
                         BlockchainStats.NextNetworkBits = blockTemplate.Bits;
+                    }
+
+                    else
+                    {
+                        if(via != null)
+                            logger.Debug(() => $"Template update {blockTemplate.Height} [{via}]");
+                        else
+                            logger.Debug(() => $"Template update {blockTemplate.Height}");
                     }
 
                     currentJob = job;

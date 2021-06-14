@@ -108,67 +108,24 @@ namespace Miningcore.Api
                     // MVC
                     services.AddSingleton((IComponentContext) Pool.container);
                     services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+                    services.AddMvc(options =>
+                    {
+                        options.EnableEndpointRouting = false;
+                    })
+                     .SetCompatibilityVersion(CompatibilityVersion.Latest)
+                     .AddControllersAsServices()
+                     .AddJsonOptions(options =>
+                     {
+                         options.JsonSerializerOptions.WriteIndented = true;
+                     });
 
-					// ToDo: Setting check
-					//services.AddMvc()
-                    //    .SetCompatibilityVersion(CompatibilityVersion.Version_3_0)
-                    //    .AddControllersAsServices()
-                    //    .AddNewtonsoftJson(options =>
-                    //    {
-                    //        options.SerializerSettings.Formatting = Formatting.Indented;
-                    //    });
-                    //services.AddMvc(option => option.EnableEndpointRouting = false);
-
-
-
-
-#if NETCOREAPP2_1
-                    services.AddMvc()
-                        .SetCompatibilityVersion(CompatibilityVersion.Version_2_1)
-                        .AddControllersAsServices()
-                        .AddJsonOptions(options =>
-                        {
-                            options.SerializerSettings.Formatting = Formatting.Indented;
-                        });
-#elif NETCOREAPP3_1
-                    services.AddControllers()
-                        .SetCompatibilityVersion(CompatibilityVersion.Version_3_0)
-                        .AddControllersAsServices()
-                        .AddNewtonsoftJson(options =>
-                        {
-                            options.SerializerSettings.Formatting = Formatting.Indented;
-                        });
-#else
-                   services.AddControllers()
-                        .SetCompatibilityVersion(CompatibilityVersion.Latest)
-                        .AddControllersAsServices()
-                        .AddNewtonsoftJson(options =>
-                        {
-                            options.SerializerSettings.Formatting = Formatting.Indented;
-                        });
-
-#endif
-                    // .ContractResolver = new DefaultContractResolver());
 
                     // Gzip Compression
                     services.AddResponseCompression();
 
                     // Cors
-                    // ToDo: Test if Admin portal is working without .credentials()
-                    // .AllowAnyOrigin(_ => true)
-                    // .AllowCredentials()
-                    services.AddCors(options =>
-                    {
-                        options.AddPolicy("CorsPolicy",
-                            builder => builder.AllowAnyOrigin()
-                                              .AllowAnyMethod()
-                                              .AllowAnyHeader()
-                                          );
-                    }
-                    );
-					// ToDo: AddCors to check:   .WithExposedHeaders("x-total-count")
-					
-					
+                    services.AddCors();
+										
                     // WebSockets
                     services.AddWebSocketManager();
                 })
@@ -183,20 +140,16 @@ namespace Miningcore.Api
                     UseIpWhiteList(app, true, new[] { "/metrics" }, clusterConfig.Api?.MetricsIpWhitelist);
 
                     app.UseResponseCompression();
-                    app.UseCors("CorsPolicy");
+                    app.UseCors(builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
                     app.UseWebSockets();
                     app.MapWebSocketManager("/notifications", app.ApplicationServices.GetService<WebSocketNotificationsRelay>());
                     app.UseMetricServer();
-
-#if NETCOREAPP2_1
                     app.UseMvc();
-#else
-                    app.UseRouting();
-                    app.UseEndpoints(endpoints => {
-                        endpoints.MapDefaultControllerRoute();
-                        endpoints.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");
-                    });
-#endif
+                    //app.UseRouting();
+                    //app.UseEndpoints(endpoints => {
+                    //    endpoints.MapDefaultControllerRoute();
+                    //    endpoints.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");
+                    //});
 
                 })
                 .UseKestrel(options =>

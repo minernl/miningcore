@@ -75,7 +75,7 @@ namespace Miningcore.PoolCore
         private static MetricsPublisher metricsPublisher;
         private static BtStreamReceiver btStreamReceiver;
         private static readonly ConcurrentDictionary<string, IMiningPool> pools = new ConcurrentDictionary<string, IMiningPool>();
-        private static AdminGcStats gcStats = new AdminGcStats();
+        private static readonly AdminGcStats gcStats = new AdminGcStats();
         private static readonly IPAddress IPv4LoopBackOnIPv6 = IPAddress.Parse("::ffff:127.0.0.1");
 
         internal static ClusterConfig clusterConfig;

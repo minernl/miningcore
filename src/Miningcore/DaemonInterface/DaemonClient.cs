@@ -346,7 +346,7 @@ namespace Miningcore.DaemonInterface
                 using(var response = await httpClients[endPoint].SendAsync(request, ct))
                 {
                     // read response
-                    var jsonResponse = await response.Content.ReadAsStringAsync();
+                    var jsonResponse = await response.Content.ReadAsStringAsync(ct);
 
                     logger.Trace(() => $"------------------------------------------------------------------------------------------------");
                     logger.Trace(() => $"Sending RPC (RESPONSE IN) {requestUrl}: {jsonResponse}");

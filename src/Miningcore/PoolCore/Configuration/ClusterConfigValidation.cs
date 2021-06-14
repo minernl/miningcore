@@ -7,7 +7,6 @@ using System.IO;
 using FluentValidation;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
-using FluentValidation.Attributes;
 
 namespace Miningcore.Configuration
 {
@@ -261,7 +260,6 @@ namespace Miningcore.Configuration
     {
     }
 
-    [Validator(typeof(VarDiffConfigValidator))]
     public partial class VarDiffConfig
     {
     }
@@ -282,42 +280,34 @@ namespace Miningcore.Configuration
     {
     }
 
-    [Validator(typeof(NetworkEndpointConfigValidator<NetworkEndpointConfig>))]
     public partial class NetworkEndpointConfig
     {
     }
 
-    [Validator(typeof(AuthenticatedNetworkEndpointConfigValidator<AuthenticatedNetworkEndpointConfig>))]
     public partial class AuthenticatedNetworkEndpointConfig
     {
     }
 
-    [Validator(typeof(EmailSenderConfigValidator))]
     public partial class EmailSenderConfig
     {
     }
 
-    [Validator(typeof(AdminNotificationsValidator))]
     public partial class AdminNotifications
     {
     }
 
-    [Validator(typeof(NotificationsConfigValidator))]
     public partial class NotificationsConfig
     {
     }
 
-    [Validator(typeof(ApiConfigValidator))]
     public partial class ApiConfig
     {
     }
 
-    [Validator(typeof(PoolConfigValidator))]
     public partial class PoolConfig
     {
     }
 
-    [Validator(typeof(ClusterConfigValidator))]
     public partial class ClusterConfig
     {
         public void Validate()
