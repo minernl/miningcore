@@ -18,7 +18,7 @@ stages:
   - job: Build
     displayName: Build
     pool:
-      name: ubuntu-latest
+      vmImage: ubuntu-latest
     steps:
     - task: DockerInstaller@0
       inputs:
