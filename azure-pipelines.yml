@@ -27,7 +27,7 @@ stages:
       displayName: Build an image
       inputs:
         command: build
-        dockerfile: '**/Dockerfile'
+        dockerfile: 'src/Miningcore/Dockerfile'
         tags: |
           latest
           $(tag)
