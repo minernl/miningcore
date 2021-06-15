@@ -18,12 +18,13 @@ stages:
   - job: Build
     displayName: Build
     pool:
-      name: ado-test-vmss
+      vmImage: ubuntu-latest
     steps:
     - task: DockerInstaller@0
       inputs:
         dockerVersion: '20.10.7'
     - task: Bash@3
+      enabled: false
       inputs:
         targetType: 'inline'
         script: 'sudo systemctl start docker'
@@ -32,6 +33,7 @@ stages:
       inputs:
         command: build
         dockerfile: 'src/Miningcore/Dockerfile'
+        buildContext: $(Build.Repository.LocalPath)
         tags: |
           latest
           $(tag)
