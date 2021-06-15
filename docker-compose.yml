@@ -5,6 +5,8 @@ services:
     image: miningcore
     ports:
      - "3072:3072"
+     - "3073:3073"
+     - "4000:4000"
     build:
       context: .
       dockerfile: src/Miningcore/Dockerfile
