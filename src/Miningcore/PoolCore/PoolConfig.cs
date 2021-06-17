@@ -35,12 +35,60 @@ namespace Miningcore.PoolCore
 
         }
 
+        public static ClusterConfig GetConfigContentFromAppConfig(string prefix)
+        {
+            // Read config.json file
+            clusterConfig = ReadConfigFromAppConfiguration(prefix);
+            ValidateConfig();
+
+            return clusterConfig;
+
+        }
+
+        private static ClusterConfig ReadConfigFromAppConfiguration(string prefix)
+        {
+            try
+            {       
+                
+                var config = AzureAppConfiguration.GetAppConfig(prefix);
+
+                var serializer = JsonSerializer.Create(new JsonSerializerSettings
+                {
+                    ContractResolver = new CamelCasePropertyNamesContractResolver()
+                });
+
+                JsonTextReader reader = new JsonTextReader(new StringReader(config[AzureAppConfiguration.ConfigJson]));
+
+                clusterConfig = serializer.Deserialize<ClusterConfig>(reader);
+                // Update dynamic pass and others config here
+
+                clusterConfig.Persistence.Postgres.User = config[AzureAppConfiguration.PersistencePostgresUser];
+                clusterConfig.Persistence.Postgres.Password = config[AzureAppConfiguration.PersistencePostgresPassword];
+                foreach(var poolConfig in clusterConfig.Pools)
+                {
+                    poolConfig.PaymentProcessing.Extra["coinbasePassword"] = config["pools." + poolConfig.Id  + "." + AzureAppConfiguration.CoinbasePassword];
+                }
+
+                return clusterConfig;
+
+            }
+            catch(JsonSerializationException ex)
+            {
+                HumanizeJsonParseException(ex);
+                throw;
+            }
+
+            catch(JsonException ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                throw;
+            }
+        }
+
         private static ClusterConfig ReadConfig(string configFile)
         {
             try
-            {
-                Console.WriteLine($"Using configuration file {configFile}\n");
-
+            {       
                 var serializer = JsonSerializer.Create(new JsonSerializerSettings
                 {
                     ContractResolver = new CamelCasePropertyNamesContractResolver()

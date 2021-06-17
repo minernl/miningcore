@@ -81,7 +81,7 @@ namespace Miningcore.PoolCore
         internal static ClusterConfig clusterConfig;
         internal static IContainer container;
 
-        internal static void StartMiningCorePool(string configFile)
+        internal static void StartMiningCorePool(string configFile, string appConfigPrefix)
         {
             try
             {
@@ -106,8 +106,16 @@ namespace Miningcore.PoolCore
                 if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && RuntimeInformation.ProcessArchitecture == Architecture.X86)
                     throw new PoolStartupAbortException("Miningcore requires 64-Bit Windows");
 
-                // Read config.json file
-                clusterConfig = PoolConfig.GetConfigContent(configFile);
+                if (configFile != null) 
+                {
+                    // Read config.json file
+                    clusterConfig = PoolConfig.GetConfigContent(configFile);
+                } 
+                else 
+                {
+                    // Read config.json from azure app configuration
+                    clusterConfig = PoolConfig.GetConfigContentFromAppConfig(appConfigPrefix);
+                }
 
                 // Initialize Logging
                 FileLogger.ConfigureLogging();
