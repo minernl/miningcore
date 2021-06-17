@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Extensions.Configuration;
+using Azure.Identity;
 
 namespace Miningcore.PoolCore
 {
@@ -16,7 +17,11 @@ namespace Miningcore.PoolCore
                 var builder = new ConfigurationBuilder();
                 builder.AddAzureAppConfiguration(options => {
                         options.Connect(Environment.GetEnvironmentVariable(ConnectionString))
-                            .TrimKeyPrefix(prefix);
+                        .ConfigureKeyVault(kv =>
+                        {
+                            kv.SetCredential(new DefaultAzureCredential());
+                        })
+                        .TrimKeyPrefix(prefix);
                     });
 
                 return builder.Build();
