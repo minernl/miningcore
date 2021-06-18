@@ -114,7 +114,8 @@
                 },
                 "coinbasePassword": "wallet_password",
                 "keepUncles": false,
-                "keepTransactionFees": false
+                "keepTransactionFees": false,
+                "Gas": 21000 
             }
         }
     ]

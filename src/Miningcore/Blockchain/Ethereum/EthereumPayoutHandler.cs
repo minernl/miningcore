@@ -483,8 +483,7 @@ namespace Miningcore.Blockchain.Ethereum
                 From = poolConfig.Address,
                 To = balance.Address,
                 Value = amount,
-                Gas = 21000,
-                GasPrice = 20000000000
+                Gas = extraConfig.Gas
             };
 
             // ToDo test difference
