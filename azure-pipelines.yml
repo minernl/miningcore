@@ -32,7 +32,7 @@ stages:
     - task: Docker@2
       displayName: Build an image
       inputs:
-        containerRegistry: 'sandbox-poolrepo'
+        containerRegistry: 'beta-repo'
         repository: 'miningcore'
         command: 'buildAndPush'
         Dockerfile: '**/Dockerfile'
