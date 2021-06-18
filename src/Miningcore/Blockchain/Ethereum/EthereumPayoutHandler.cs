@@ -130,7 +130,7 @@ namespace Miningcore.Blockchain.Ethereum
 
                     messageBus.NotifyBlockConfirmationProgress(poolConfig.Id, block, coin);
 
-                    
+
                     if(string.Equals(blockInfo.Miner, poolConfig.Address, StringComparison.OrdinalIgnoreCase))
                     {
                         // additional check
@@ -162,11 +162,11 @@ namespace Miningcore.Blockchain.Ethereum
                                 logger.Debug(() => $"** (WALLET_MATCH) Is the Block mined by us? {match}");
                                 logger.Debug(() => $"** Possible Uncle or Orphan block found");
                             }
-                            
+
                         }
 
                         // mature?
-                        if(match && (latestBlockHeight - block.BlockHeight >= EthereumConstants.MinConfimations) )
+                        if(match && (latestBlockHeight - block.BlockHeight >= EthereumConstants.MinConfimations))
                         {
                             block.Status = BlockStatus.Confirmed;
                             block.ConfirmationProgress = 1;
@@ -340,7 +340,7 @@ namespace Miningcore.Blockchain.Ethereum
             switch(chainType)
             {
                 case ParityChainType.Mainnet:
-                    if (height >= EthereumConstants.ConstantinopleHardForkHeight)
+                    if(height >= EthereumConstants.ConstantinopleHardForkHeight)
                         return EthereumConstants.ConstantinopleReward;
                     if(height >= EthereumConstants.ByzantiumHardForkHeight)
                         return EthereumConstants.ByzantiumBlockReward;
@@ -473,20 +473,21 @@ namespace Miningcore.Blockchain.Ethereum
             {
                 throw new Exception("Unable to unlock coinbase account for sending transaction");
             }
-            
+
+            var amount = (BigInteger) Math.Floor(balance.Amount * EthereumConstants.Wei);
             // send transaction
-            logger.Info(() => $"[{LogCategory}] Sending {FormatAmount(balance.Amount)} {balance.Amount} to {balance.Address}");
+            logger.Info(() => $"[{LogCategory}] Sending {FormatAmount(balance.Amount)} {amount} to {balance.Address}");
 
             var request = new SendTransactionRequest
             {
                 From = poolConfig.Address,
                 To = balance.Address,
-                Value = (BigInteger) Math.Floor(balance.Amount * EthereumConstants.Wei),
+                Value = amount,
             };
 
-// ToDo test difference
-// NL: Value = (BigInteger) Math.Floor(balance.Amount * EthereumConstants.Wei),
-// AX: Value = writeHex(amount),
+            // ToDo test difference
+            // NL: Value = (BigInteger) Math.Floor(balance.Amount * EthereumConstants.Wei),
+            // AX: Value = writeHex(amount),
             var response = await daemon.ExecuteCmdSingleAsync<string>(logger, EthCommands.SendTx, new[] { request });
 
             if(response.Error != null)

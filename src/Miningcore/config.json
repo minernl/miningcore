@@ -105,12 +105,12 @@
             ],
             "paymentProcessing": {
                 "enabled": true,
-                "minimumPayment": 0.001,
+                "minimumPayment": "0.000044",
                 "minimumPaymentToPaymentId": 5.0,
                 "payoutScheme": "PPS3",
                 "payoutSchemeConfig": {
                     "factor": 2.0,
-                    "fixedReward": "0.000013"
+                    "fixedReward": "0.0000022"
                 },
                 "coinbasePassword": "wallet_password",
                 "keepUncles": false,
