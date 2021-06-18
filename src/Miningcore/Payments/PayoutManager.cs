@@ -227,7 +227,7 @@ namespace Miningcore.Payments
             }
 
             else
-                logger.Info(() => $"No balances over configured minimum payout for pool {pool.Id}");
+                logger.Info(() => $"No balances over configured minimum payout {pool.PaymentProcessing.MinimumPayment:0.#######} for pool {pool.Id}");
         }
 
         private Task NotifyPayoutFailureAsync(Balance[] balances, PoolConfig pool, Exception ex)
