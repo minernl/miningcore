@@ -31,9 +31,11 @@ stages:
     - task: Docker@2
       displayName: Build an image
       inputs:
-        command: build
-        dockerfile: 'src/Miningcore/Dockerfile'
-        buildContext: $(Build.Repository.LocalPath)
+        containerRegistry: 'sandbox-poolrepo'
+        repository: 'miningcore'
+        command: 'buildAndPush'
+        Dockerfile: '**/Dockerfile'
+        buildContext: '$(Build.Repository.LocalPath)'
         tags: |
           latest
           $(tag)
