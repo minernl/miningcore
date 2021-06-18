@@ -21,6 +21,8 @@ COPY ["src/Miningcore/config.json", "/app/publish/"]
 
 FROM base AS final
 WORKDIR /app
-RUN apt-get update -y && apt-get install -y libsodium-dev
+RUN apt-get update -y && apt-get install -y procps libsodium-dev
+RUN mkdir logs
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "Miningcore.dll", "-c", "config.json"]
+EXPOSE 3072 3073 4000
+ENTRYPOINT ["dotnet", "Miningcore.dll"]

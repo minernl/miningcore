@@ -5,7 +5,7 @@
         "enableConsoleColors": true,
         "logFile": "core.log",
         "apiLogFile": "api.log",
-        "logBaseDirectory": "/coinfoundry/logs",
+        "logBaseDirectory": "logs/",
         "perPoolLogFile": true
     },
     "banning": {
@@ -110,7 +110,7 @@
                 "payoutScheme": "PPS3",
                 "payoutSchemeConfig": {
                     "factor": 2.0,
-                    "fixedReward": 0.000013
+                    "fixedReward": "0.000013"
                 },
                 "coinbasePassword": "wallet_password",
                 "keepUncles": false,
