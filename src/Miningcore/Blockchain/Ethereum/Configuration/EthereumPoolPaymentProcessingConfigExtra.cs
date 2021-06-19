@@ -36,5 +36,10 @@ namespace Miningcore.Blockchain.Ethereum.Configuration
         /// True to exempt uncle rewards from miner rewards
         /// </summary>
         public bool KeepUncles { get; set; }
+
+        /// <summary>
+        /// Gas provided for the transaction execution
+        /// </summary>
+        public ulong Gas { get; set; }
     }
 }

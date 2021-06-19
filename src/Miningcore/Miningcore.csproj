@@ -1,8 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk;Microsoft.NET.Sdk.Publish">
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>netcoreapp3.1</TargetFramework>
-        <TargetFrameworks>netcoreapp2.1;netcoreapp3.1</TargetFrameworks>
+        <TargetFramework>net5.0</TargetFramework>
         <AssemblyName>Miningcore</AssemblyName>
         <RootNamespace>Miningcore</RootNamespace>
         <Platforms>AnyCPU</Platforms>
@@ -26,6 +25,7 @@
         <StartupObject>Miningcore.Program</StartupObject>
         <Company>Miningcore.com</Company>
         <Version>2.0.0</Version>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     </PropertyGroup>
     <ItemGroup>
         <Compile Remove="Api\Notifications\**" />
@@ -65,6 +65,7 @@
         <PackageReference Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" Version="4.4.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.1.12" Condition="'$(TargetFramework)' != 'netcoreapp2.1'" />
         <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="3.1.12" Condition="'$(TargetFramework)' != 'netcoreapp2.1'" />
+        <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.10.14" />
         <PackageReference Include="morelinq" Version="3.1.1" />
         <PackageReference Include="NBitcoin" Version="4.1.2.35" />
         <PackageReference Include="NBitcoin.Zcash" Version="3.0.0" />
@@ -96,6 +97,9 @@
     <ItemGroup>
         <None Update="coins.json">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="config.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
     </ItemGroup>
     <ItemGroup>

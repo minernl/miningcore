@@ -14,22 +14,11 @@ using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
 using Autofac.Features.Metadata;
 using AutoMapper;
-using FluentValidation;
-using McMaster.Extensions.CommandLineUtils;
-using Microsoft.AspNetCore;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Mvc;
-using Miningcore.Api;
-using Miningcore.Api.Controllers;
 using Miningcore.Api.Responses;
 using Miningcore.Configuration;
 using Miningcore.Crypto.Hashing.Equihash;
@@ -38,34 +27,20 @@ using Miningcore.DataStore.Postgres;
 using Miningcore.Mining;
 using Miningcore.Notifications;
 using Miningcore.Payments;
-using Miningcore.PoolCore;
 using Miningcore.Util;
 using NBitcoin.Zcash;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 using NLog;
-using NLog.Conditions;
-using NLog.Config;
-using NLog.Layouts;
-using NLog.Targets;
-using JsonSerializer = Newtonsoft.Json.JsonSerializer;
-using Microsoft.Extensions.Logging;
-using LogLevel = NLog.LogLevel;
 using ILogger = NLog.ILogger;
-using NLog.Extensions.Logging;
-using Prometheus;
-using WebSocketManager;
-using Miningcore.Api.Middlewares;
 using System.Collections.Concurrent;
-using Microsoft.AspNetCore.Http;
-using AspNetCoreRateLimit;
 
 namespace Miningcore.PoolCore
 {
     internal class Pool
     {
-        private static readonly CancellationTokenSource cts = new CancellationTokenSource();
-        private static readonly ILogger logger = LogManager.GetLogger("PoolCore");
+
+        private static readonly CancellationTokenSource Cts = new CancellationTokenSource();
+        private static readonly ILogger Logger = LogManager.GetLogger("PoolCore");
         private static ShareRecorder shareRecorder;
         private static ShareRelay shareRelay;
         private static ShareReceiver shareReceiver;
@@ -74,25 +49,44 @@ namespace Miningcore.PoolCore
         private static NotificationService notificationService;
         private static MetricsPublisher metricsPublisher;
         private static BtStreamReceiver btStreamReceiver;
-        private static readonly ConcurrentDictionary<string, IMiningPool> pools = new ConcurrentDictionary<string, IMiningPool>();
+        private static readonly ConcurrentDictionary<string, IMiningPool> Pools = new ConcurrentDictionary<string, IMiningPool>();
         private static AdminGcStats gcStats = new AdminGcStats();
         private static readonly IPAddress IPv4LoopBackOnIPv6 = IPAddress.Parse("::ffff:127.0.0.1");
 
         internal static ClusterConfig clusterConfig;
         internal static IContainer container;
 
-        internal static void StartMiningCorePool(string configFile, string appConfigPrefix)
+        internal static void StartMiningCorePool(string configFile)
+        {
+            StartMiningCorePoolInternal(PoolConfig.GetConfigContent(configFile));
+        }
+
+        internal static void StartMiningCorePoolWithJson(string config)
+        {
+            StartMiningCorePoolInternal(PoolConfig.GetConfigContentFromJson(config));
+        }
+
+        internal static void StartMiningCorePoolWithAppConfig(string appConfig)
+        {
+            // Read config.json from azure app configuration
+            StartMiningCorePoolInternal(PoolConfig.GetConfigContentFromAppConfig(appConfig));
+        }
+
+        private static void StartMiningCorePoolInternal(ClusterConfig config)
         {
             try
             {
+                var assembly = Assembly.GetEntryAssembly();
                 // Display Software Version Info
-                var basePath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-                Console.WriteLine($"{Assembly.GetEntryAssembly().GetName().Name} - MinerNL build v{Assembly.GetEntryAssembly().GetName().Version}");
+
+                var basePath = Path.GetDirectoryName(assembly?.Location);
+                Console.WriteLine($"{assembly?.GetName().Name} - MinerNL build v{assembly?.GetName().Version}");
                 Console.WriteLine($"Run location: {basePath}");
                 Console.WriteLine(" ");
 
                 // log unhandled program exception errors
-                AppDomain currentDomain = AppDomain.CurrentDomain;
+
+                var currentDomain = AppDomain.CurrentDomain;
                 currentDomain.UnhandledException += new UnhandledExceptionEventHandler(MC_UnhandledException);
                 currentDomain.ProcessExit += OnProcessExit;
                 Console.CancelKeyPress += new ConsoleCancelEventHandler(OnCancelKeyPress);
@@ -100,29 +94,20 @@ namespace Miningcore.PoolCore
                 // ValidateRuntimeEnvironment();
                 // root check
                 if(!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && Environment.UserName == "root")
-                    logger.Warn(() => "Running as root is discouraged!");
+                    Logger.Warn(() => "Running as root is discouraged!");
 
                 // require 64-bit Windows OS
                 if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && RuntimeInformation.ProcessArchitecture == Architecture.X86)
                     throw new PoolStartupAbortException("Miningcore requires 64-Bit Windows");
-
-                if (configFile != null) 
-                {
-                    // Read config.json file
-                    clusterConfig = PoolConfig.GetConfigContent(configFile);
-                } 
-                else 
-                {
-                    // Read config.json from azure app configuration
-                    clusterConfig = PoolConfig.GetConfigContentFromAppConfig(appConfigPrefix);
-                }
+                
+                clusterConfig = config;
 
                 // Initialize Logging
                 FileLogger.ConfigureLogging();
 
                 // LogRuntimeInfo();
                 //-----------------------------------------------------------------------------
-                logger.Info(() => $"{RuntimeInformation.FrameworkDescription.Trim()} on {RuntimeInformation.OSDescription.Trim()} [{RuntimeInformation.ProcessArchitecture}]");
+                Logger.Info(() => $"{RuntimeInformation.FrameworkDescription.Trim()} on {RuntimeInformation.OSDescription.Trim()} [{RuntimeInformation.ProcessArchitecture}]");
 
                 // Bootstrap();
                 //-----------------------------------------------------------------------------
@@ -132,7 +117,7 @@ namespace Miningcore.PoolCore
                 var builder = new ContainerBuilder();
                 builder.RegisterAssemblyModules(typeof(AutofacModule).GetTypeInfo().Assembly);
                 builder.RegisterInstance(clusterConfig);
-                builder.RegisterInstance(pools);
+                builder.RegisterInstance(Pools);
                 builder.RegisterInstance(gcStats);
 
                 // AutoMapper
@@ -149,9 +134,9 @@ namespace Miningcore.PoolCore
                 MonitorGarbageCollection();
 
                 // Start Miningcore Pool Services
-                if(!cts.IsCancellationRequested)
-                    StartMiningcorePoolServices().Wait(cts.Token);
-    
+                if(!Cts.IsCancellationRequested)
+                    StartMiningcorePoolServices().Wait(Cts.Token);
+
             }
 
             catch(PoolStartupAbortException ex)
@@ -196,9 +181,9 @@ namespace Miningcore.PoolCore
             {
                 // Shutdown();
                 Console.WriteLine("Miningcore is shuting down... bye!");
-                logger?.Info(() => "Miningcore is shuting down... bye!");
+                Logger?.Info(() => "Miningcore is shuting down... bye!");
 
-                foreach(var poolToStop in pools.Values)
+                foreach(var poolToStop in Pools.Values)
                 {
                     Console.WriteLine($"Stopping pool {poolToStop}");
                     poolToStop.Stop();
@@ -211,9 +196,8 @@ namespace Miningcore.PoolCore
                 Process.GetCurrentProcess().Kill();
 
             }
-  
-        }
 
+        }
 
         // **************************************************************************
         //  MININGCORE POOL SERVICES
@@ -221,14 +205,14 @@ namespace Miningcore.PoolCore
         private static async Task StartMiningcorePoolServices()
         {
             var coinTemplates = PoolCoinTemplates.LoadCoinTemplates();
-            logger.Info($"{coinTemplates.Keys.Count} coins loaded from {string.Join(", ", clusterConfig.CoinTemplates)}");
+            Logger.Info($"{coinTemplates.Keys.Count} coins loaded from {string.Join(", ", clusterConfig.CoinTemplates)}");
 
             // Populate pool configs with corresponding template
             foreach(var poolConfig in clusterConfig.Pools.Where(x => x.Enabled))
             {
                 // Foreach coin definition
                 if(!coinTemplates.TryGetValue(poolConfig.Coin, out var template))
-                    logger.ThrowLogPoolStartupException($"Pool {poolConfig.Id} references undefined coin '{poolConfig.Coin}'");
+                    Logger.ThrowLogPoolStartupException($"Pool {poolConfig.Id} references undefined coin '{poolConfig.Coin}'");
 
                 poolConfig.Template = template;
             }
@@ -265,11 +249,11 @@ namespace Miningcore.PoolCore
             }
             else
             {
-                logger.Warn("API is disabled");
+                Logger.Warn("API is disabled");
             }
 
             // start payment processor
-            if(clusterConfig.PaymentProcessing?.Enabled == true &&  clusterConfig.Pools.Any(x => x.PaymentProcessing?.Enabled == true))
+            if(clusterConfig.PaymentProcessing?.Enabled == true && clusterConfig.Pools.Any(x => x.PaymentProcessing?.Enabled == true))
             {
                 payoutManager = container.Resolve<PayoutManager>();
                 payoutManager.Configure(clusterConfig);
@@ -277,9 +261,9 @@ namespace Miningcore.PoolCore
             }
             else
             {
-                logger.Warn("Payment processing is Disabled");
+                Logger.Warn("Payment processing is Disabled");
             }
-                
+
             if(clusterConfig.ShareRelay == null)
             {
                 // start pool stats updater
@@ -289,7 +273,7 @@ namespace Miningcore.PoolCore
             }
             else
             {
-                logger.Info("Share Relay is Active!");
+                Logger.Info("Share Relay is Active!");
             }
 
             // start stratum pools
@@ -302,20 +286,19 @@ namespace Miningcore.PoolCore
                 // create and configure
                 var stratumPool = poolImpl.Value;
                 stratumPool.Configure(poolConfig, clusterConfig);
-                pools[poolConfig.Id] = stratumPool;
+                Pools[poolConfig.Id] = stratumPool;
 
                 // pre-start attachments
                 shareReceiver?.AttachPool(stratumPool);
                 statsRecorder?.AttachPool(stratumPool);
                 //apiServer?.AttachPool(stratumPool);
 
-                await stratumPool.StartAsync(cts.Token);
+                await stratumPool.StartAsync(Cts.Token);
             }));
 
             // keep running
-            await Observable.Never<Unit>().ToTask(cts.Token);
+            await Observable.Never<Unit>().ToTask(Cts.Token);
         }
-
 
         private static void MonitorGarbageCollection()
         {
@@ -328,7 +311,7 @@ namespace Miningcore.PoolCore
                     var s = GC.WaitForFullGCApproach();
                     if(s == GCNotificationStatus.Succeeded)
                     {
-                        logger.Info(() => "Garbage Collection bin Full soon");
+                        Logger.Info(() => "Garbage Collection bin Full soon");
                         sw.Start();
                     }
 
@@ -336,7 +319,7 @@ namespace Miningcore.PoolCore
 
                     if(s == GCNotificationStatus.Succeeded)
                     {
-                        logger.Info(() => "Garbage Collection bin Full!!");
+                        Logger.Info(() => "Garbage Collection bin Full!!");
 
                         sw.Stop();
 
@@ -359,11 +342,11 @@ namespace Miningcore.PoolCore
         }
 
         // log unhandled program exception errors
-        private static void MC_UnhandledException(object sender, UnhandledExceptionEventArgs args )
+        private static void MC_UnhandledException(object sender, UnhandledExceptionEventArgs args)
         {
-            if(logger != null)
+            if(Logger != null)
             {
-                logger.Error(args.ExceptionObject);
+                Logger.Error(args.ExceptionObject);
                 LogManager.Flush(TimeSpan.Zero);
             }
             Exception e = (Exception) args.ExceptionObject;
@@ -372,14 +355,14 @@ namespace Miningcore.PoolCore
             Console.WriteLine("Runtime terminating: {0}", args.IsTerminating);
         }
 
-        protected static void OnCancelKeyPress(object sender, ConsoleCancelEventArgs args )
+        protected static void OnCancelKeyPress(object sender, ConsoleCancelEventArgs args)
         {
-            logger?.Info(() => $"Miningcore is stopping because exit key [{args.SpecialKey}] recieved. Exiting.");
+            Logger?.Info(() => $"Miningcore is stopping because exit key [{args.SpecialKey}] recieved. Exiting.");
             Console.WriteLine($"Miningcore is stopping because exit key  [{args.SpecialKey}] recieved. Exiting.");
 
             try
             {
-                cts?.Cancel();
+                Cts?.Cancel();
             }
             catch
             {
@@ -390,12 +373,12 @@ namespace Miningcore.PoolCore
 
         private static void OnProcessExit(object sender, EventArgs e)
         {
-            logger?.Info(() => "Miningcore received process stop request.");
+            Logger?.Info(() => "Miningcore received process stop request.");
             Console.WriteLine("Miningcore received process stop request.");
 
             try
             {
-                cts?.Cancel();
+                Cts?.Cancel();
             }
             catch
             {
