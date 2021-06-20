@@ -8,7 +8,6 @@ namespace Miningcore
 {
     public class Program
     {
-        private const string EnvironmentConfig = "cfg";
         private static CommandOption dumpConfigOption;
         private static CommandOption shareRecoveryOption;
         private static ClusterConfig clusterConfig;
@@ -39,6 +38,7 @@ namespace Miningcore
 
                 var configFile = "config_template.json";
                 var appConfigPrefix = "/";
+                string envConfig;
 
                 if(versionOption.HasValue())
                 {
@@ -56,7 +56,7 @@ namespace Miningcore
                 // Dump Config to JSON output
                 if(dumpConfigOption.HasValue())
                 {
-                    clusterConfig = PoolCore.PoolConfig.GetConfigContent(configFile);
+                    clusterConfig = PoolCore.PoolConfig.GetConfigFromFile(configFile);
                     PoolCore.PoolConfig.DumpParsedConfig(clusterConfig);
                 }
                 // Shares recovery from file to database
@@ -65,27 +65,23 @@ namespace Miningcore
                     Pool.RecoverSharesAsync(shareRecoveryOption.Value()).Wait();
                 }
 
-                if(appConfigPrefixOption.HasValue())
-                {
-                    Pool.StartMiningCorePoolWithAppConfig(appConfigPrefix);
-                }
-                else if(configFileOption.HasValue())
+                if(configFileOption.HasValue())
                 {
                     // Start Miningcore PoolCore
                     Pool.StartMiningCorePool(configFile);
                 }
+                else if(appConfigPrefixOption.HasValue())
+                {
+                    Pool.StartMiningCorePoolWithRemoteConfig(appConfigPrefix);
+                }
+                else if(!string.IsNullOrEmpty(envConfig = Environment.GetEnvironmentVariable(PoolCore.PoolConfig.EnvironmentConfig)))
+                {
+                    // Start Miningcore PoolCore
+                    Pool.StartMiningCorePoolWithEnvConfig(envConfig);
+                }
                 else
                 {
-                    var envConfig = Environment.GetEnvironmentVariable(EnvironmentConfig);
-                    if(!string.IsNullOrEmpty(envConfig))
-                    {
-                        // Start Miningcore PoolCore
-                        Pool.StartMiningCorePoolWithJson(envConfig);
-                    }
-                    else
-                    {
-                        MiningCore.ShowHelp();
-                    }
+                    MiningCore.ShowHelp();
                 }
             });
             MiningCore.Execute(args);
