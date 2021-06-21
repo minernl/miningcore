@@ -63,6 +63,7 @@ namespace Miningcore.PoolCore
 
         internal static void StartMiningCorePoolWithEnvConfig(string config)
         {
+            Console.WriteLine($"Loading config from env variable '{PoolConfig.EnvironmentConfig}'");
             StartMiningCorePoolInternal(PoolConfig.GetConfigFromJson(config));
         }
 

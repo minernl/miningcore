@@ -18,8 +18,6 @@ using Miningcore.Mining;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
-using JsonSerializer = Newtonsoft.Json.JsonSerializer;
-
 
 namespace Miningcore.PoolCore
 {
@@ -72,6 +70,7 @@ namespace Miningcore.PoolCore
 
         public static ClusterConfig GetConfigFromAppConfig(string prefix)
         {
+            Console.WriteLine("Loading config from app config");
             try
             {
                 var config = AzureAppConfiguration.GetAppConfig(prefix);
@@ -108,6 +107,7 @@ namespace Miningcore.PoolCore
 
         public static ClusterConfig GetConfigFromKeyVault(string vaultName, string prefix)
         {
+            Console.WriteLine($"Loading config from key vault '{vaultName}'");
             var config = ReadKeyVault(vaultName);
             var secretName = (prefix + BaseConfigFile).Replace(".", "-");
             return GetConfigFromJson(config[secretName]);
@@ -177,7 +177,7 @@ namespace Miningcore.PoolCore
             }
             finally
             {
-                Console.WriteLine($"Pool Configuration file is valid");
+                Console.WriteLine("Pool Configuration file is valid");
             }
         }
 
