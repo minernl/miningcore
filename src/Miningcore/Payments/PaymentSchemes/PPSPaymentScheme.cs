@@ -5,6 +5,9 @@ using System.Data.Common;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using AutoMapper;
+using Microsoft.Extensions.Caching.Memory;
+using Miningcore.Blockchain;
 using Miningcore.Configuration;
 using Miningcore.Extensions;
 using Miningcore.Persistence;
@@ -18,13 +21,19 @@ using Contract = Miningcore.Contracts.Contract;
 namespace Miningcore.Payments.PaymentSchemes
 {
     /// <summary>
-    /// PPLNS payout scheme implementation  
+    /// PPS payout scheme implementation  
     /// TODO THIS IS BUGGY AND INCOMPLETE!
     /// </summary>
     public class PPSPaymentScheme : IPayoutScheme
     {
+        private static readonly IMemoryCache cache = new MemoryCache(new MemoryCacheOptions
+        {
+            ExpirationScanFrequency = TimeSpan.FromHours(20)
+        });
         public PPSPaymentScheme(IConnectionFactory cf,
             IShareRepository shareRepo,
+            IStatsRepository statsRepo,
+            IMapper mapper,
             IBlockRepository blockRepo,
             IBalanceRepository balanceRepo)
         {
@@ -32,11 +41,15 @@ namespace Miningcore.Payments.PaymentSchemes
             Contract.RequiresNonNull(shareRepo, nameof(shareRepo));
             Contract.RequiresNonNull(blockRepo, nameof(blockRepo));
             Contract.RequiresNonNull(balanceRepo, nameof(balanceRepo));
+            Contract.RequiresNonNull(statsRepo, nameof(statsRepo));
+            Contract.RequiresNonNull(mapper, nameof(mapper));
 
             this.cf = cf;
             this.shareRepo = shareRepo;
             this.blockRepo = blockRepo;
             this.balanceRepo = balanceRepo;
+            this.statsRepo = statsRepo;
+            this.mapper = mapper;
 
             BuildFaultHandlingPolicy();
         }
@@ -45,6 +58,8 @@ namespace Miningcore.Payments.PaymentSchemes
         private readonly IBlockRepository blockRepo;
         private readonly IConnectionFactory cf;
         private readonly IShareRepository shareRepo;
+        private readonly IStatsRepository statsRepo;
+        private readonly IMapper mapper;
         private static readonly ILogger logger = LogManager.GetLogger("PPS Payment", typeof(PPSPaymentScheme));
 
         private const int RetryCount = 4;
@@ -60,15 +75,16 @@ namespace Miningcore.Payments.PaymentSchemes
         public async Task UpdateBalancesAsync(IDbConnection con, IDbTransaction tx, PoolConfig poolConfig,
             IPayoutHandler payoutHandler, Block block, decimal blockReward)
         {
+
             var payoutConfig = poolConfig.PaymentProcessing.PayoutSchemeConfig;
 
-            // PPLNS window (see https://bitcointalk.org/index.php?topic=39832)
-            var window = payoutConfig?.ToObject<Config>()?.Factor ?? 2.0m;
-
+            // TODO : get correct value for blockData
+            var blockData = 0;
+            CalculateBlockData(blockReward, poolConfig);
             // calculate rewards
             var shares = new Dictionary<string, double>();
             var rewards = new Dictionary<string, decimal>();
-            var shareCutOffDate = CalculateRewards(poolConfig, block, blockReward, shares, rewards);
+            var shareCutOffDate = CalculateRewards(poolConfig, block, blockReward, shares, rewards, blockData);
 
             // update balances
             foreach(var address in rewards.Keys)
@@ -104,6 +120,25 @@ namespace Miningcore.Payments.PaymentSchemes
                 logger.Info(() => $"{FormatUtil.FormatQuantity((double) totalShareCount)} ({Math.Round(totalShareCount, 2)}) shares contributed to a total payout of {payoutHandler.FormatAmount(totalRewards)} ({totalRewards / blockReward * 100:0.00}% of block reward) to {rewards.Keys.Count} addresses");
 
             return;
+        }
+
+        private async void CalculateBlockData(decimal blockReward, PoolConfig poolConfig)
+        {
+            var stats = await cf.Run(con => statsRepo.GetLastPoolStatsAsync(con, poolConfig.Id));
+            PoolStats poolStats = new PoolStats();
+            BlockchainStats blockchainStats = null;
+            if (stats != null)
+            {
+                poolStats = mapper.Map<PoolStats>(stats);
+                blockchainStats = mapper.Map<BlockchainStats>(stats);
+            }
+
+            double networkHashRate = blockchainStats.NetworkHashrate;
+            double poolHashRate = poolStats.PoolHashrate;
+            DateTime? lastNetworkBlockTime = blockchainStats.LastNetworkBlockTime;
+            double networkDifficulty = blockchainStats.NetworkDifficulty;
+            logger.Info(() => $"Block Reward : {blockReward}, Pool Id : {poolConfig.Id}");
+            logger.Info(() => $"Network HashRate : {networkHashRate}, Pool HashRate : {poolHashRate}, Network Difficulty : {networkDifficulty}, Network Block Time : {lastNetworkBlockTime.GetValueOrDefault().ToLongTimeString()}");
         }
 
         private void LogDiscardedShares(PoolConfig poolConfig, Block block, DateTime value)
@@ -164,7 +199,7 @@ namespace Miningcore.Payments.PaymentSchemes
         #endregion // IPayoutScheme
 
         private DateTime? CalculateRewards(PoolConfig poolConfig, Block block, decimal blockReward,
-            Dictionary<string, double> shares, Dictionary<string, decimal> rewards)
+            Dictionary<string, double> shares, Dictionary<string, decimal> rewards, decimal blockData)
         {
             var done = false;
             var before = block.Created;
@@ -189,20 +224,16 @@ namespace Miningcore.Payments.PaymentSchemes
                 inclusive = false;
                 currentPage++;
 
+                logger.Info(() => $"No. of shares : {page.Length}");
+
                 for (var i = 0; !done && i < page.Length; i++)
                 {
                     var share = page[i];
                     var address = share.Miner;
 
-                    // record attributed shares for diagnostic purposes
-                    if (!shares.ContainsKey(address))
-                        shares[address] = share.Difficulty;
-                    else
-                        shares[address] += share.Difficulty;
-
                     // determine a share's overall score
+                    logger.Info(() => $"Share Network Difficulty : {share.NetworkDifficulty}, Share Address : {address}");
                     var score = (decimal)(share.Difficulty / share.NetworkDifficulty);
-                    //var score = (decimal)(share.Difficulty / Blockchain.Ethereum.EthereumConstants.ScoreFactor);
 
                     if (!scores.ContainsKey(address))
                         scores[address] = score;
@@ -217,15 +248,14 @@ namespace Miningcore.Payments.PaymentSchemes
 
                 if (accumulatedScore > 0)
                 {
-                    var rewardPerScorePoint = blockReward / accumulatedScore;
-
                     // build rewards for all addresses that contributed to the round
                     foreach (var address in scores.Select(x => x.Key).Distinct())
                     {
                         // loop all scores for the current address
                         foreach (var score in scores.Where(x => x.Key == address))
                         {
-                            var reward = score.Value * rewardPerScorePoint;
+                            //var reward = score.Value * rewardPerScorePoint;
+                            var reward = blockData * (score.Value / accumulatedScore);
                             if (reward > 0)
                             {
                                 // accumulate miner reward
@@ -235,7 +265,6 @@ namespace Miningcore.Payments.PaymentSchemes
                                     rewards[address] += reward;
                             }
 
-                            blockRewardRemaining -= reward;
                         }
                     }
                 }
