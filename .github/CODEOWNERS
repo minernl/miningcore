@@ -5,7 +5,7 @@
 # the repo. Unless a later match takes precedence,
 # Thse users will be requested for
 # review when someone opens a pull request.
-*       @FishyJoel @abaratham-nlok @swatichilka @kabilanvk @schandan-nlok
+*       @joel-nlok @abaratham-nlok @swatichilka @kabilanvk @schandan-nlok
 
 # Order is important; the last matching pattern takes the most
 # precedence. When someone opens a pull request that only
