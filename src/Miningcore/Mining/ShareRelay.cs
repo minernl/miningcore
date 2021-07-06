@@ -89,7 +89,7 @@ namespace Miningcore.Mining
         {
             logger.Info(() => "Stopping ..");
 
-            pubSocket.Dispose();
+            pubSocket?.Dispose();
 
             queueSub?.Dispose();
             queueSub = null;

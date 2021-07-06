@@ -21,7 +21,7 @@ COPY ["src/Miningcore/config.json", "/app/publish/"]
 
 FROM base AS final
 WORKDIR /app
-RUN apt-get update -y && apt-get install -y procps libsodium-dev
+RUN apt-get update -y && apt-get install -y procps libboost-all-dev libsodium-dev libzmq3-dev libzmq5
 RUN mkdir logs
 COPY --from=publish /app/publish .
 EXPOSE 3072 3073 4000
