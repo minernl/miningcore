@@ -272,18 +272,15 @@ namespace Miningcore.Payments.PaymentSchemes
                 inclusive = false;
                 currentPage++;
 
+                logger.Info(() => $"No. of shares : {page.Length}");
+
                 for (var i = 0; !done && i < page.Length; i++)
                 {
                     var share = page[i];
                     var address = share.Miner;
 
-                    // record attributed shares for diagnostic purposes
-                    if (!shares.ContainsKey(address))
-                        shares[address] = share.Difficulty;
-                    else
-                        shares[address] += share.Difficulty;
-
                     // determine a share's overall score
+                    logger.Info(() => $"Share Network Difficulty : {share.NetworkDifficulty}, Share Address : {address}");
                     var score = (decimal)(share.Difficulty / share.NetworkDifficulty);
 
                     if (!scores.ContainsKey(address))
