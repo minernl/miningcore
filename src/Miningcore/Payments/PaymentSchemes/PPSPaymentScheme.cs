@@ -87,6 +87,7 @@ namespace Miningcore.Payments.PaymentSchemes
                 blockRewardInCache = GetBlockReward(poolConfig);
             }
             logger.Info(() => $"Network Block Reward : {blockRewardInCache}");
+
             decimal blockData = CalculateBlockData((decimal) blockRewardInCache, poolConfig, clusterConfig);
             // calculate rewards
             var shares = new Dictionary<string, double>();
