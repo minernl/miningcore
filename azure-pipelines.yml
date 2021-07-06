@@ -20,15 +20,6 @@ stages:
     pool:
       vmImage: ubuntu-latest
     steps:
-    - task: DockerInstaller@0
-      enabled: false
-      inputs:
-        dockerVersion: '20.10.7'
-    - task: Bash@3
-      enabled: false
-      inputs:
-        targetType: 'inline'
-        script: 'sudo systemctl start docker'
     - task: Docker@2
       displayName: Build an image
       inputs:
