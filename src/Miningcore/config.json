@@ -103,6 +103,10 @@
                     "port": 0
                 }
             ],
+            "etherscan": {
+                "apiUrl": "https://api.etherscan.io/apis",
+                "apiKey": ""
+            },
             "paymentProcessing": {
                 "enabled": true,
                 "minimumPayment": "0.000044",
@@ -115,7 +119,7 @@
                 "coinbasePassword": "wallet_password",
                 "keepUncles": false,
                 "keepTransactionFees": false,
-                "Gas": 21000 
+                "Gas": 21000
             }
         }
     ]

@@ -522,6 +522,12 @@ namespace Miningcore.Configuration
         public int Time { get; set; } // How many seconds to ban worker for
     }
 
+    public partial class EtherScan
+    {
+        public String apiUrl { get; set; }
+        public String apiKey { get; set; }
+    }
+
     public partial class PoolPaymentProcessingConfig
     {
         public bool Enabled { get; set; }
@@ -690,6 +696,7 @@ namespace Miningcore.Configuration
         public bool Enabled { get; set; }
         public Dictionary<int, PoolEndpoint> Ports { get; set; }
         public DaemonEndpointConfig[] Daemons { get; set; }
+        public EtherScan EtherScan { get; set; }
         public PoolPaymentProcessingConfig PaymentProcessing { get; set; }
         public PoolShareBasedBanningConfig Banning { get; set; }
         public RewardRecipient[] RewardRecipients { get; set; }
