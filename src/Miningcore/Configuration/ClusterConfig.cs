@@ -533,6 +533,7 @@ namespace Miningcore.Configuration
         public bool Enabled { get; set; }
         public decimal MinimumPayment { get; set; } // in pool-base-currency (ie. Bitcoin, not Satoshis)
         public PayoutScheme PayoutScheme { get; set; }
+        public int MaxBlockFrequency { get; set; }
         public JToken PayoutSchemeConfig { get; set; }
 
         /// <summary>

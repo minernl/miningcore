@@ -112,6 +112,7 @@
                 "minimumPayment": "0.000044",
                 "minimumPaymentToPaymentId": 5.0,
                 "payoutScheme": "PPS3",
+                "maxBlockFrequency": 43200,
                 "payoutSchemeConfig": {
                     "factor": 2.0,
                     "fixedReward": "0.0000022"

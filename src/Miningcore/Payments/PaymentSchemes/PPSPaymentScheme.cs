@@ -63,10 +63,11 @@ namespace Miningcore.Payments.PaymentSchemes
 
         private const int RetryCount = 4;
         private const decimal RECEPIENT_SHARE = 0.85m;
+        private const double SIXTY = 60;
         private const String BLOCK_REWARD = "blockReward";
         private const String DATE_FORMAT = "yyyy-MM-dd";
         private const String ACCEPT_TEXT_HTML = "text/html";
-        private String URL_PARMETER_FORMAT = "?module=stats&action=dailyblkcount&startdate={0}&enddate={2}&sort=asc&apikey={3}";
+        private String URL_PARAMETER_FORMAT = "?module=stats&action=dailyblkcount&startdate={0}&enddate={1}&sort=asc&apikey={2}";
         private Policy shareReadFaultPolicy;
 
         private class Config
@@ -139,7 +140,7 @@ namespace Miningcore.Payments.PaymentSchemes
             new MediaTypeWithQualityHeaderValue(ACCEPT_TEXT_HTML));
             var yesterdayDate = DateTime.Today.AddDays(-1).ToString(DATE_FORMAT);
             var todayDate = DateTime.Today.ToString(DATE_FORMAT);
-            String requestUri = String.Format(URL_PARMETER_FORMAT, yesterdayDate, todayDate, poolConfig.EtherScan.apiKey);
+            String requestUri = String.Format(URL_PARAMETER_FORMAT, yesterdayDate, todayDate, poolConfig.EtherScan.apiKey);
             HttpResponseMessage response = client.GetAsync(requestUri).Result;
             decimal blockReward;
             if(response.IsSuccessStatusCode)
@@ -179,8 +180,12 @@ namespace Miningcore.Payments.PaymentSchemes
             double networkHashRate = blockchainStats.NetworkHashrate;
             double poolHashRate = poolStats.PoolHashrate;
             double avgBlockTime = blockchainStats.NetworkBlockAvgTime;
-            double blockFrequency = networkHashRate / poolHashRate * avgBlockTime;
-
+            double blockFrequency = networkHashRate / poolHashRate * (avgBlockTime / SIXTY);
+            double maxBlockFrequency = poolConfig.PaymentProcessing.MaxBlockFrequency;
+            if(blockFrequency > maxBlockFrequency)
+            {
+                blockFrequency = maxBlockFrequency;
+            }
             int payoutConfig = clusterConfig.PaymentProcessing.Interval;
             
             decimal recepientBlockReward = (blockReward * RECEPIENT_SHARE);
