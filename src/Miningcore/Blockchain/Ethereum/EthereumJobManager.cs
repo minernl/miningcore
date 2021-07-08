@@ -342,7 +342,6 @@ namespace Miningcore.Blockchain.Ethereum
                 // Publish network info
                 BlockchainStats.NetworkDifficulty = (double) latestBlockDifficulty;
                 BlockchainStats.NetworkHashrate = blockAvgTime > 0 ? (double) latestBlockDifficulty / blockAvgTime : 0 ;
-                BlockchainStats.NetworkBlockAvgTime = blockAvgTime;
                 BlockchainStats.ConnectedPeers = (int) peerCount;
             }
 

@@ -33,7 +33,6 @@ namespace Miningcore.Blockchain
         public ulong BlockHeight { get; set; }
         public int ConnectedPeers { get; set; }
         public string RewardType { get; set; }
-        public double NetworkBlockAvgTime { get; set; }
     }
 
     public interface IExtraNonceProvider
