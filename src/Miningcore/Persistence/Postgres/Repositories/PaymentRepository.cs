@@ -94,5 +94,29 @@ namespace Miningcore.Persistence.Postgres.Repositories
             return (await con.QueryAsync<AmountByDate>(query, new { poolId, address, offset = page * pageSize, pageSize }))
                 .ToArray();
         }
+
+        public async Task<PaymentSchedule> GetPaymentScheduleAsync(IDbConnection con, string poolId, string miner)
+        {
+            logger.LogInvoke();
+
+            const string query = "SELECT poolid,miner,paiduntil FROM payment_schedule WHERE poolid = @poolId AND miner = @miner";
+
+            return await con.QuerySingleOrDefaultAsync<PaymentSchedule>(query, new { poolId, miner });
+        }
+
+        public async Task UpdatePaymentScheduleAsync(IDbConnection con, IDbTransaction tx, PaymentSchedule paymentSchedule)
+        {
+            logger.LogInvoke();
+
+            var mapped = mapper.Map<Entities.PaymentSchedule>(paymentSchedule);
+
+            const string query = @"INSERT INTO payment_schedule(poolid, miner, paiduntil) 
+                                 VALUES(@poolid, @miner, @paiduntil)
+                                 ON CONFLICT (poolid, miner)
+                                 DO UPDATE
+                                 SET paiduntil = @paiduntil;";
+
+            await con.ExecuteAsync(query, mapped, tx);
+        }
     }
 }

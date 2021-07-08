@@ -88,6 +88,8 @@ namespace Miningcore.Blockchain.Ethereum
             var stratumDifficulty = context.Difficulty;
             var ratio = shareDiff / stratumDifficulty;
             var isBlockCandidate = resultValue <= blockTarget;
+            logger.Info($"Calc share for {context.Miner}|{context.UserAgent}, Val:{resultValue}, Tar:{blockTarget}, Bh:{BlockTemplate.Height}, " +
+                        $"Bc:{isBlockCandidate}");
 
             if(!isBlockCandidate && ratio < 0.99)
             {

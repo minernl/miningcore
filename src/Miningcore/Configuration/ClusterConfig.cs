@@ -352,6 +352,7 @@ namespace Miningcore.Configuration
         SOLO = 3,
         PPS = 4,
         PPBS = 5,
+        PPS3 = 6
     }
 
     public partial class ClusterLoggingConfig

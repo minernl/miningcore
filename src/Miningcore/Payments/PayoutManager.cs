@@ -72,53 +72,53 @@ namespace Miningcore.Payments
                 {
                     //try
                     //{
-                        //await ProcessPoolPaymentsAsync();
-                        foreach(var pool in clusterConfig.Pools.Where(x => x.Enabled && x.PaymentProcessing.Enabled))
+                    //await ProcessPoolPaymentsAsync();
+                    foreach(var pool in clusterConfig.Pools.Where(x => x.Enabled && x.PaymentProcessing.Enabled))
+                    {
+                        logger.Info(() => $"Processing payments for pool [{pool.Id}]");
+
+                        try
                         {
-                            logger.Info(() => $"Processing payments for pool [{pool.Id}]");
+                            var family = HandleFamilyOverride(pool.Template.Family, pool);
 
-                            try
+                            // resolve payout handler
+                            var handlerImpl = ctx.Resolve<IEnumerable<Meta<Lazy<IPayoutHandler, CoinFamilyAttribute>>>>()
+                                .First(x => x.Value.Metadata.SupportedFamilies.Contains(family)).Value;
+
+                            var handler = handlerImpl.Value;
+                            await handler.ConfigureAsync(clusterConfig, pool);
+
+                            // resolve payout scheme
+                            var scheme = ctx.ResolveKeyed<IPayoutScheme>(pool.PaymentProcessing.PayoutScheme);
+
+                            await UpdatePoolBalancesAsync(pool, handler, scheme);
+                            await PayoutPoolBalancesAsync(pool, handler);
+                        }
+
+                        catch(InvalidOperationException ex)
+                        {
+                            logger.Error(ex.InnerException ?? ex, () => $"[{pool.Id}] Payment processing failed");
+                        }
+
+                        catch(AggregateException ex)
+                        {
+                            switch(ex.InnerException)
                             {
-                                var family = HandleFamilyOverride(pool.Template.Family, pool);
+                                case HttpRequestException httpEx:
+                                    logger.Error(() => $"[{pool.Id}] Payment processing failed: {httpEx.Message}");
+                                    break;
 
-                                // resolve payout handler
-                                var handlerImpl = ctx.Resolve<IEnumerable<Meta<Lazy<IPayoutHandler, CoinFamilyAttribute>>>>()
-                                    .First(x => x.Value.Metadata.SupportedFamilies.Contains(family)).Value;
-
-                                var handler = handlerImpl.Value;
-                                await handler.ConfigureAsync(clusterConfig, pool);
-
-                                // resolve payout scheme
-                                var scheme = ctx.ResolveKeyed<IPayoutScheme>(pool.PaymentProcessing.PayoutScheme);
-
-                                await UpdatePoolBalancesAsync(pool, handler, scheme);
-                                await PayoutPoolBalancesAsync(pool, handler);
-                            }
-
-                            catch(InvalidOperationException ex)
-                            {
-                                logger.Error(ex.InnerException ?? ex, () => $"[{pool.Id}] Payment processing failed");
-                            }
-
-                            catch(AggregateException ex)
-                            {
-                                switch(ex.InnerException)
-                                {
-                                    case HttpRequestException httpEx:
-                                        logger.Error(() => $"[{pool.Id}] Payment processing failed: {httpEx.Message}");
-                                        break;
-
-                                    default:
-                                        logger.Error(ex.InnerException, () => $"[{pool.Id}] Payment processing failed");
-                                        break;
-                                }
-                            }
-
-                            catch(Exception ex)
-                            {
-                                logger.Error(ex, () => $"[{pool.Id}] Payment processing failed");
+                                default:
+                                    logger.Error(ex.InnerException, () => $"[{pool.Id}] Payment processing failed");
+                                    break;
                             }
                         }
+
+                        catch(Exception ex)
+                        {
+                            logger.Error(ex, () => $"[{pool.Id}] Payment processing failed");
+                        }
+                    }
                     //}
 
                     //catch(Exception ex)
@@ -131,7 +131,7 @@ namespace Miningcore.Payments
             });
         }
 
- 
+
         private static CoinFamily HandleFamilyOverride(CoinFamily family, PoolConfig pool)
         {
             switch(family)
@@ -197,9 +197,14 @@ namespace Miningcore.Payments
                     });
                 }
             }
-
             else
-                logger.Info(() => $"No updated blocks for pool {pool.Id}");
+            {
+                logger.Info(() => $"No updated blocks for pool {pool.Id} but still payment processed");
+                await cf.RunTx(async (con, tx) =>
+                {
+                    await scheme.UpdateBalancesAsync(con, tx, pool, handler, null, 1);
+                });
+            }
         }
 
         private async Task PayoutPoolBalancesAsync(PoolConfig pool, IPayoutHandler handler)
@@ -222,7 +227,7 @@ namespace Miningcore.Payments
             }
 
             else
-                logger.Info(() => $"No balances over configured minimum payout for pool {pool.Id}");
+                logger.Info(() => $"No balances over configured minimum payout {pool.PaymentProcessing.MinimumPayment:0.#######} for pool {pool.Id}");
         }
 
         private Task NotifyPayoutFailureAsync(Balance[] balances, PoolConfig pool, Exception ex)
@@ -267,7 +272,7 @@ namespace Miningcore.Payments
             interval = TimeSpan.FromSeconds(clusterConfig.PaymentProcessing.Interval > 0 ? clusterConfig.PaymentProcessing.Interval : 600);
         }
 
-    
+
 
         public void Stop()
         {
@@ -278,6 +283,6 @@ namespace Miningcore.Payments
             logger.Info(() => "Payment Service Stopped");
         }
 
-       
+
     }
 }
