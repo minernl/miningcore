@@ -68,7 +68,7 @@ namespace Miningcore.Payments.PaymentSchemes
 
         #region IPayoutScheme
 
-        public async Task UpdateBalancesAsync(IDbConnection con, IDbTransaction tx, PoolConfig poolConfig, IPayoutHandler payoutHandler, Block block, decimal blockReward)
+        public async Task UpdateBalancesAsync(IDbConnection con, IDbTransaction tx, PoolConfig poolConfig, ClusterConfig clusterConfig, IPayoutHandler payoutHandler, Block block, decimal blockReward)
         {
             // calculate rewards
             var rewards = new Dictionary<string, decimal>();

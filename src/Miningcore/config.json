@@ -103,11 +103,16 @@
                     "port": 0
                 }
             ],
+            "etherscan": {
+                "apiUrl": "https://api.etherscan.io/api",
+                "apiKey": "api_key"
+            },
             "paymentProcessing": {
                 "enabled": true,
                 "minimumPayment": "0.000044",
                 "minimumPaymentToPaymentId": 5.0,
                 "payoutScheme": "PPS3",
+                "maxBlockFrequency": 43200,
                 "payoutSchemeConfig": {
                     "factor": 2.0,
                     "fixedReward": "0.0000022"
@@ -115,7 +120,7 @@
                 "coinbasePassword": "wallet_password",
                 "keepUncles": false,
                 "keepTransactionFees": false,
-                "Gas": 21000 
+                "Gas": 21000
             }
         }
     ]
