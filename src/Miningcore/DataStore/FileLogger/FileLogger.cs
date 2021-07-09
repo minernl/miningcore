@@ -57,6 +57,7 @@ namespace Miningcore.DataStore.FileLogger
                 {
                     var target = new ApplicationInsightsTarget();
                     target.InstrumentationKey = config.AzureLogKey;
+                    target.Name = "azurelog";
 
                     loggingConfig.AddTarget(target);
                     loggingConfig.AddRule(level, LogLevel.Fatal, target);
