@@ -45,7 +45,7 @@ namespace Miningcore.Payments.PaymentSchemes
         private readonly IBlockRepository blockRepo;
         private readonly IConnectionFactory cf;
         private readonly IShareRepository shareRepo;
-        private static readonly ILogger logger = LogManager.GetLogger("PPS3 Payment", typeof(PPSPaymentScheme));
+        private static readonly ILogger logger = LogManager.GetLogger("PPS3 Payment", typeof(PPS3PaymentScheme));
 
         private const int RetryCount = 4;
         private IAsyncPolicy shareReadFaultPolicy;
