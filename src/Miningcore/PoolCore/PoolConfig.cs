@@ -95,6 +95,7 @@ namespace Miningcore.PoolCore
                 foreach(var poolConfig in clusterConfig.Pools)
                 {
                     poolConfig.PaymentProcessing.Extra["coinbasePassword"] = config["pools." + poolConfig.Id + "." + AzureAppConfiguration.CoinbasePassword];
+                    poolConfig.EtherScan.apiKey = config["pools." + poolConfig.Id + "." + AzureAppConfiguration.EtherscanApiKey];
                 }
 
                 return clusterConfig;
