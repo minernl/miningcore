@@ -177,7 +177,19 @@ namespace Miningcore.Payments.PaymentSchemes
 
             double networkHashRate = blockchainStats.NetworkHashrate;
             double poolHashRate = poolStats.PoolHashrate;
+
+            if(networkHashRate == 0)
+            {
+                logger.Warn(() => $"networkHashRate from daemon is zero!");
+                networkHashRate = Int32.MaxValue;
+            }
             double avgBlockTime = blockchainStats.NetworkDifficulty / networkHashRate;
+
+            if(poolHashRate == 0)
+            {
+                logger.Info(() => $"pool hashrate is currently zero.  Payouts will also be zero.");
+                poolHashRate = 1;
+            }
             double blockFrequency = networkHashRate / poolHashRate * (avgBlockTime / SIXTY);
             double maxBlockFrequency = poolConfig.PaymentProcessing.MaxBlockFrequency;
             if(blockFrequency > maxBlockFrequency)
@@ -185,6 +197,12 @@ namespace Miningcore.Payments.PaymentSchemes
                 blockFrequency = maxBlockFrequency;
             }
             int payoutConfig = clusterConfig.PaymentProcessing.Interval;
+            if(payoutConfig == 0)
+            {
+                logger.Warn(() => $"Payments are misconfigured. Interval should not be zero");
+                payoutConfig = 600;          
+            }
+
             double recepientBlockReward = (double)(blockRewardInEth * RECEPIENT_SHARE);
             double blockFrequencyPerPayout = blockFrequency / (payoutConfig / SIXTY);
             double blockData = recepientBlockReward / blockFrequencyPerPayout;
