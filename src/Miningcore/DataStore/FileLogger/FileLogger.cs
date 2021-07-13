@@ -13,6 +13,7 @@ using NLog.Config;
 using NLog.Layouts;
 using NLog.Targets;
 using Microsoft.Extensions.Logging;
+using Microsoft.ApplicationInsights.NLogTarget;
 using LogLevel = NLog.LogLevel;
 using ILogger = NLog.ILogger;
 using NLog.Extensions.Logging;
@@ -49,6 +50,18 @@ namespace Miningcore.DataStore.FileLogger
                 // Suppress some Aspnet stuff
                 loggingConfig.AddRule(level, LogLevel.Info, nullTarget, "Microsoft.AspNetCore.Mvc.Internal.*", true);
                 loggingConfig.AddRule(level, LogLevel.Info, nullTarget, "Microsoft.AspNetCore.Mvc.Infrastructure.*", true);
+
+
+                // ApplicationInsights
+                if(!string.IsNullOrEmpty(config.AzureLogKey))
+                {
+                    var target = new ApplicationInsightsTarget();
+                    target.InstrumentationKey = config.AzureLogKey;
+                    target.Name = "azurelog";
+
+                    loggingConfig.AddTarget(target);
+                    loggingConfig.AddRule(level, LogLevel.Fatal, target);
+                }
 
                 // Api Log
                 if(!string.IsNullOrEmpty(config.ApiLogFile))

@@ -335,6 +335,8 @@ Pool Fee:               {(poolConfig.RewardRecipients?.Any() == true ? poolConfi
             logger = LogUtil.GetPoolScopedLogger(typeof(PoolBase), poolConfig);
             this.poolConfig = poolConfig;
             this.clusterConfig = clusterConfig;
+
+            TelemetryUtil.init(clusterConfig.Logging.AzureLogKey);
         }
 
         public abstract double HashrateFromShares(double shares, double interval);
@@ -386,6 +388,7 @@ Pool Fee:               {(poolConfig.RewardRecipients?.Any() == true ? poolConfi
         public void Stop()
         {
             StopListeners();
+            TelemetryUtil.cleanup();
         }
 
         #endregion // API-Surface

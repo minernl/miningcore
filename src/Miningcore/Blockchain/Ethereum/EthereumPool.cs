@@ -28,6 +28,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
 using AutoMapper;
+using Microsoft.ApplicationInsights;
 using Miningcore.Blockchain.Ethereum.Configuration;
 using Miningcore.Configuration;
 using Miningcore.Extensions;
@@ -147,6 +148,7 @@ namespace Miningcore.Blockchain.Ethereum
             var request = tsRequest.Value;
             var context = client.ContextAs<EthereumWorkerContext>();
 
+            double difficulty = 0;
             try
             {
                 if(request.Id == null)
@@ -181,6 +183,8 @@ namespace Miningcore.Blockchain.Ethereum
 
                 var share = await manager.SubmitShareAsync(client, submitRequest, ct);
 
+                difficulty = Math.Round(share.Difficulty / EthereumConstants.Pow2x32, 3);
+
                 await client.RespondAsync(true, request.Id);
 
                 // publish
@@ -189,7 +193,7 @@ namespace Miningcore.Blockchain.Ethereum
                 // telemetry
                 PublishTelemetry(TelemetryCategory.Share, clock.UtcNow - tsRequest.Timestamp.UtcDateTime, true);
 
-                logger.Info(() => $"[{client.ConnectionId}] Share accepted: D={Math.Round(share.Difficulty / EthereumConstants.Pow2x32, 3)} ND={Math.Round(share.NetworkDifficulty / EthereumConstants.Pow2x32, 3)}");
+                logger.Info(() => $"[{client.ConnectionId}] Share accepted: D={difficulty} ND={Math.Round(share.NetworkDifficulty / EthereumConstants.Pow2x32, 3)}");
                 await EnsureInitialWorkSent(client);
 
                 // update pool stats
@@ -199,12 +203,24 @@ namespace Miningcore.Blockchain.Ethereum
                 // update client stats
                 context.Stats.ValidShares++;
                 await UpdateVarDiffAsync(client);
+
+                TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
+                if(null != tc)
+                {
+                    tc.GetMetric("ACCEPTED_SHARES").TrackValue(difficulty);
+                }
             }
 
             catch(StratumException ex)
             {
                 // telemetry
                 PublishTelemetry(TelemetryCategory.Share, clock.UtcNow - tsRequest.Timestamp.UtcDateTime, false);
+
+                TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
+                if(null != tc)
+                {
+                    tc.GetMetric("REJECTED_SHARES").TrackValue(difficulty);
+                }
 
                 // update client stats
                 context.Stats.InvalidShares++;
