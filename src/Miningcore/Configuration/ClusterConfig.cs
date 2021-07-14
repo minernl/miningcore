@@ -365,6 +365,7 @@ namespace Miningcore.Configuration
         public bool PerPoolLogFile { get; set; }
         public string LogBaseDirectory { get; set; }
         public string AzureLogKey {get; set;}
+        public string AzureLogLevel {get; set;}
     }
 
     public partial class NetworkEndpointConfig

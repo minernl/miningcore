@@ -55,12 +55,16 @@ namespace Miningcore.DataStore.FileLogger
                 // ApplicationInsights
                 if(!string.IsNullOrEmpty(config.AzureLogKey))
                 {
+                    var aiLevel = !string.IsNullOrEmpty(config.AzureLogLevel)
+                        ? LogLevel.FromString(config.AzureLogLevel)
+                        : level;
+
                     var target = new ApplicationInsightsTarget();
                     target.InstrumentationKey = config.AzureLogKey;
                     target.Name = "azurelog";
 
                     loggingConfig.AddTarget(target);
-                    loggingConfig.AddRule(level, LogLevel.Fatal, target);
+                    loggingConfig.AddRule(aiLevel, LogLevel.Fatal, target);
                 }
 
                 // Api Log
