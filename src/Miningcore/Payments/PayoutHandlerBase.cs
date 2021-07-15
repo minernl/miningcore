@@ -19,11 +19,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
+using Microsoft.ApplicationInsights;
 using Miningcore.Blockchain;
 using Miningcore.Configuration;
 using Miningcore.Extensions;
@@ -33,6 +35,7 @@ using Miningcore.Persistence;
 using Miningcore.Persistence.Model;
 using Miningcore.Persistence.Repositories;
 using Miningcore.Time;
+using Miningcore.Util;
 using Newtonsoft.Json;
 using NLog;
 using Polly;
@@ -180,6 +183,8 @@ namespace Miningcore.Payments
 
         protected virtual void NotifyPayoutSuccess(string poolId, Balance[] balances, string[] txHashes, decimal? txFee)
         {
+            TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
+
             var coin = poolConfig.Template.As<CoinTemplate>();
 
             // admin notifications
@@ -187,12 +192,35 @@ namespace Miningcore.Payments
                 txHashes.Select(x => string.Format(coin.ExplorerTxLink, x)).ToArray() :
                 new string[0];
 
+            if(null != tc)
+            {
+                foreach(var balance in balances)
+                {
+                    tc.TrackEvent("Payout_"+coin.CanonicalName, new Dictionary<string, string> {
+                        {"wallet", balance.Address}, 
+                        {"amount", balance.Amount.ToString()}
+                    });
+                }
+            }
+
             messageBus.SendMessage(new PaymentNotification(poolId, null, balances.Sum(x => x.Amount), coin.Symbol, balances.Length, txHashes, explorerLinks, txFee));
         }
 
         protected virtual void NotifyPayoutFailure(string poolId, Balance[] balances, string error, Exception ex)
         {
+            TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
+
             var coin = poolConfig.Template.As<CoinTemplate>();
+            if(null != tc)
+            {
+                foreach(var balance in balances)
+                {
+                    tc.TrackEvent("PayoutFailure_"+coin.CanonicalName, new Dictionary<string, string> {
+                        {"wallet", balance.Address}, 
+                        {"amount", balance.Amount.ToString()}
+                    });
+                }
+            }
 
             messageBus.SendMessage(new PaymentNotification(poolId, error ?? ex?.Message, balances.Sum(x => x.Amount), coin.Symbol));
         }
