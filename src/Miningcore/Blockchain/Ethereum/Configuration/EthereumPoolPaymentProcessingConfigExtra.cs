@@ -41,5 +41,15 @@ namespace Miningcore.Blockchain.Ethereum.Configuration
         /// Gas provided for the transaction execution
         /// </summary>
         public ulong Gas { get; set; }
+
+        /// <summary>
+        /// Hex encoded private key
+        /// </summary>
+        public string PrivateKey { get; set; }
+
+        /// <summary>
+        /// Endpoint to send payout transactions to
+        /// </summary>
+        public string TxEndpoint { get; set; }
     }
 }

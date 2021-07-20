@@ -60,6 +60,7 @@ namespace Miningcore.Blockchain.Ethereum
         private const int BlockSearchOffset = 50;
         private EthereumPoolConfigExtra extraPoolConfig;
         private EthereumPoolPaymentProcessingConfigExtra extraConfig;
+        private Web3 web3Connection;
         private bool isParity = true;
 
         protected override string LogCategory => "Ethereum Payout Handler";
@@ -73,6 +74,9 @@ namespace Miningcore.Blockchain.Ethereum
             extraPoolConfig = poolConfig.Extra.SafeExtensionDataAs<EthereumPoolConfigExtra>();
             extraConfig = poolConfig.PaymentProcessing.Extra.SafeExtensionDataAs<EthereumPoolPaymentProcessingConfigExtra>();
 
+            var account = new Account(extraConfig.PrivateKey);
+            web3Connection = new Nethereum.Web3.Web3(account, extraConfig.TxEndpoint);
+
             logger = LogUtil.GetPoolScopedLogger(typeof(EthereumPayoutHandler), poolConfig);
 
             // configure standard daemon
@@ -81,6 +85,7 @@ namespace Miningcore.Blockchain.Ethereum
             var daemonEndpoints = poolConfig.Daemons
                 .Where(x => string.IsNullOrEmpty(x.Category))
                 .ToArray();
+
 
             daemon = new DaemonClient(jsonSerializerSettings, messageBus, clusterConfig.ClusterName ?? poolConfig.PoolName, poolConfig.Id);
             daemon.Configure(daemonEndpoints);
@@ -98,7 +103,6 @@ namespace Miningcore.Blockchain.Ethereum
             var pageCount = (int) Math.Ceiling(blocks.Length / (double) pageSize);
             var blockCache = new Dictionary<long, DaemonResponses.Block>();
             var result = new List<Block>();
-
             for(var i = 0; i < pageCount; i++)
             {
                 // get a page full of blocks
@@ -453,29 +457,30 @@ namespace Miningcore.Blockchain.Ethereum
 
         private async Task<string> PayoutAsync(Balance balance)
         {
-            var privateKey = "0xf9915516b1f748067e047cd5b42485cdf6376ae85f0044ac36a902db8105413e";
             //var senderAddress = "0xd75C77A5aAF75bC4283b80e68Af6DB81EA76a3fe";
 
-            var account = new Account(privateKey);
-            var web3 = new Nethereum.Web3.Web3(account, "http://10.117.246.68:8545");
+            try
+            {
+                var transaction = await web3Connection.Eth.GetEtherTransferService()
+                    .TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount);
+                var txId = transaction.TransactionHash;
 
-            var transaction = await web3.Eth.GetEtherTransferService()
-                .TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount);
+                logger.Info(() => $"[{LogCategory}] Payout transaction id: {txId}");
 
-            //var txCount = await web3.Eth.Transactions.GetTransactionCount.SendRequestAsync(senderAddress);
-            //var amount = (BigInteger) Math.Floor(balance.Amount * EthereumConstants.Wei);
-            //var gasPrice = await web3.Eth.GasPrice.SendRequestAsync();
+                // update db
+                await PersistPaymentsAsync(new[] { balance }, txId);
 
-            //var encoded = Web3.OfflineTransactionSigner.SignTransaction(privateKey, balance.Address, amount, 0, gasPrice.Value, 21000);
-            var txId = transaction.TransactionHash;
+                // done
+                return txId;
+            }
+            catch(Exception ex)
+            {
+                logger.Error(ex);
 
-            logger.Info(() => $"[{LogCategory}] Payout transaction id: {txId}");
+                NotifyPayoutFailure(poolConfig.Id, new[] { balance }, ex.Message, null);
+                return null;
+            }
 
-            // update db
-            await PersistPaymentsAsync(new[] { balance }, txId);
-
-            // done
-            return txId;
         }
 
         private static string writeHex(BigInteger value)
