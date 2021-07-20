@@ -453,11 +453,11 @@ namespace Miningcore.Blockchain.Ethereum
 
         private async Task<string> PayoutAsync(Balance balance)
         {
-            var web3 = new Nethereum.Web3.Web3("http://10.117.246.68:8545");
             var privateKey = "0xf9915516b1f748067e047cd5b42485cdf6376ae85f0044ac36a902db8105413e";
             //var senderAddress = "0xd75C77A5aAF75bC4283b80e68Af6DB81EA76a3fe";
 
             var account = new Account(privateKey);
+            var web3 = new Nethereum.Web3.Web3(account, "http://10.117.246.68:8545");
 
             var transaction = await web3.Eth.GetEtherTransferService()
                 .TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount);
