@@ -494,8 +494,6 @@ namespace Miningcore.Blockchain.Ethereum
                     {
                         logger.Warn(() => $"[{LogCategory}] Account Unlock failed. Code={unlockResponse.Error.Code}, Data={unlockResponse.Error.Data}, Msg={unlockResponse.Error.Message}");
                     }
-                    //if(unlockResponse.Error != null || unlockResponse.Response == null || (bool) unlockResponse.Response == false)
-                    //    throw new Exception("Unable to unlock coinbase account for sending transaction");
                 }
                 catch
                 {
