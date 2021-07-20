@@ -74,13 +74,6 @@ namespace Miningcore.Blockchain.Ethereum
             extraPoolConfig = poolConfig.Extra.SafeExtensionDataAs<EthereumPoolConfigExtra>();
             extraConfig = poolConfig.PaymentProcessing.Extra.SafeExtensionDataAs<EthereumPoolPaymentProcessingConfigExtra>();
 
-            // if pKey and txEndpoint configured - setup web3 connection for self managed wallet payouts
-            if(!string.IsNullOrEmpty(extraConfig.PrivateKey) && !string.IsNullOrEmpty(extraConfig.TxEndpoint))
-            {
-                var account = new Account(extraConfig.PrivateKey);
-                web3Connection = new Nethereum.Web3.Web3(account, extraConfig.TxEndpoint);
-            }
-
             logger = LogUtil.GetPoolScopedLogger(typeof(EthereumPayoutHandler), poolConfig);
 
             // configure standard daemon
@@ -89,6 +82,18 @@ namespace Miningcore.Blockchain.Ethereum
             var daemonEndpoints = poolConfig.Daemons
                 .Where(x => string.IsNullOrEmpty(x.Category))
                 .ToArray();
+
+
+            // if pKey is configured - setup web3 connection for self managed wallet payouts
+            if(!string.IsNullOrEmpty(extraConfig.PrivateKey))
+            {
+                var txEndpoint = daemonEndpoints.First();
+                var protocol = (txEndpoint.Ssl || txEndpoint.Http2) ? "https" : "http";
+                var txEndpointUrl = $"{protocol}://{txEndpoint.Host}:{txEndpoint.Port}";
+
+                var account = new Account(extraConfig.PrivateKey);
+                web3Connection = new Nethereum.Web3.Web3(account, txEndpointUrl);
+            }
 
             daemon = new DaemonClient(jsonSerializerSettings, messageBus, clusterConfig.ClusterName ?? poolConfig.PoolName, poolConfig.Id);
             daemon.Configure(daemonEndpoints);

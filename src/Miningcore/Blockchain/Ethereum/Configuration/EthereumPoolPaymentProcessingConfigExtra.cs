@@ -46,10 +46,5 @@ namespace Miningcore.Blockchain.Ethereum.Configuration
         /// Hex encoded private key
         /// </summary>
         public string PrivateKey { get; set; }
-
-        /// <summary>
-        /// Endpoint to send payout transactions to
-        /// </summary>
-        public string TxEndpoint { get; set; }
     }
 }
