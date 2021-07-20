@@ -74,8 +74,12 @@ namespace Miningcore.Blockchain.Ethereum
             extraPoolConfig = poolConfig.Extra.SafeExtensionDataAs<EthereumPoolConfigExtra>();
             extraConfig = poolConfig.PaymentProcessing.Extra.SafeExtensionDataAs<EthereumPoolPaymentProcessingConfigExtra>();
 
-            var account = new Account(extraConfig.PrivateKey);
-            web3Connection = new Nethereum.Web3.Web3(account, extraConfig.TxEndpoint);
+            // if pKey and txEndpoint configured - setup web3 connection for self managed wallet payouts
+            if(!string.IsNullOrEmpty(extraConfig.PrivateKey) && !string.IsNullOrEmpty(extraConfig.TxEndpoint))
+            {
+                var account = new Account(extraConfig.PrivateKey);
+                web3Connection = new Nethereum.Web3.Web3(account, extraConfig.TxEndpoint);
+            }
 
             logger = LogUtil.GetPoolScopedLogger(typeof(EthereumPayoutHandler), poolConfig);
 
@@ -456,8 +460,8 @@ namespace Miningcore.Blockchain.Ethereum
         private async Task<string> PayoutAsync(Balance balance)
         {
             string txId = null;
-            // If pkey and txEndpoint set, payout from self managed wallet
-            if(!string.IsNullOrEmpty(extraConfig.PrivateKey) && !string.IsNullOrEmpty(extraConfig.TxEndpoint))
+            // If web3Connection was created, payout from self managed wallet
+            if(web3Connection != null)
             {
                 var transaction = await web3Connection.Eth.GetEtherTransferService()
                     .TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount);
