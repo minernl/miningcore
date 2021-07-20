@@ -86,7 +86,6 @@ namespace Miningcore.Blockchain.Ethereum
                 .Where(x => string.IsNullOrEmpty(x.Category))
                 .ToArray();
 
-
             daemon = new DaemonClient(jsonSerializerSettings, messageBus, clusterConfig.ClusterName ?? poolConfig.PoolName, poolConfig.Id);
             daemon.Configure(daemonEndpoints);
 
@@ -454,12 +453,22 @@ namespace Miningcore.Blockchain.Ethereum
             EthereumUtils.DetectNetworkAndChain(netVersion, parityChain, out networkType, out chainType);
         }
 
-
         private async Task<string> PayoutAsync(Balance balance)
         {
             var transaction = await web3Connection.Eth.GetEtherTransferService()
                 .TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount);
+
+            if (transaction.HasErrors() != null && (bool) transaction.HasErrors())
+            {
+                throw new Exception($"Transfer failed for {balance}: {transaction}");
+            }
+
             var txId = transaction.TransactionHash;
+
+            if(string.IsNullOrEmpty(txId) || EthereumConstants.ZeroHashPattern.IsMatch(txId))
+            {
+                throw new Exception($"Transfer did not return a valid transaction hash for {balance}");
+            }
 
             logger.Info(() => $"[{LogCategory}] Payout transaction id: {txId}");
 
