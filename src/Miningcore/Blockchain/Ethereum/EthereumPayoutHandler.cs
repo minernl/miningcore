@@ -22,6 +22,8 @@ using Miningcore.Persistence.Model;
 using Miningcore.Persistence.Repositories;
 using Miningcore.Time;
 using Miningcore.Util;
+using Nethereum.Web3;
+using Nethereum.Web3.Accounts;
 using Newtonsoft.Json;
 using Block = Miningcore.Persistence.Model.Block;
 using Contract = Miningcore.Contracts.Contract;
@@ -448,63 +450,32 @@ namespace Miningcore.Blockchain.Ethereum
             EthereumUtils.DetectNetworkAndChain(netVersion, parityChain, out networkType, out chainType);
         }
 
+
         private async Task<string> PayoutAsync(Balance balance)
         {
-            // unlock account
-            //if(extraConfig.CoinbasePassword != null)
-            try
-            {
+            var web3 = new Nethereum.Web3.Web3("http://10.0.0.10:8545");
+            var privateKey = "0xf9915516b1f748067e047cd5b42485cdf6376ae85f0044ac36a902db8105413e";
+            //var senderAddress = "0xd75C77A5aAF75bC4283b80e68Af6DB81EA76a3fe";
 
-                var unlockResponse = await daemon.ExecuteCmdSingleAsync<object>(logger, EthCommands.UnlockAccount, new[]
-                {
-                    poolConfig.Address,
-                    extraConfig.CoinbasePassword,
-                    null
-                });
+            var account = new Account(privateKey);
 
-                if(unlockResponse.Error != null || unlockResponse.Response == null || (bool) unlockResponse.Response == false)
-                {
-                    logger.Warn(() => $"[{LogCategory}] Account Unlock failed. Code={unlockResponse.Error.Code}, Data={unlockResponse.Error.Data}, Msg={unlockResponse.Error.Message}");
-                }
-                //if(unlockResponse.Error != null || unlockResponse.Response == null || (bool) unlockResponse.Response == false)
-                //    throw new Exception("Unable to unlock coinbase account for sending transaction");
-            }
-            catch
-            {
-                throw new Exception("Unable to unlock coinbase account for sending transaction");
-            }
+            var transaction = await web3.Eth.GetEtherTransferService()
+                .TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount);
 
-            var amount = (BigInteger) Math.Floor(balance.Amount * EthereumConstants.Wei);
-            // send transaction
-            logger.Info(() => $"[{LogCategory}] Sending {FormatAmount(balance.Amount)} {amount} to {balance.Address}");
+            //var txCount = await web3.Eth.Transactions.GetTransactionCount.SendRequestAsync(senderAddress);
+            //var amount = (BigInteger) Math.Floor(balance.Amount * EthereumConstants.Wei);
+            //var gasPrice = await web3.Eth.GasPrice.SendRequestAsync();
 
-            var request = new SendTransactionRequest
-            {
-                From = poolConfig.Address,
-                To = balance.Address,
-                Value = amount,
-                Gas = extraConfig.Gas
-            };
+            //var encoded = Web3.OfflineTransactionSigner.SignTransaction(privateKey, balance.Address, amount, 0, gasPrice.Value, 21000);
+            var txId = transaction.TransactionHash;
 
-            // ToDo test difference
-            // NL: Value = (BigInteger) Math.Floor(balance.Amount * EthereumConstants.Wei),
-            // AX: Value = writeHex(amount),
-            var response = await daemon.ExecuteCmdSingleAsync<string>(logger, EthCommands.SendTx, new[] { request });
-
-            if(response.Error != null)
-                throw new Exception($"{EthCommands.SendTx} returned error: {response.Error.Message} code {response.Error.Code}");
-
-            if(string.IsNullOrEmpty(response.Response) || EthereumConstants.ZeroHashPattern.IsMatch(response.Response))
-                throw new Exception($"{EthCommands.SendTx} did not return a valid transaction hash");
-
-            var txHash = response.Response;
-            logger.Info(() => $"[{LogCategory}] Payout transaction id: {txHash}");
+            logger.Info(() => $"[{LogCategory}] Payout transaction id: {txId}");
 
             // update db
-            await PersistPaymentsAsync(new[] { balance }, txHash);
+            await PersistPaymentsAsync(new[] { balance }, txId);
 
             // done
-            return txHash;
+            return txId;
         }
 
         private static string writeHex(BigInteger value)
