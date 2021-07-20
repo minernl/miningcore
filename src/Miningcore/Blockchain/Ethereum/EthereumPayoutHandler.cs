@@ -457,30 +457,17 @@ namespace Miningcore.Blockchain.Ethereum
 
         private async Task<string> PayoutAsync(Balance balance)
         {
-            //var senderAddress = "0xd75C77A5aAF75bC4283b80e68Af6DB81EA76a3fe";
+            var transaction = await web3Connection.Eth.GetEtherTransferService()
+                .TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount);
+            var txId = transaction.TransactionHash;
 
-            try
-            {
-                var transaction = await web3Connection.Eth.GetEtherTransferService()
-                    .TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount);
-                var txId = transaction.TransactionHash;
+            logger.Info(() => $"[{LogCategory}] Payout transaction id: {txId}");
 
-                logger.Info(() => $"[{LogCategory}] Payout transaction id: {txId}");
+            // update db
+            await PersistPaymentsAsync(new[] { balance }, txId);
 
-                // update db
-                await PersistPaymentsAsync(new[] { balance }, txId);
-
-                // done
-                return txId;
-            }
-            catch(Exception ex)
-            {
-                logger.Error(ex);
-
-                NotifyPayoutFailure(poolConfig.Id, new[] { balance }, ex.Message, null);
-                return null;
-            }
-
+            // done
+            return txId;
         }
 
         private static string writeHex(BigInteger value)
