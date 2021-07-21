@@ -182,7 +182,7 @@ namespace Miningcore.Payments
                                 logger.Info(() => $" --Con {con}");
                                 logger.Info(() => $" --tx {tx}");
 
-                                await scheme.UpdateBalancesAsync(con, tx, pool, handler, block, blockReward);
+                                await scheme.UpdateBalancesAsync(con, tx, pool, clusterConfig, handler, block, blockReward);
                                 await blockRepo.UpdateBlockAsync(con, tx, block);
                                 break;
 
@@ -202,7 +202,7 @@ namespace Miningcore.Payments
                 logger.Info(() => $"No updated blocks for pool {pool.Id} but still payment processed");
                 await cf.RunTx(async (con, tx) =>
                 {
-                    await scheme.UpdateBalancesAsync(con, tx, pool, handler, null, 1);
+                    await scheme.UpdateBalancesAsync(con, tx, pool, clusterConfig, handler, null, 1m);
                 });
             }
         }

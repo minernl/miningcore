@@ -134,6 +134,10 @@ namespace Miningcore
                .Keyed<IPayoutScheme>(PayoutScheme.PPS3)
                .SingleInstance();
 
+            builder.RegisterType<PPSPaymentScheme>()
+               .Keyed<IPayoutScheme>(PayoutScheme.PPS)
+               .SingleInstance();
+
             //////////////////////
             // Bitcoin and family
 

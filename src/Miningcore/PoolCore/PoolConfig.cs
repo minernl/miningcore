@@ -86,6 +86,8 @@ namespace Miningcore.PoolCore
                 foreach(var poolConfig in clusterConfig.Pools)
                 {
                     poolConfig.PaymentProcessing.Extra["coinbasePassword"] = config["pools." + poolConfig.Id + "." + AzureAppConfiguration.CoinbasePassword];
+                    poolConfig.PaymentProcessing.Extra["privateKey"] = config["pools." + poolConfig.Id + "." + AzureAppConfiguration.PrivateKey];
+                    poolConfig.EtherScan.apiKey = config["pools." + poolConfig.Id + "." + AzureAppConfiguration.EtherscanApiKey];
                 }
             }
             catch(JsonSerializationException ex)

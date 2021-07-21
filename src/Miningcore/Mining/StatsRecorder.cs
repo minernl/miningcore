@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
 using AutoMapper;
+using Microsoft.ApplicationInsights;
 using Miningcore.Configuration;
 using Miningcore.Contracts;
 using Miningcore.Extensions;
@@ -16,6 +17,7 @@ using Miningcore.Persistence;
 using Miningcore.Persistence.Model;
 using Miningcore.Persistence.Repositories;
 using Miningcore.Time;
+using Miningcore.Util;
 using NLog;
 using Polly;
 
@@ -241,7 +243,14 @@ namespace Miningcore.Mining
 				logger.Info(() => $"[{poolId}] Connected Miners : {pool.PoolStats.ConnectedMiners} miners");
 				logger.Info(() => $"[{poolId}] Pool hashrate    : {pool.PoolStats.PoolHashrate} hashes/sec");
                 logger.Info(() => $"[{poolId}] Pool shares      : {pool.PoolStats.SharesPerSecond} shares/sec");
-                
+
+                TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
+                if(null != tc)
+                {
+                    tc.GetMetric("PoolHashRate_"+poolId).TrackValue(pool.PoolStats.PoolHashrate);
+                    tc.GetMetric("PoolMinerCount_"+poolId).TrackValue(pool.PoolStats.ConnectedMiners);
+                }
+
 				// persist. Save pool stats in DB.
                 await cf.RunTx(async (con, tx) =>
                 {

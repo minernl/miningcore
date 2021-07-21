@@ -40,6 +40,7 @@
         <None Remove="Blockchain\Bitcoin\Transactions\**" />
         <None Remove="DataAccess\**" />
         <None Remove="Maintenance\**" />
+        <None Remove="Nethereum.Web3" />
     </ItemGroup>
     <ItemGroup>
         <None Remove="config2.json" />
@@ -56,6 +57,9 @@
         <PackageReference Include="JetBrains.Annotations" Version="2019.1.1" />
         <PackageReference Include="MailKit" Version="2.1.5.1" />
         <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="2.3.4" />
+        <PackageReference Include="Microsoft.ApplicationInsights" Version="2.17.0" />
+        <PackageReference Include="Microsoft.ApplicationInsights.DependencyCollector" Version="2.17.0" />
+        <PackageReference Include="Microsoft.ApplicationInsights.NLogTarget" Version="2.17.0" />
         <PackageReference Include="Microsoft.AspNetCore.All" Condition="'$(TargetFramework)' == 'netcoreapp2.1'" />
         <PackageReference Include="Microsoft.AspNetCore.Cors" Version="2.2.0" Condition="'$(TargetFramework)' == 'netcoreapp2.1'" />
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="2.2.0" Condition="'$(TargetFramework)' == 'netcoreapp2.1'" />
@@ -83,6 +87,7 @@
         <PackageReference Include="System.Diagnostics.Process" Version="4.3.0" />
         <PackageReference Include="System.Reactive" Version="4.1.5" />
         <PackageReference Include="System.Text.Json" Version="5.0.1" />
+        <PackageReference Include="Nethereum.Web3" Version="3.8.0" />
     </ItemGroup>
     <ItemGroup>
         <Reference Include="WebSocketManager">
@@ -123,14 +128,14 @@
     <Target Name="NativeLibsPublishIncludeWin" BeforeTargets="PrepareForPublish" Condition="'$(IsWindows)' == 'true'">
         <ItemGroup>
             <Libs Include="$(ProjectDir)..\..\libs\runtimes\win-x64\*.dll" />
-            <ContentWithTargetPath Include="@(Libs->'%(FullPath)')" RelativePath="%(Libs.Identity)" TargetPath="%(Libs.Filename)%(Libs.Extension)" CopyToPublishDirectory="PreserveNewest" />
+            <ContentWithTargetPath Include="@(Libs-&gt;'%(FullPath)')" RelativePath="%(Libs.Identity)" TargetPath="%(Libs.Filename)%(Libs.Extension)" CopyToPublishDirectory="PreserveNewest" />
         </ItemGroup>
     </Target>
     <!-- Include library binaries in publish on Linux -->
     <Target Name="NativeLibsPublishIncludeLinux" BeforeTargets="PrepareForPublish" Condition="'$(IsLinux)' == 'true'">
         <ItemGroup>
             <Libs Include="$(OutDir)libmultihash.so;$(OutDir)libcryptonote.so;$(OutDir)libcryptonight.so" />
-            <ContentWithTargetPath Include="@(Libs->'%(FullPath)')" RelativePath="%(Libs.Identity)" TargetPath="%(Libs.Filename)%(Libs.Extension)" CopyToPublishDirectory="PreserveNewest" />
+            <ContentWithTargetPath Include="@(Libs-&gt;'%(FullPath)')" RelativePath="%(Libs.Identity)" TargetPath="%(Libs.Filename)%(Libs.Extension)" CopyToPublishDirectory="PreserveNewest" />
         </ItemGroup>
     </Target>
 </Project>
