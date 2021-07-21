@@ -49,6 +49,7 @@
         <PackageReference Include="AspNetCoreRateLimit" Version="3.0.5" />
         <PackageReference Include="Autofac" Version="4.9.2" />
         <PackageReference Include="AutoMapper" Version="8.1.0" />
+        <PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.2.1" />
         <PackageReference Include="Azure.Identity" Version="1.4.0" />
         <PackageReference Include="Dapper" Version="1.60.6" />
         <PackageReference Include="FluentValidation.ValidatorAttribute" Version="8.4.0" />

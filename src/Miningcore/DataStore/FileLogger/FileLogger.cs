@@ -39,7 +39,7 @@ namespace Miningcore.DataStore.FileLogger
                     ? LogLevel.FromString(config.Level)
                     : LogLevel.Info;
 
-                var layout = "[${longdate}] [${level:format=FirstCharacter:uppercase=true}] [${logger:shortName=true}] ${message} ${exception:format=ToString,StackTrace}";
+                var layout = "[${longdate}] [${level:format=FirstCharacter:uppercase=true}] [${environment:HOSTNAME:whenEmpty=H}] [${logger:shortName=true}] ${message} ${exception:format=ToString,StackTrace}";
 
                 var nullTarget = new NullTarget("null")
                 {

@@ -14,7 +14,7 @@ namespace Miningcore.PoolCore
         public static readonly string ConnectionString = "ConnectionString";
         public static readonly string EtherscanApiKey = "etherscan.apiKey";
 
-        public static IConfigurationRoot  GetAppConfig(string prefix) {
+        public static IConfigurationRoot  GetAppConfig() {
 
                 var builder = new ConfigurationBuilder();
                 builder.AddAzureAppConfiguration(options => {
@@ -22,8 +22,7 @@ namespace Miningcore.PoolCore
                         .ConfigureKeyVault(kv =>
                         {
                             kv.SetCredential(new DefaultAzureCredential());
-                        })
-                        .TrimKeyPrefix(prefix);
+                        });
                     });
 
                 return builder.Build();

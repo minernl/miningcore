@@ -8,24 +8,28 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using Azure.Extensions.AspNetCore.Configuration.Secrets;
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
 using FluentValidation;
+using Microsoft.Extensions.Configuration;
 using Miningcore.Configuration;
 using Miningcore.Mining;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
-using JsonSerializer = Newtonsoft.Json.JsonSerializer;
-
 
 namespace Miningcore.PoolCore
 {
     public class PoolConfig
     {
+        internal const string EnvironmentConfig = "cfg";
+        internal const string VaultName = "akv";
         private const string BaseConfigFile = "config.json";
         private static ClusterConfig clusterConfig;
         private static readonly Regex RegexJsonTypeConversionError = new Regex("\"([^\"]+)\"[^\']+\'([^\']+)\'.+\\s(\\d+),.+\\s(\\d+)", RegexOptions.Compiled);
 
-        public static ClusterConfig GetConfigContent(string configFile)
+        public static ClusterConfig GetConfigFromFile(string configFile)
         {
             // Read config.json file
             clusterConfig = ReadConfig(configFile);
@@ -34,7 +38,7 @@ namespace Miningcore.PoolCore
             return clusterConfig;
         }
 
-        public static ClusterConfig GetConfigContentFromJson(string config)
+        public static ClusterConfig GetConfigFromJson(string config)
         {
             try
             {
@@ -63,33 +67,20 @@ namespace Miningcore.PoolCore
 
             return clusterConfig;
         }
-        
-        public static ClusterConfig GetConfigContentFromAppConfig(string prefix)
+
+        public static ClusterConfig GetConfigFromAppConfig(string prefix)
         {
-            // Read config.json file
-            clusterConfig = ReadConfigFromAppConfiguration(prefix);
-            ValidateConfig();
-
-            return clusterConfig;
-
-        }
-
-        private static ClusterConfig ReadConfigFromAppConfiguration(string prefix)
-        {
+            Console.WriteLine("Loading config from app config");
             try
             {
-                var config = AzureAppConfiguration.GetAppConfig(prefix);
-
+                var config = AzureAppConfiguration.GetAppConfig();
                 var serializer = JsonSerializer.Create(new JsonSerializerSettings
                 {
                     ContractResolver = new CamelCasePropertyNamesContractResolver()
                 });
-
-                var reader = new JsonTextReader(new StringReader(config[AzureAppConfiguration.ConfigJson]));
-
+                var reader = new JsonTextReader(new StringReader(config[prefix + AzureAppConfiguration.ConfigJson]));
                 clusterConfig = serializer.Deserialize<ClusterConfig>(reader);
                 // Update dynamic pass and others config here
-
                 clusterConfig.Persistence.Postgres.User = config[AzureAppConfiguration.PersistencePostgresUser];
                 clusterConfig.Persistence.Postgres.Password = config[AzureAppConfiguration.PersistencePostgresPassword];
                 foreach(var poolConfig in clusterConfig.Pools)
@@ -98,21 +89,40 @@ namespace Miningcore.PoolCore
                     poolConfig.PaymentProcessing.Extra["privateKey"] = config["pools." + poolConfig.Id + "." + AzureAppConfiguration.PrivateKey];
                     poolConfig.EtherScan.apiKey = config["pools." + poolConfig.Id + "." + AzureAppConfiguration.EtherscanApiKey];
                 }
-
-                return clusterConfig;
-
             }
             catch(JsonSerializationException ex)
             {
                 HumanizeJsonParseException(ex);
                 throw;
             }
-
             catch(JsonException ex)
             {
                 Console.WriteLine($"Error: {ex.Message}");
                 throw;
             }
+
+            ValidateConfig();
+
+            return clusterConfig;
+        }
+
+        public static ClusterConfig GetConfigFromKeyVault(string vaultName, string prefix)
+        {
+            Console.WriteLine($"Loading config from key vault '{vaultName}'");
+            var config = ReadKeyVault(vaultName);
+            var secretName = (prefix + BaseConfigFile).Replace(".", "-");
+            return GetConfigFromJson(config[secretName]);
+        }
+
+        public static void DumpParsedConfig(ClusterConfig config)
+        {
+            Console.WriteLine("\nCurrent configuration as parsed from config file:");
+
+            Console.WriteLine(JsonConvert.SerializeObject(config, new JsonSerializerSettings
+            {
+                ContractResolver = new CamelCasePropertyNamesContractResolver(),
+                Formatting = Formatting.Indented
+            }));
         }
 
         private static ClusterConfig ReadConfig(string configFile)
@@ -168,7 +178,7 @@ namespace Miningcore.PoolCore
             }
             finally
             {
-                Console.WriteLine($"Pool Configuration file is valid");
+                Console.WriteLine("Pool Configuration file is valid");
             }
         }
 
@@ -193,15 +203,12 @@ namespace Miningcore.PoolCore
             }
         }
 
-        public static void DumpParsedConfig(ClusterConfig config)
+        private static IConfigurationRoot ReadKeyVault(string vaultName)
         {
-            Console.WriteLine("\nCurrent configuration as parsed from config file:");
+            var builder = new ConfigurationBuilder();
+            builder.AddAzureKeyVault(new SecretClient(new Uri($"https://{vaultName}.vault.azure.net/"), new DefaultAzureCredential()), new KeyVaultSecretManager());
 
-            Console.WriteLine(JsonConvert.SerializeObject(config, new JsonSerializerSettings
-            {
-                ContractResolver = new CamelCasePropertyNamesContractResolver(),
-                Formatting = Formatting.Indented
-            }));
+            return builder.Build();
         }
     }
 }

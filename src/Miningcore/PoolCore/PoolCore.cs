@@ -58,18 +58,21 @@ namespace Miningcore.PoolCore
 
         internal static void StartMiningCorePool(string configFile)
         {
-            StartMiningCorePoolInternal(PoolConfig.GetConfigContent(configFile));
+            StartMiningCorePoolInternal(PoolConfig.GetConfigFromFile(configFile));
         }
 
-        internal static void StartMiningCorePoolWithJson(string config)
+        internal static void StartMiningCorePoolWithEnvConfig(string config)
         {
-            StartMiningCorePoolInternal(PoolConfig.GetConfigContentFromJson(config));
+            Console.WriteLine($"Loading config from env variable '{PoolConfig.EnvironmentConfig}'");
+            StartMiningCorePoolInternal(PoolConfig.GetConfigFromJson(config));
         }
 
-        internal static void StartMiningCorePoolWithAppConfig(string appConfig)
+        internal static void StartMiningCorePoolWithRemoteConfig(string appConfig)
         {
-            // Read config.json from azure app configuration
-            StartMiningCorePoolInternal(PoolConfig.GetConfigContentFromAppConfig(appConfig));
+            var vault = Environment.GetEnvironmentVariable(PoolConfig.VaultName);
+            StartMiningCorePoolInternal(!string.IsNullOrEmpty(vault)
+                ? PoolConfig.GetConfigFromKeyVault(vault, appConfig)
+                : PoolConfig.GetConfigFromAppConfig(appConfig));
         }
 
         private static void StartMiningCorePoolInternal(ClusterConfig config)
@@ -384,6 +387,5 @@ namespace Miningcore.PoolCore
             {
             }
         }
-
     }
 }
