@@ -12,7 +12,7 @@ namespace Miningcore.PoolCore
         public static readonly string CoinbasePassword = "paymentProcessing.coinbasePassword";
         public static readonly string ConnectionString = "ConnectionString";
 
-        public static IConfigurationRoot  GetAppConfig(string prefix) {
+        public static IConfigurationRoot  GetAppConfig() {
 
                 var builder = new ConfigurationBuilder();
                 builder.AddAzureAppConfiguration(options => {
@@ -20,8 +20,7 @@ namespace Miningcore.PoolCore
                         .ConfigureKeyVault(kv =>
                         {
                             kv.SetCredential(new DefaultAzureCredential());
-                        })
-                        .TrimKeyPrefix(prefix);
+                        });
                     });
 
                 return builder.Build();

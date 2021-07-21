@@ -73,13 +73,12 @@ namespace Miningcore.PoolCore
             Console.WriteLine("Loading config from app config");
             try
             {
-                var config = AzureAppConfiguration.GetAppConfig(prefix);
-
+                var config = AzureAppConfiguration.GetAppConfig();
                 var serializer = JsonSerializer.Create(new JsonSerializerSettings
                 {
                     ContractResolver = new CamelCasePropertyNamesContractResolver()
                 });
-                var reader = new JsonTextReader(new StringReader(config[AzureAppConfiguration.ConfigJson]));
+                var reader = new JsonTextReader(new StringReader(config[prefix + AzureAppConfiguration.ConfigJson]));
                 clusterConfig = serializer.Deserialize<ClusterConfig>(reader);
                 // Update dynamic pass and others config here
                 clusterConfig.Persistence.Postgres.User = config[AzureAppConfiguration.PersistencePostgresUser];
