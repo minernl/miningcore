@@ -446,6 +446,16 @@ namespace Miningcore.Blockchain.Ethereum
             logger.Debug(() => $"Ethereum network: {netVersion}");
 
             EthereumUtils.DetectNetworkAndChain(netVersion, parityChain, out networkType, out chainType);
+
+            if(chainType == ParityChainType.Unknown)
+            {
+                logger.Warn(() => $"Unable to determine parity chain type: " + parityChain);
+            }
+
+            if(networkType == EthereumNetworkType.Unknown)
+            {
+                logger.Warn(() => $"Unable to determine Ethereum network type: " + netVersion);
+            }
         }
 
         private async Task<string> PayoutAsync(Balance balance)
