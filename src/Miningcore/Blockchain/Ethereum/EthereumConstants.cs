@@ -87,6 +87,7 @@ namespace Miningcore.Blockchain.Ethereum
         CallistoTestnet,
         Callisto,
         Joys,
+        Ethereum,
 
         Unknown = -1,
     }

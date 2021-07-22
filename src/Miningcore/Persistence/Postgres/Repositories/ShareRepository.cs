@@ -137,7 +137,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
         {
             logger.LogInvoke(new[] { poolId });
 
-            const string query = "SELECT count(*) FROM shares WHERE poolid = @poolId AND created < @before";
+            const string query = "SELECT count(*) FROM shares WHERE poolid = @poolId AND created <= @before";
 
             return con.QuerySingleAsync<long>(query, new { poolId, before }, tx);
         }
@@ -146,7 +146,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
         {
             logger.LogInvoke(new[] { poolId });
 
-            const string query = "DELETE FROM shares WHERE poolid = @poolId AND created < @before";
+            const string query = "DELETE FROM shares WHERE poolid = @poolId AND created <= @before";
 
             await con.ExecuteAsync(query, new { poolId, before }, tx);
         }
@@ -189,7 +189,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
         {
             logger.LogInvoke(new[] { poolId });
 
-            const string query = "SELECT SUM(difficulty) FROM shares WHERE poolid = @poolId AND created > @start AND created < @end";
+            const string query = "SELECT SUM(difficulty) FROM shares WHERE poolid = @poolId AND created >= @start AND created <= @end";
 
             return con.QuerySingleAsync<double?>(query, new { poolId, start, end });
         }
