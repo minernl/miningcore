@@ -71,6 +71,9 @@ namespace Miningcore.PoolCore
         public static ClusterConfig GetConfigFromAppConfig(string prefix)
         {
             Console.WriteLine("Loading config from app config");
+
+            if(prefix.Trim().Equals("/")) prefix = string.Empty;
+
             try
             {
                 var config = AzureAppConfiguration.GetAppConfig();
