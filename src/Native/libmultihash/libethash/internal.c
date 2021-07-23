@@ -188,7 +188,7 @@ static bool ethash_hash(
 	assert(sizeof(node) * 8 == 512);
 	node s_mix[MIX_NODES + 1];
 	assert(sizeof(s_mix[0].bytes) >= sizeof(header_hash));
-    memcpy(s_mix[0].bytes, &header_hash, sizeof(header_hash));
+	memcpy(s_mix[0].bytes, &header_hash, sizeof(header_hash));
 	fix_endian64(s_mix[0].double_words[4], nonce);
 
 	// compute sha3-512 hash and replicate across mix
