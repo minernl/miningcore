@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
+using System.Security.Cryptography.X509Certificates;
 using AspNetCoreRateLimit;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -457,9 +458,14 @@ namespace Miningcore.Configuration
         public bool Tls { get; set; }
 
         /// <summary>
-        /// PKCS certificate file
+        /// PKCS certificate file path
         /// </summary>
         public string TlsPfxFile { get; set; }
+
+        /// <summary>
+        /// PKCS certificate
+        /// </summary>
+        public X509Certificate2 TlsPfx { get; set; }
     }
 
     public partial class VarDiffConfig

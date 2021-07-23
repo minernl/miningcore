@@ -88,14 +88,25 @@
                     "varDiff": {
                         "minDiff": 0.05,
                         "maxDiff": null,
-                        "targetTime": 15,
-                        "retargetTime": 90,
+                        "targetTime": 180,
+                        "retargetTime": 180,
                         "variancePercent": 30
                     }
                 },
                 "3073": {
-                    "difficulty": 5000
+                    "listenAddress": "0.0.0.0",
+                    "difficulty": 0.1,
+                    "varDiff": {
+                        "minDiff": 0.05,
+                        "maxDiff": null,
+                        "targetTime": 180,
+                        "retargetTime": 180,
+                        "variancePercent": 30
+                    },
+                    "tls": false,
+                    "tlsPfxFile": "ncrypto-int-nortonlifelock-com-pfx"
                 }
+
             },
             "daemons": [
                 {

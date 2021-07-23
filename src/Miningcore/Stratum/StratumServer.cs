@@ -323,7 +323,7 @@ namespace Miningcore.Stratum
         {
             try
             {
-                var tlsCert = new X509Certificate2(port.PoolEndpoint.TlsPfxFile);
+                var tlsCert = port.PoolEndpoint.TlsPfx ?? new X509Certificate2(port.PoolEndpoint.TlsPfxFile);
                 certs.TryAdd(port.PoolEndpoint.TlsPfxFile, tlsCert);
                 return tlsCert;
             }

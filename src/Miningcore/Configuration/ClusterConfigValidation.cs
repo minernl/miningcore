@@ -84,7 +84,7 @@ namespace Miningcore.Configuration
 
             RuleFor(j => j.TlsPfxFile)
                 .Must(File.Exists)
-                .When(j => j.Tls)
+                .When(j => j.Tls && j.TlsPfx == null)
                 .WithMessage(j => $"Pool Endpoint: {j.TlsPfxFile} does not exist");
 
             RuleFor(j => j.TlsPfxFile)
@@ -100,8 +100,14 @@ namespace Miningcore.Configuration
                         return false;
                     }
                 })
-                .When(j => j.Tls)
+                .When(j => j.Tls && j.TlsPfx == null)
                 .WithMessage(j => $"Pool Endpoint: {j.TlsPfxFile} is not valid or does not include the private key and cannot be used");
+
+            RuleFor(j => j.TlsPfx)
+                .Must(j => j.HasPrivateKey)
+                .When(j => j.Tls && j.TlsPfx != null)
+                .WithMessage(j => $"Pool Endpoint: {j.TlsPfx} is not valid or does not include the private key and cannot be used");
+
             RuleFor(j => j.VarDiff)
                 .SetValidator(new VarDiffConfigValidator())
                 .When(x => x.VarDiff != null);
