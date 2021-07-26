@@ -81,11 +81,11 @@ namespace Miningcore.PoolCore
                             var cert = remoteConfig[string.Format(AppConfigConstants.TlsPfxFile, poolConfig.Id, p.Key)];
                             if(cert == null) return;
                             p.Value.TlsPfx = new X509Certificate2(Convert.FromBase64String(cert), (string) null, X509KeyStorageFlags.MachineKeySet);
-                            Console.WriteLine("Loaded TLS certificate successfully from App Config...");
+                            Console.WriteLine("Successfully loaded TLS certificate from app config");
                         }
                         catch(Exception ex)
                         {
-                            Console.WriteLine($"Failed to load TLS certificate from App Config, Error={ex.Message}");
+                            Console.WriteLine($"Failed to load TLS certificate from app config, Error={ex.Message}");
                         }
                     });
                 }
@@ -123,11 +123,11 @@ namespace Miningcore.PoolCore
                         var cert = remoteConfig[p.Value.TlsPfxFile];
                         if(cert == null) return;
                         p.Value.TlsPfx = new X509Certificate2(Convert.FromBase64String(cert), (string) null, X509KeyStorageFlags.MachineKeySet);
-                        Console.WriteLine("Loaded TLS certificate successfully from Key Vault...");
+                        Console.WriteLine("Successfully loaded TLS certificate from key vault...");
                     }
                     catch(Exception ex)
                     {
-                        Console.WriteLine($"Failed to load TLS certificate from App Config, Error={ex.Message}");
+                        Console.WriteLine($"Failed to load TLS certificate from key vault, Error={ex.Message}");
                     }
                 });
             }
