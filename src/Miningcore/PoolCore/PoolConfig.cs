@@ -6,6 +6,7 @@ Copyright 2021 MinerNL (Miningcore.com)
 using System;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
 using Azure.Extensions.AspNetCore.Configuration.Secrets;
@@ -15,6 +16,7 @@ using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using Miningcore.Configuration;
 using Miningcore.Mining;
+using MoreLinq.Extensions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
@@ -25,7 +27,11 @@ namespace Miningcore.PoolCore
     {
         internal const string EnvironmentConfig = "cfg";
         internal const string VaultName = "akv";
+        internal const string ConnectionString = "ConnectionString";
+        private const string CoinPassword = "coinbasePassword";
+        private const string PrivateKey = "privateKey";
         private const string BaseConfigFile = "config.json";
+        private static IConfigurationRoot remoteConfig;
         private static ClusterConfig clusterConfig;
         private static readonly Regex RegexJsonTypeConversionError = new Regex("\"([^\"]+)\"[^\']+\'([^\']+)\'.+\\s(\\d+),.+\\s(\\d+)", RegexOptions.Compiled);
 
@@ -39,6 +45,109 @@ namespace Miningcore.PoolCore
         }
 
         public static ClusterConfig GetConfigFromJson(string config)
+        {
+            GetConfigFromJsonInternal(config);
+            ValidateConfig();
+
+            return clusterConfig;
+        }
+
+        public static ClusterConfig GetConfigFromAppConfig(string prefix)
+        {
+            Console.WriteLine("Loading config from app config");
+            if(prefix.Trim().Equals("/")) prefix = string.Empty;
+            try
+            {
+                remoteConfig = ReadAppConfig();
+                var serializer = JsonSerializer.Create(new JsonSerializerSettings
+                {
+                    ContractResolver = new CamelCasePropertyNamesContractResolver()
+                });
+                var reader = new JsonTextReader(new StringReader(remoteConfig[prefix + BaseConfigFile]));
+                clusterConfig = serializer.Deserialize<ClusterConfig>(reader);
+                // Update dynamic pass and others config here
+                clusterConfig.Persistence.Postgres.User = remoteConfig[AppConfigConstants.PersistencePostgresUser];
+                clusterConfig.Persistence.Postgres.Password = remoteConfig[AppConfigConstants.PersistencePostgresPassword];
+                foreach(var poolConfig in clusterConfig.Pools)
+                {
+                    poolConfig.PaymentProcessing.Extra[CoinPassword] = remoteConfig[string.Format(AppConfigConstants.CoinBasePassword, poolConfig.Id)];
+                    poolConfig.PaymentProcessing.Extra[PrivateKey] = remoteConfig[string.Format(AppConfigConstants.PrivateKey, poolConfig.Id)];
+                    poolConfig.EtherScan.apiKey = remoteConfig[string.Format(AppConfigConstants.EtherscanApiKey, poolConfig.Id)];
+                    poolConfig.Ports.ForEach(p =>
+                    {
+                        try
+                        {
+                            if(!p.Value.Tls) return;
+                            var cert = remoteConfig[string.Format(AppConfigConstants.TlsPfxFile, poolConfig.Id, p.Key)];
+                            if(cert == null) return;
+                            p.Value.TlsPfx = new X509Certificate2(Convert.FromBase64String(cert), (string) null, X509KeyStorageFlags.MachineKeySet);
+                            Console.WriteLine("Successfully loaded TLS certificate from app config");
+                        }
+                        catch(Exception ex)
+                        {
+                            Console.WriteLine($"Failed to load TLS certificate from app config, Error={ex.Message}");
+                        }
+                    });
+                }
+            }
+            catch(JsonSerializationException ex)
+            {
+                HumanizeJsonParseException(ex);
+                throw;
+            }
+            catch(JsonException ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                throw;
+            }
+
+            ValidateConfig();
+
+            return clusterConfig;
+        }
+
+        public static ClusterConfig GetConfigFromKeyVault(string vaultName, string prefix)
+        {
+            Console.WriteLine($"Loading config from key vault '{vaultName}'");
+            if(prefix.Trim().Equals("/")) prefix = string.Empty;
+            remoteConfig = ReadKeyVault(vaultName);
+            var secretName = (prefix + BaseConfigFile).Replace(".", "-");
+            var config = GetConfigFromJsonInternal(remoteConfig[secretName]);
+            foreach(var poolConfig in clusterConfig.Pools)
+            {
+                poolConfig.Ports.ForEach(p =>
+                {
+                    try
+                    {
+                        if(!p.Value.Tls) return;
+                        var cert = remoteConfig[p.Value.TlsPfxFile];
+                        if(cert == null) return;
+                        p.Value.TlsPfx = new X509Certificate2(Convert.FromBase64String(cert), (string) null, X509KeyStorageFlags.MachineKeySet);
+                        Console.WriteLine("Successfully loaded TLS certificate from key vault...");
+                    }
+                    catch(Exception ex)
+                    {
+                        Console.WriteLine($"Failed to load TLS certificate from key vault, Error={ex.Message}");
+                    }
+                });
+            }
+            ValidateConfig();
+
+            return config;
+        }
+
+        public static void DumpParsedConfig(ClusterConfig config)
+        {
+            Console.WriteLine("\nCurrent configuration as parsed from config file:");
+
+            Console.WriteLine(JsonConvert.SerializeObject(config, new JsonSerializerSettings
+            {
+                ContractResolver = new CamelCasePropertyNamesContractResolver(),
+                Formatting = Formatting.Indented
+            }));
+        }
+
+        private static ClusterConfig GetConfigFromJsonInternal(string config)
         {
             try
             {
@@ -63,69 +172,7 @@ namespace Miningcore.PoolCore
                 throw;
             }
 
-            ValidateConfig();
-
             return clusterConfig;
-        }
-
-        public static ClusterConfig GetConfigFromAppConfig(string prefix)
-        {
-            Console.WriteLine("Loading config from app config");
-
-            if(prefix.Trim().Equals("/")) prefix = string.Empty;
-
-            try
-            {
-                var config = AzureAppConfiguration.GetAppConfig();
-                var serializer = JsonSerializer.Create(new JsonSerializerSettings
-                {
-                    ContractResolver = new CamelCasePropertyNamesContractResolver()
-                });
-                var reader = new JsonTextReader(new StringReader(config[prefix + AzureAppConfiguration.ConfigJson]));
-                clusterConfig = serializer.Deserialize<ClusterConfig>(reader);
-                // Update dynamic pass and others config here
-                clusterConfig.Persistence.Postgres.User = config[AzureAppConfiguration.PersistencePostgresUser];
-                clusterConfig.Persistence.Postgres.Password = config[AzureAppConfiguration.PersistencePostgresPassword];
-                foreach(var poolConfig in clusterConfig.Pools)
-                {
-                    poolConfig.PaymentProcessing.Extra["coinbasePassword"] = config["pools." + poolConfig.Id + "." + AzureAppConfiguration.CoinbasePassword];
-                    poolConfig.PaymentProcessing.Extra["privateKey"] = config["pools." + poolConfig.Id + "." + AzureAppConfiguration.PrivateKey];
-                    poolConfig.EtherScan.apiKey = config["pools." + poolConfig.Id + "." + AzureAppConfiguration.EtherscanApiKey];
-                }
-            }
-            catch(JsonSerializationException ex)
-            {
-                HumanizeJsonParseException(ex);
-                throw;
-            }
-            catch(JsonException ex)
-            {
-                Console.WriteLine($"Error: {ex.Message}");
-                throw;
-            }
-
-            ValidateConfig();
-
-            return clusterConfig;
-        }
-
-        public static ClusterConfig GetConfigFromKeyVault(string vaultName, string prefix)
-        {
-            Console.WriteLine($"Loading config from key vault '{vaultName}'");
-            var config = ReadKeyVault(vaultName);
-            var secretName = (prefix + BaseConfigFile).Replace(".", "-");
-            return GetConfigFromJson(config[secretName]);
-        }
-
-        public static void DumpParsedConfig(ClusterConfig config)
-        {
-            Console.WriteLine("\nCurrent configuration as parsed from config file:");
-
-            Console.WriteLine(JsonConvert.SerializeObject(config, new JsonSerializerSettings
-            {
-                ContractResolver = new CamelCasePropertyNamesContractResolver(),
-                Formatting = Formatting.Indented
-            }));
         }
 
         private static ClusterConfig ReadConfig(string configFile)
@@ -212,6 +259,25 @@ namespace Miningcore.PoolCore
             builder.AddAzureKeyVault(new SecretClient(new Uri($"https://{vaultName}.vault.azure.net/"), new DefaultAzureCredential()), new KeyVaultSecretManager());
 
             return builder.Build();
+        }
+
+        private static IConfigurationRoot ReadAppConfig()
+        {
+            var builder = new ConfigurationBuilder();
+            builder.AddAzureAppConfiguration(options => options.Connect(Environment.GetEnvironmentVariable(ConnectionString))
+                .ConfigureKeyVault(kv => kv.SetCredential(new DefaultAzureCredential())));
+
+            return builder.Build();
+        }
+
+        public class AppConfigConstants
+        {
+            public const string PersistencePostgresUser = "persistence.postgres.user";
+            public static readonly string PersistencePostgresPassword = "persistence.postgres.password";
+            public static readonly string CoinBasePassword = "pools.{0}.paymentProcessing.coinbasePassword";
+            public static readonly string PrivateKey = "pools.{0}.paymentProcessing.PrivateKey";
+            public static readonly string TlsPfxFile = "pools.{0}.{1}.tlsPfxFile";
+            public static readonly string EtherscanApiKey = "pools.{0}.etherscan.apiKey";
         }
     }
 }
