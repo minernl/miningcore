@@ -354,7 +354,11 @@ namespace Miningcore.Mining
                             if( (TimeFrameBeforeFirstShare >= (StatsWindowsTimeFrame.TotalSeconds * 0.1)) && (TimeFrameAfterLastShare >= (StatsWindowsTimeFrame.TotalSeconds * 0.1)) )
                                 minerHashTimeFrame = (StatsWindowsTimeFrame.TotalSeconds - TimeFrameBeforeFirstShare + TimeFrameAfterLastShare);
 
-                            if(minerHashTimeFrame < 1) { minerHashTimeFrame = 1; };
+                            // let's not update hashrate if minerHashTimeFrame is too small, less than 10% of StatsWindowsTimeFrame. Otherwise, hashrate will be too high.
+                            if(minerHashTimeFrame < StatsWindowsTimeFrame.TotalSeconds * 0.1) { 
+                                logger.Info(() => $"minerHashTimeFrame is too small. Skip calculate minerHashrate. [{poolId}] StatsWindowsTimeFrame : {StatsWindowsTimeFrame.TotalSeconds} | minerHashTimeFrame : {minerHashTimeFrame} |  TimeFrameFirstLastShare : {TimeFrameFirstLastShare} | TimeFrameBeforeFirstShare: {TimeFrameBeforeFirstShare} | TimeFrameAfterLastShare: {TimeFrameAfterLastShare}");
+                                continue; 
+                            };
 
                             // logger.Info(() => $"[{poolId}] StatsWindowsTimeFrame : {StatsWindowsTimeFrame.TotalSeconds} | minerHashTimeFrame : {minerHashTimeFrame} |  TimeFrameFirstLastShare : {TimeFrameFirstLastShare} | TimeFrameBeforeFirstShare: {TimeFrameBeforeFirstShare} | TimeFrameAfterLastShare: {TimeFrameAfterLastShare}");
 
