@@ -7,6 +7,7 @@ using System.Numerics;
 using System.Threading.Tasks;
 using Autofac;
 using AutoMapper;
+using Microsoft.ApplicationInsights;
 using Miningcore.Blockchain.Ethereum.Configuration;
 using Miningcore.Blockchain.Ethereum.DaemonRequests;
 using Miningcore.Blockchain.Ethereum.DaemonResponses;
@@ -176,7 +177,6 @@ namespace Miningcore.Blockchain.Ethereum
                                 logger.Debug(() => $"** (WALLET_MATCH) Is the Block mined by us? {match}");
                                 logger.Debug(() => $"** Possible Uncle or Orphan block found");
                             }
-
                         }
 
                         // mature?
@@ -263,6 +263,21 @@ namespace Miningcore.Blockchain.Ethereum
 
                         messageBus.NotifyBlockUnlocked(poolConfig.Id, block, coin);
                     }
+                }
+            }
+
+            TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
+            if(null != tc)
+            {
+                foreach(var block in result)
+                {
+                    tc.TrackEvent("BlockFound_"+poolConfig.Id, new Dictionary<string, string> 
+                    {
+                        {"miner", block.Miner}, 
+                        {"height", block.BlockHeight.ToString()},
+                        {"type", block.Type},
+                        {"reward", FormatAmount(block.Reward)}
+                    });
                 }
             }
 
