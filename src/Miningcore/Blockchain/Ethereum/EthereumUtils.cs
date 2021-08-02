@@ -26,6 +26,8 @@ namespace Miningcore.Blockchain.Ethereum
             {
                 if(parityChainResponse.ToLower() == "ethereum classic")
                     chainType = ParityChainType.Classic;
+                else if(parityChainResponse.ToLower() == "ropsten testnet")
+                    chainType = ParityChainType.Ropsten;
                 else
                     chainType = ParityChainType.Unknown;
             }
