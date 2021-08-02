@@ -1,0 +1,202 @@
+{
+        "logging": {
+                "level": "info",
+                "enableConsoleLog": false,
+                "enableConsoleColors": false,
+                "logFile": "core.log",
+                "apiLogFile": "api.log",
+                "logBaseDirectory": "/home/ncrypto/pooldata/logs",
+                "perPoolLogFile": true,
+				"azureLogKey": "38e76ba3-8f75-4378-90b3-16e79dabe4a7"
+        },
+        "banning": {
+                "manager": "integrated",
+                "banOnJunkReceive": true,
+                "banOnInvalidShares": false
+        },
+        "persistence": {
+                 "postgres": {
+            "host": "mue1-ncrypto-int-pgdb.postgres.database.azure.com",
+            "port": 5432,
+            "user": "user",
+            "password": "password",
+            "database": "miningcore",
+			"ssl": "true"
+        }
+        },
+        "paymentProcessing": {
+                "enabled": true,
+                "interval": 600,
+                "shareRecoveryFile": "recovered-shares.txt"
+        },
+        "api": {
+                "enabled": true,
+                "listenAddress": "0.0.0.0",
+                "port": 4000,
+                "rateLimiting": {
+                        "disabled": true,
+                        "rules": [
+                                {
+                                        "Endpoint": "*",
+                                        "Period": "1s",
+                                        "Limit": 5
+                                }
+                        ],
+                        "ipWhitelist": []
+                }
+        },
+        "pools": [
+                {
+                        "id": "eth1",
+                        "enabled": true,
+                        "coin": "ethereum",
+                        "address": "0x505922852B8B3f8B8a5583983dae10a6Abe3AFe4",
+                        "rewardRecipients": [
+                                {
+                                        "type": "op",
+                                        "address": "0x505922852B8B3f8B8a5583983dae10a6Abe3AFe4",
+                                        "percentage": 15
+                                }
+                        ],
+                        "blockRefreshInterval": 0,
+                        "clientConnectionTimeout": 600,
+                        "banning": {
+                                "enabled": false,
+                                "time": 600,
+                                "invalidPercent": 50,
+                                "checkThreshold": 50
+                        },
+                        "ports": {
+                                "3072": {
+                                        "listenAddress": "0.0.0.0",
+                                        "difficulty": 0.1,
+                                        "varDiff": {
+                                                "minDiff": 0.05,
+                                                "maxDiff": null,
+                                                "targetTime": 180,
+                                                "retargetTime": 180,
+                                                "variancePercent": 30
+                                        }
+                                },
+								"3073": {
+                                        "listenAddress": "0.0.0.0",
+                                        "difficulty": 0.1,
+                                        "varDiff": {
+                                                "minDiff": 0.05,
+                                                "maxDiff": null,
+                                                "targetTime": 180,
+                                                "retargetTime": 180,
+                                                "variancePercent": 30
+                                        },
+										"tls": true,
+										"tlsPfxFile":"/etc/ssl/ncrypto/ncrypto-int.nortonlifelock.com.pfx"
+                                },
+                        },
+						"dagdir":"/home/ncrypto/pooldata/ethash",
+                        "enableDaemonWebsocketStreaming": true,
+                        "daemons": [
+                                {
+                                        "host": "10.117.246.68",
+                                        "port": 8545,
+										"portWs": 8546
+                                }
+                        ],
+"etherscan": {
+                "apiUrl": "https://api.etherscan.io/api",
+                "apiKey": "api_key"
+            },
+                        "paymentProcessing": {
+                                "enabled": true,
+                                "minimumPayment": "0.0021",
+																 
+                                "payoutScheme": "PPS",
+                "maxBlockFrequency": 43200,
+                   "payoutSchemeConfig": {
+                                        "factor": 2.0,
+                                        "fixedReward": "0.00000023"
+                                },
+                                "coinbasePassword": "walletpassword",
+                                "keepUncles": false,
+                                "keepTransactionFees": false,
+                                "Gas": 21000,
+                                "PrivateKey": "pkey"
+                        }
+                },
+                {
+                        "id": "rEth",
+                        "enabled": true,
+                        "coin": "ethereum",
+                        "address": "0x505922852B8B3f8B8a5583983dae10a6Abe3AFe4",
+                        "rewardRecipients": [
+                                {
+                                        "type": "op",
+                                        "address": "0x505922852B8B3f8B8a5583983dae10a6Abe3AFe4",
+                                        "percentage": 15
+                                }
+                        ],
+                        "blockRefreshInterval": 0,
+                        "clientConnectionTimeout": 600,
+                        "banning": {
+                                "enabled": false,
+                                "time": 600,
+                                "invalidPercent": 50,
+                                "checkThreshold": 50
+                        },
+                        "ports": {
+                                "3074": {
+                                        "listenAddress": "0.0.0.0",
+                                        "difficulty": 0.1,
+                                        "varDiff": {
+                                                "minDiff": 0.05,
+                                                "maxDiff": null,
+                                                "targetTime": 180,
+                                                "retargetTime": 180,
+                                                "variancePercent": 30
+                                        }
+                                },
+                                "3075": {
+                                        "listenAddress": "0.0.0.0",
+                                        "difficulty": 0.1,
+                                        "varDiff": {
+                                                "minDiff": 0.05,
+                                                "maxDiff": null,
+                                                "targetTime": 180,
+                                                "retargetTime": 180,
+                                                "variancePercent": 30
+                                        },
+                                        "tls": true,
+                                        "tlsPfxFile":"/etc/ssl/ncrypto/ncrypto-int.nortonlifelock.com.pfx"
+                                },
+                        },
+                        "dagdir":"/home/ncrypto/pooldata/ethash",
+                        "enableDaemonWebsocketStreaming": true,
+                        "daemons": [
+                                {
+                                        "host": "10.117.246.70",
+                                        "port": 8545,
+                                        "portWs": 8546
+                                }
+                        ],
+"etherscan": {
+                "apiUrl": "https://api.etherscan.io/api",
+                "apiKey": "api_key"
+            },
+                        "paymentProcessing": {
+                                "enabled": true,
+                                "minimumPayment": "0.0005",
+                                                                 
+                                "payoutScheme": "PPS",
+                "maxBlockFrequency": 43200,
+                   "payoutSchemeConfig": {
+                                        "factor": 2.0,
+                                        "fixedReward": "0.00000023"
+                                },
+                                "coinbasePassword": "walletpassword",
+                                "keepUncles": false,
+                                "keepTransactionFees": false,
+                                "Gas": 21000,
+                                "PrivateKey": "pkey"
+                        }
+                }
+        ]
+}
