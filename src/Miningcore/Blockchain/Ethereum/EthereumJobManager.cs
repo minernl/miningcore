@@ -31,7 +31,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
-using Microsoft.ApplicationInsights;
 using Miningcore.Blockchain.Bitcoin;
 using Miningcore.Blockchain.Ethereum.Configuration;
 using Miningcore.Blockchain.Ethereum.DaemonResponses;
@@ -514,14 +513,6 @@ namespace Miningcore.Blockchain.Ethereum
                 if(share.IsBlockCandidate)
                 {
                     logger.Info(() => $"Daemon accepted block {share.BlockHeight} submitted by {context.Miner}");
-                    TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
-                    if(null != tc)
-                    {
-                        tc.TrackEvent("BlockFound_"+share.PoolId, new Dictionary<string, string> {
-                            {"miner", context.Miner}, 
-                            {"blockHeight", share.BlockHeight.ToString()}
-                        });
-                    }
                 }
             }
 
