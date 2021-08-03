@@ -76,6 +76,7 @@ namespace Miningcore.Blockchain.Ethereum
         private DaemonClient daemon;
         private EthereumNetworkType networkType;
         private ParityChainType chainType;
+        private BigInteger chainId;
         private bool isParity = true;
         private EthashFull ethash;
         private readonly IMasterClock clock;
@@ -589,6 +590,7 @@ namespace Miningcore.Blockchain.Ethereum
                 new DaemonCmd(EthCommands.GetAccounts),
                 new DaemonCmd(EthCommands.GetCoinbase),
                 new DaemonCmd(EthCommands.ParityChain),
+                new DaemonCmd(EthCommands.ChainId),
             };
 
             var results = await daemon.ExecuteBatchAnyAsync(logger, commands);
@@ -610,6 +612,7 @@ namespace Miningcore.Blockchain.Ethereum
             var accounts = results[1].Response.ToObject<string[]>();
             var coinbase = results[2].Response.ToObject<string>();
             var parityChain = isParity ? results[3].Response.ToObject<string>() : (extraPoolConfig?.ChainTypeOverride ?? "Mainnet");
+            var chainIdResult = results[2]?.Response?.ToObject<string>();
 
             // ensure pool owns wallet  // TODO
             //if (clusterConfig.PaymentProcessing?.Enabled == true && !accounts.Contains(poolConfig.Address) || coinbase != poolConfig.Address)
@@ -617,7 +620,7 @@ namespace Miningcore.Blockchain.Ethereum
             logger.Info($"Pool config account: {accounts.Contains(poolConfig.Address)}");
             logger.Info($"Daemon Wallet: {coinbase}");
 
-            EthereumUtils.DetectNetworkAndChain(netVersion, parityChain, out networkType, out chainType);
+            EthereumUtils.DetectNetworkAndChain(netVersion, parityChain, chainIdResult, out networkType, out chainType, out chainId);
 
             if(clusterConfig.PaymentProcessing?.Enabled == true && poolConfig.PaymentProcessing?.Enabled == true)
                 ConfigureRewards();

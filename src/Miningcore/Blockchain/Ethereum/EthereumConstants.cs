@@ -111,6 +111,7 @@ namespace Miningcore.Blockchain.Ethereum
         public const string SendTx = "eth_sendTransaction";
         public const string UnlockAccount = "personal_unlockAccount";
         public const string Subscribe = "eth_subscribe";
+        public const string ChainId = "eth_chainId";
 
         public const string ParityVersion = "parity_versionInfo";
         public const string ParityChain = "parity_chain";

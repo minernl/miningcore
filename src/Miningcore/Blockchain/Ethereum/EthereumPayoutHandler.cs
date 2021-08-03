@@ -58,6 +58,7 @@ namespace Miningcore.Blockchain.Ethereum
         private DaemonClient daemon;
         private EthereumNetworkType networkType;
         private ParityChainType chainType;
+        private BigInteger chainId;
         private const int BlockSearchOffset = 50;
         private EthereumPoolConfigExtra extraPoolConfig;
         private EthereumPoolPaymentProcessingConfigExtra extraConfig;
@@ -85,6 +86,11 @@ namespace Miningcore.Blockchain.Ethereum
                 .ToArray();
 
 
+            daemon = new DaemonClient(jsonSerializerSettings, messageBus, clusterConfig.ClusterName ?? poolConfig.PoolName, poolConfig.Id);
+            daemon.Configure(daemonEndpoints);
+
+            await DetectChainAsync();
+
             // if pKey is configured - setup web3 connection for self managed wallet payouts
             if(!string.IsNullOrEmpty(extraConfig.PrivateKey))
             {
@@ -92,14 +98,17 @@ namespace Miningcore.Blockchain.Ethereum
                 var protocol = (txEndpoint.Ssl || txEndpoint.Http2) ? "https" : "http";
                 var txEndpointUrl = $"{protocol}://{txEndpoint.Host}:{txEndpoint.Port}";
 
-                var account = new Account(extraConfig.PrivateKey);
+                Account account;
+                if(chainId != 0)
+                {
+                    account = new Account(extraConfig.PrivateKey, chainId);
+                }
+                else
+                {
+                    account = new Account(extraConfig.PrivateKey);
+                }
                 web3Connection = new Nethereum.Web3.Web3(account, txEndpointUrl);
             }
-
-            daemon = new DaemonClient(jsonSerializerSettings, messageBus, clusterConfig.ClusterName ?? poolConfig.PoolName, poolConfig.Id);
-            daemon.Configure(daemonEndpoints);
-
-            await DetectChainAsync();
         }
 
         public async Task<Block[]> ClassifyBlocksAsync(Block[] blocks)
@@ -450,6 +459,7 @@ namespace Miningcore.Blockchain.Ethereum
             {
                 new DaemonCmd(EthCommands.GetNetVersion),
                 new DaemonCmd(EthCommands.ParityChain),
+                new DaemonCmd(EthCommands.ChainId),
             };
 
             var results = await daemon.ExecuteBatchAnyAsync(logger, commands);
@@ -471,10 +481,13 @@ namespace Miningcore.Blockchain.Ethereum
             // convert network
             var netVersion = results[0].Response.ToObject<string>();
             var parityChain = isParity ? results[1].Response.ToObject<string>() : (extraPoolConfig?.ChainTypeOverride ?? "Mainnet");
+            var chainIdResult = results[2]?.Response?.ToObject<string>();
+
+            logger.Info(() => $"Ethereum chain ID: {chainId}");
 
             logger.Debug(() => $"Ethereum network: {netVersion}");
 
-            EthereumUtils.DetectNetworkAndChain(netVersion, parityChain, out networkType, out chainType);
+            EthereumUtils.DetectNetworkAndChain(netVersion, parityChain, chainIdResult ?? "0", out networkType, out chainType, out chainId);
 
             if(chainType == ParityChainType.Unknown)
             {
@@ -484,6 +497,11 @@ namespace Miningcore.Blockchain.Ethereum
             if(networkType == EthereumNetworkType.Unknown)
             {
                 logger.Warn(() => $"Unable to determine Ethereum network type: " + netVersion);
+            }
+
+            if(chainId == 0)
+            {
+                logger.Warn(() => $"Unable to determine Ethereum Chain ID: " + chainIdResult);
             }
         }
 
