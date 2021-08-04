@@ -211,15 +211,21 @@ dotnet publish -c Release --framework netcoreapp3.1  -o ..\..\build
 
 #### Running Miningcore
 
-Create a configuration file <code>config.json</code> as described [here](https://github.com/FishyJoel/miningcore/wiki/Configuration)
+Follow below steps if setting poolservice for the first time or updating poolservice service script or profile.
 
-````console
-cd ../../build
-dotnet Miningcore.dll -c config.json
+````
+- Update ConnectionString and Pool service's home directory in poolservice.profile
+- sudo cp poolservice.profile /etc/poolservice.profile
+- sudo cp poolservice /etc/init.d/poolservice
+- sudo chmod 755 /etc/init.d/poolservice
+- sudo systemctl daemon-reload
 ````
 
-A public production pool requires a web-frontend for your users to check their hashrate, earnings etc. 
-You can use the web frontend that come with this fork [Miningcore.Web](https://github.com/FishyJoel/miningcore/src/Miningcore.WebUI)
+Start/Stop service
+
+````
+sudo /etc/init.d/poolservice stop|start|status|restart
+````
 
 ## ShareRelay (ZeroMQ) needs .NET core 2.1 runtime
 
