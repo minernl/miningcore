@@ -67,9 +67,13 @@ namespace Miningcore.DataStore.Postgres
 
             // build connection string
             var connectionString = $"Server={pgConfig.Host};Port={pgConfig.Port};Database={pgConfig.Database};User Id={pgConfig.User};Password={pgConfig.Password};CommandTimeout=900;";
-            
+
+            // Add pool configuration
+            if(pgConfig.Pooling != null)
+                connectionString += $"Pooling=true;Minimum Pool Size={pgConfig.Pooling.MinPoolSize};Maximum Pool Size={(pgConfig.Pooling.MaxPoolSize > 0 ? pgConfig.Pooling.MaxPoolSize : 100)};";
+
             // concatenate SSL config to connectionString
-            if(pgConfig.Ssl == true)
+            if(pgConfig.Ssl)
                 connectionString += "SSL Mode=Require;Trust Server Certificate=True;Server Compatibility Mode=Redshift;";
 
             // register connection factory
