@@ -39,6 +39,7 @@ namespace Miningcore.Blockchain.Ethereum
                 chainType = ParityChainType.Joys;
 
             // convert chainId
+            if(chainIdResponse.ToLower().StartsWith("0x")) chainIdResponse = chainIdResponse.Replace("0x", "0", StringComparison.OrdinalIgnoreCase);
             if(!BigInteger.TryParse(chainIdResponse, out chainId))
             {
                 chainId = 0;
