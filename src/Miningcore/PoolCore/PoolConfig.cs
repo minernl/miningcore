@@ -52,19 +52,15 @@ namespace Miningcore.PoolCore
             return clusterConfig;
         }
 
-        public static ClusterConfig GetConfigFromAppConfig(string prefix)
+        public static ClusterConfig GetConfigFromAppConfig(string connectionString, string prefix)
         {
             Console.WriteLine("Loading config from app config");
             if(prefix.Trim().Equals("/")) prefix = string.Empty;
             try
             {
-                remoteConfig = ReadAppConfig();
-                var serializer = JsonSerializer.Create(new JsonSerializerSettings
-                {
-                    ContractResolver = new CamelCasePropertyNamesContractResolver()
-                });
-                var reader = new JsonTextReader(new StringReader(remoteConfig[prefix + BaseConfigFile]));
-                clusterConfig = serializer.Deserialize<ClusterConfig>(reader);
+                remoteConfig = ReadAppConfig(connectionString);
+                var secretName = prefix + BaseConfigFile;
+                GetConfigFromJsonInternal(remoteConfig[secretName]);
                 // Update dynamic pass and others config here
                 clusterConfig.Persistence.Postgres.User = remoteConfig[AppConfigConstants.PersistencePostgresUser];
                 clusterConfig.Persistence.Postgres.Password = remoteConfig[AppConfigConstants.PersistencePostgresPassword];
@@ -112,7 +108,7 @@ namespace Miningcore.PoolCore
             if(prefix.Trim().Equals("/")) prefix = string.Empty;
             remoteConfig = ReadKeyVault(vaultName);
             var secretName = (prefix + BaseConfigFile).Replace(".", "-");
-            var config = GetConfigFromJsonInternal(remoteConfig[secretName]);
+            GetConfigFromJsonInternal(remoteConfig[secretName]);
             foreach(var poolConfig in clusterConfig.Pools)
             {
                 poolConfig.Ports.ForEach(p =>
@@ -133,7 +129,7 @@ namespace Miningcore.PoolCore
             }
             ValidateConfig();
 
-            return config;
+            return clusterConfig;
         }
 
         public static void DumpParsedConfig(ClusterConfig config)
@@ -261,10 +257,10 @@ namespace Miningcore.PoolCore
             return builder.Build();
         }
 
-        private static IConfigurationRoot ReadAppConfig()
+        private static IConfigurationRoot ReadAppConfig(string connectionString)
         {
             var builder = new ConfigurationBuilder();
-            builder.AddAzureAppConfiguration(options => options.Connect(Environment.GetEnvironmentVariable(ConnectionString))
+            builder.AddAzureAppConfiguration(options => options.Connect(connectionString)
                 .ConfigureKeyVault(kv => kv.SetCredential(new DefaultAzureCredential())));
 
             return builder.Build();

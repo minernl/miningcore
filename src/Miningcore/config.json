@@ -35,7 +35,10 @@
             "port": 5432,
             "user": "db_user",
             "password": "db_password",
-            "database": "db_name"
+            "database": "db_name",
+            "Pooling": {
+                "MaxPoolSize": 100
+            }
         }
     },
 

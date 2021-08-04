@@ -365,8 +365,8 @@ namespace Miningcore.Configuration
         public string ApiLogFile { get; set; }
         public bool PerPoolLogFile { get; set; }
         public string LogBaseDirectory { get; set; }
-        public string AzureLogKey {get; set;}
-        public string AzureLogLevel {get; set;}
+        public string AzureLogKey { get; set; }
+        public string AzureLogLevel { get; set; }
     }
 
     public partial class NetworkEndpointConfig
@@ -422,6 +422,22 @@ namespace Miningcore.Configuration
         /// Use SSL
         /// </summary>
         public bool Ssl { get; set; }
+        /// <summary>
+        /// Since opening/closing physical connections is an expensive process, this considerably speeds up your application
+        /// </summary>
+        public DatabasePoolConfig Pooling { get; set; }
+    }
+
+    public class DatabasePoolConfig
+    {
+        /// <summary>
+        /// The maximum connection pool size.
+        /// </summary>
+        public int MaxPoolSize { get; set; }
+        /// <summary>
+        /// The minimum  connection pool size.
+        /// </summary>
+        public int MinPoolSize { get; set; }
     }
 
     public class TcpProxyProtocolConfig
@@ -650,7 +666,7 @@ namespace Miningcore.Configuration
         public int HashrateCalculationWindow { get; set; }
         public int StatsCleanupInterval { get; set; }
         public int StatsDBCleanupHistory { get; set; }
-        
+
     }
 
     public partial class ZmqPubSubEndpointConfig
