@@ -51,7 +51,7 @@ start()
         echo "PoolService is still running. Stop and start the service."
         return
     else
-        cd $POOL_HOME/miningcore/build
+        cd $HOME/miningcore/build
         dotnet Miningcore.dll -ac / > dotnetcore.log &
         pid=`pgrep -f Mining`
         if [[ "$pid" != "" ]];then

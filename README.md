@@ -214,7 +214,7 @@ dotnet publish -c Release --framework netcoreapp3.1  -o ..\..\build
 Follow below steps if setting poolservice for the first time or updating poolservice service script or profile.
 
 ````
-- Update ConnectionString and Pool service's home directory in poolservice.profile
+- Update ConnectionString in poolservice.profile
 - sudo cp poolservice.profile /etc/poolservice.profile
 - sudo cp poolservice /etc/init.d/poolservice
 - sudo chmod 755 /etc/init.d/poolservice
