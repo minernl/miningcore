@@ -72,7 +72,7 @@ namespace Miningcore.PoolCore
             var vault = Environment.GetEnvironmentVariable(PoolConfig.VaultName);
             StartMiningCorePoolInternal(!string.IsNullOrEmpty(vault)
                 ? PoolConfig.GetConfigFromKeyVault(vault, appConfig)
-                : PoolConfig.GetConfigFromAppConfig(appConfig));
+                : PoolConfig.GetConfigFromAppConfig(Environment.GetEnvironmentVariable(PoolConfig.ConnectionString), appConfig));
         }
 
         private static void StartMiningCorePoolInternal(ClusterConfig config)
