@@ -22,12 +22,15 @@ namespace Miningcore.Tests.Blockchain.Ethereum
         [Fact]
         public async Task DetectNetworkAndChain_Hex_Prefix_UpperCase()
         {
-            EthereumUtils.DetectNetworkAndChain("1", "ethereum classic", "0X03",
+            EthereumUtils.DetectNetworkAndChain("1", "ethereum classic", "0X2A",
                 out EthereumNetworkType ethereumNetworkType, out ParityChainType parityChainType, out BigInteger chainId);
-
+            
             Assert.Equal(EthereumNetworkType.Main, ethereumNetworkType);
             Assert.Equal(ParityChainType.Classic, parityChainType);
-            Assert.Equal(3, chainId);
+            Assert.Equal(42, chainId);
+
+            EthereumUtils.DetectNetworkAndChain("1", "ethereum classic", "0X3D", out ethereumNetworkType, out parityChainType, out chainId);
+            Assert.Equal(61, chainId);
         }
 
         [Fact]

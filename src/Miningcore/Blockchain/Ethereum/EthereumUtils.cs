@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Numerics;
 
@@ -40,12 +41,12 @@ namespace Miningcore.Blockchain.Ethereum
 
             // convert chainId
             if(chainIdResponse.ToLower().StartsWith("0x")) chainIdResponse = chainIdResponse.Replace("0x", "0", StringComparison.OrdinalIgnoreCase);
-            if(!BigInteger.TryParse(chainIdResponse, out chainId))
+            if(!BigInteger.TryParse(chainIdResponse, NumberStyles.AllowHexSpecifier, null, out chainId))
             {
                 chainId = 0;
             }
         }
-        
+
         public static string GetTargetHex(BigInteger difficulty)
         {
             var target = BigInteger.Divide(BigInteger.Pow(2, 256), difficulty);
