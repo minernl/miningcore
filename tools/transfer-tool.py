@@ -47,7 +47,7 @@ def main():
         'chainId': chainId
     }
 
-    confirmationInput = input(f'Sending {args.amount / 1000000000000000000} ETH from {args.sourceAddr} to {args.destAddr}. Please confirm (Only "yes" will be accepted):')
+    confirmationInput = input(f'Sending {args.amount / 1000000000000000000} ETH from {args.sourceAddr} to {args.destAddr} on chain {chainId}. Please confirm (Only "yes" will be accepted):')
 
     if confirmationInput != "yes":
         print('Did not recieve "yes" - cancelling transaction')
