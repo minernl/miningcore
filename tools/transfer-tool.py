@@ -6,11 +6,11 @@ from getpass import getpass
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--source-addr', dest='sourceAddr', help='source wallet address', type=str, required=True)
-    parser.add_argument('-d', '--dest-addr', dest='destAddr', help='destination wallet address', type=str, required=True)
-    parser.add_argument('-a', '--amount', dest='amount', help='amount of transfer in wei', type=int, required=True)
-    parser.add_argument('-g', '--gas-price', dest='gasPrice', help='gas price for transaction', type=int, default=-1, required=False)
-    parser.add_argument('-n', '--nonce', dest='nonce', help='nonce for transcation. Use to overwrite/cancel existing transactions', type=int, default=-1, required=False)
+    parser.add_argument('-s', '--source-addr', dest='sourceAddr', help='(required) source wallet address', type=str, required=True)
+    parser.add_argument('-d', '--dest-addr', dest='destAddr', help='(required) destination wallet address', type=str, required=True)
+    parser.add_argument('-a', '--amount', dest='amount', help='(required) amount in wei to transfer', type=int, required=True)
+    parser.add_argument('-g', '--gas-price', dest='gasPrice', help='(optional) gas price in wei for transaction (default: current average)', type=int, default=-1, required=False)
+    parser.add_argument('-n', '--nonce', dest='nonce', help='(optional) nonce for transaction. Use to overwrite/cancel existing transactions (next nonce in sequence for sourceAddr)', type=int, default=-1, required=False)
     parser.add_argument('--host', dest='host', help='URL for ethereum node (default: http://localhost:8545)', type=str, default='http://localhost:8545', required=False)
 
     args = parser.parse_args()
@@ -47,11 +47,17 @@ def main():
         'chainId': chainId
     }
 
-    print(transaction)
+    confirmationInput = input(f'Sending {args.amount / 1000000000000000000} ETH from {args.sourceAddr} to {args.destAddr}. Please confirm (Only "yes" will be accepted):')
+
+    if confirmationInput != "yes":
+        print('Did not recieve "yes" - cancelling transaction')
+        exit(1)
+    else:
+        print('Confirmed. Sending...')
 
     signed = web3.eth.account.sign_transaction(transaction, pKey)
     txhash = web3.eth.send_raw_transaction(signed.rawTransaction)
-    print(f'Transaction sent: {txhash}')
+    print(f'Transaction sent: {txhash.hex()}')
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
