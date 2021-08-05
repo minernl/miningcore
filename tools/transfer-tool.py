@@ -1,8 +1,6 @@
 from web3 import Web3
-from io import StringIO
-import argparse
-import sys
 from getpass import getpass
+import argparse
 
 def main():
     parser = argparse.ArgumentParser()
