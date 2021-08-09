@@ -33,6 +33,7 @@ namespace Miningcore.Api.Extensions
                 var extra = poolInfo.PaymentProcessing.Extra;
 
                 extra.StripValue(nameof(EthereumPoolPaymentProcessingConfigExtra.CoinbasePassword));
+                extra.StripValue(nameof(EthereumPoolPaymentProcessingConfigExtra.PrivateKey));
             }
 
             return poolInfo;
