@@ -481,6 +481,7 @@ namespace Miningcore.Configuration
         /// <summary>
         /// PKCS certificate
         /// </summary>
+        [JsonIgnore]
         public X509Certificate2 TlsPfx { get; set; }
     }
 

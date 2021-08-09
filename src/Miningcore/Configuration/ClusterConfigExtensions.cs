@@ -2,7 +2,7 @@ using System;
 using System.Globalization;
 using System.Numerics;
 using Autofac;
-using Miningcore.Blockchain.Bitcoin;
+using Microsoft.Extensions.Configuration;
 using Miningcore.Crypto;
 using Miningcore.Crypto.Hashing.Algorithms;
 using NBitcoin;
@@ -216,5 +216,14 @@ namespace Miningcore.Configuration
         /// </summary>
         [JsonIgnore]
         public CoinTemplate Template { get; set; }
+    }
+
+    public static class ConfigExtensions
+    {
+        public static string TryGetValue(this IConfigurationRoot config, string key, string defaultValue)
+        {
+            var cfgValue = config[key];
+            return !string.IsNullOrEmpty(cfgValue) ? cfgValue : defaultValue;
+        }
     }
 }
