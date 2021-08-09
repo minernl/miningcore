@@ -62,13 +62,13 @@ namespace Miningcore.PoolCore
                 var secretName = prefix + BaseConfigFile;
                 GetConfigFromJsonInternal(remoteConfig[secretName]);
                 // Update dynamic pass and others config here
-                clusterConfig.Persistence.Postgres.User = remoteConfig[AppConfigConstants.PersistencePostgresUser];
-                clusterConfig.Persistence.Postgres.Password = remoteConfig[AppConfigConstants.PersistencePostgresPassword];
+                clusterConfig.Persistence.Postgres.User = remoteConfig.TryGetValue(AppConfigConstants.PersistencePostgresUser, clusterConfig.Persistence.Postgres.User);
+                clusterConfig.Persistence.Postgres.Password = remoteConfig.TryGetValue(AppConfigConstants.PersistencePostgresPassword, clusterConfig.Persistence.Postgres.Password);
                 foreach(var poolConfig in clusterConfig.Pools)
                 {
-                    poolConfig.PaymentProcessing.Extra[CoinPassword] = remoteConfig[string.Format(AppConfigConstants.CoinBasePassword, poolConfig.Id)];
-                    poolConfig.PaymentProcessing.Extra[PrivateKey] = remoteConfig[string.Format(AppConfigConstants.PrivateKey, poolConfig.Id)];
-                    poolConfig.EtherScan.apiKey = remoteConfig[string.Format(AppConfigConstants.EtherscanApiKey, poolConfig.Id)];
+                    poolConfig.PaymentProcessing.Extra[CoinPassword] = remoteConfig.TryGetValue(string.Format(AppConfigConstants.CoinBasePassword, poolConfig.Id), poolConfig.PaymentProcessing.Extra[CoinPassword]?.ToString());
+                    poolConfig.PaymentProcessing.Extra[PrivateKey] = remoteConfig.TryGetValue(string.Format(AppConfigConstants.PrivateKey, poolConfig.Id), poolConfig.PaymentProcessing.Extra[PrivateKey]?.ToString());
+                    poolConfig.EtherScan.apiKey = remoteConfig.TryGetValue(string.Format(AppConfigConstants.EtherscanApiKey, poolConfig.Id), poolConfig.EtherScan.apiKey);
                     poolConfig.Ports.ForEach(p =>
                     {
                         try
