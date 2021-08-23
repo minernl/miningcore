@@ -221,7 +221,8 @@ namespace Miningcore.Blockchain.Ethereum
 
                 // update client stats
                 context.Stats.InvalidShares++;
-                logger.Info(ex, $"[{client.ConnectionId}] Share rejected: {ex.Message}");
+                logger.Info(() => $"[{client.ConnectionId}] Share rejected: {ex.Message}");
+                logger.Error(ex);
 
                 // banning
                 ConsiderBan(client, context, poolConfig.Banning);
