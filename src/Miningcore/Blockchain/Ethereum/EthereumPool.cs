@@ -197,7 +197,7 @@ namespace Miningcore.Blockchain.Ethereum
                 await EnsureInitialWorkSent(client);
 
                 // update pool stats
-                if (share.IsBlockCandidate)
+                if(share.IsBlockCandidate)
                     poolStats.LastPoolBlockTime = clock.UtcNow;
 
                 // update client stats
@@ -216,15 +216,12 @@ namespace Miningcore.Blockchain.Ethereum
                 // telemetry
                 PublishTelemetry(TelemetryCategory.Share, clock.UtcNow - tsRequest.Timestamp.UtcDateTime, false);
 
-                TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
-                if(null != tc)
-                {
-                    tc.GetMetric("REJECTED_SHARES").TrackValue(difficulty);
-                }
+                var tc = TelemetryUtil.GetTelemetryClient();
+                tc?.GetMetric("REJECTED_SHARES").TrackValue(difficulty);
 
                 // update client stats
                 context.Stats.InvalidShares++;
-                logger.Info(() => $"[{client.ConnectionId}] Share rejected: {ex.Message}");
+                logger.Info(ex, $"[{client.ConnectionId}] Share rejected: {ex.Message}");
 
                 // banning
                 ConsiderBan(client, context, poolConfig.Banning);
@@ -255,8 +252,8 @@ namespace Miningcore.Blockchain.Ethereum
             }
         }
 
-		// >>>>>>>>>>>>>>>>>>> Start new
-       // Stratum-Proxy
+        // >>>>>>>>>>>>>>>>>>> Start new
+        // Stratum-Proxy
         private async Task OnSubmitLoginAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest)
         {
             var request = tsRequest.Value;
@@ -336,7 +333,7 @@ namespace Miningcore.Blockchain.Ethereum
             await client.RespondAsync(true, request.Id);
 
         }
-		// <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< end new
+        // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< end new
 
         protected virtual Task OnNewJobAsync(object jobParams)
         {
