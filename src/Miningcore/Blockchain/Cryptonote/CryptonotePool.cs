@@ -246,6 +246,7 @@ namespace Miningcore.Blockchain.Cryptonote
                 // update client stats
                 context.Stats.InvalidShares++;
                 logger.Info(() => $"[{client.ConnectionId}] Share rejected: {ex.Message}");
+                logger.Error(ex);
 
                 // banning
                 ConsiderBan(client, context, poolConfig.Banning);
