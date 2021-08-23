@@ -202,6 +202,7 @@ namespace Miningcore.Blockchain.Cryptonote
             hashFunc(blobConverted, BlockTemplate.SeedHash, headerHash, variant, BlockTemplate.Height);
             
             var headerHashString = headerHash.ToHexString();
+            Console.WriteLine($">>>>>>>> HeaderHash:{headerHashString}, WorkHash:{workerHash} <<<<<<<<");
             if(headerHashString != workerHash)
                 throw new StratumException(StratumError.MinusOne, "bad hash");
 
