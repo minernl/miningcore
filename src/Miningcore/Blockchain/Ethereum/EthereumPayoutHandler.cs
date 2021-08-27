@@ -319,8 +319,9 @@ namespace Miningcore.Blockchain.Ethereum
             {
                 logger.Warn(() => $"[{LogCategory}] Payout deferred until next time. Latest gas fee is above par limit " +
                                   $"({latestGasFee}>{extraConfig.MaxGasLimit})");
+                return;
             }
-            logger.Warn(() => $"[{LogCategory}] Latest gas fee is below par limit ({latestGasFee}<={extraConfig.MaxGasLimit})");
+            logger.Info(() => $"[{LogCategory}] Latest gas fee is within par limit ({latestGasFee}<={extraConfig.MaxGasLimit})");
 
             // ensure we have peers
             var infoResponse = await daemon.ExecuteCmdSingleAsync<string>(logger, EthCommands.GetPeerCount);

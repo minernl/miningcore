@@ -135,7 +135,7 @@
                 "keepUncles": false,
                 "keepTransactionFees": false,
                 "gas": 21000,
-                "maxGasLimit": 100 
+                "maxGasLimit": 1000000000
             }
         }
     ]
