@@ -43,6 +43,11 @@ namespace Miningcore.Blockchain.Ethereum.Configuration
         public ulong Gas { get; set; }
 
         /// <summary>
+        /// Maximum gas price allowed for the transaction
+        /// </summary>
+        public ulong MaxGasLimit { get; set; }
+
+        /// <summary>
         /// Hex encoded private key
         /// </summary>
         public string PrivateKey { get; set; }
