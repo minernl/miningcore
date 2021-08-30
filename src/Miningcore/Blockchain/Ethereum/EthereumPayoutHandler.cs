@@ -321,6 +321,8 @@ namespace Miningcore.Blockchain.Ethereum
                 return;
             }
 
+            var latestBlockResp = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
+            var latestGasFee = latestBlockResp.FirstOrDefault(x => x.Error == null)?.Response.BaseFeePerGas;
             var txHashes = new List<string>();
 
             foreach(var balance in balances)
@@ -328,8 +330,6 @@ namespace Miningcore.Blockchain.Ethereum
                 try
                 {
                     //Check if gas fee is below par range
-                    var latestBlockResp = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
-                    var latestGasFee = latestBlockResp.FirstOrDefault(x => x.Error == null)?.Response.BaseFeePerGas;
                     var lastPaymentDate = await cf.Run(con => paymentRepo.GetLastPaymentDateAsync(con, balance.PoolId, balance.Address));
                     var maxGasLimit = lastPaymentDate.HasValue && (clock.UtcNow - lastPaymentDate.Value).TotalHours <= extraConfig.GasLimitToleranceHrs
                         ? extraConfig.GasLimit
@@ -347,7 +347,6 @@ namespace Miningcore.Blockchain.Ethereum
                     var txHash = await PayoutAsync(balance);
                     txHashes.Add(txHash);
                 }
-
                 catch(Exception ex)
                 {
                     logger.Error(ex);
