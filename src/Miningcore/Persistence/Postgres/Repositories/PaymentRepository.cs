@@ -18,6 +18,7 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN 
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+using System;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
@@ -51,6 +52,15 @@ namespace Miningcore.Persistence.Postgres.Repositories
                 "VALUES(@poolid, @coin, @address, @amount, @transactionconfirmationdata, @created)";
 
             await con.ExecuteAsync(query, mapped, tx);
+        }
+
+        public async Task<DateTime?> GetLastPaymentDateAsync(IDbConnection con, string poolId, string address)
+        {
+            logger.LogInvoke();
+
+            const string query = "SELECT max(created) FROM payments WHERE poolid = @poolId AND address = @address";
+
+            return await con.QuerySingleOrDefaultAsync<DateTime?>(query, new { poolId, address });
         }
 
         public async Task<Payment[]> PagePaymentsAsync(IDbConnection con, string poolId, string address, int page, int pageSize)
