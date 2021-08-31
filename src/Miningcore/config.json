@@ -134,7 +134,8 @@
                 "coinbasePassword": "wallet_password",
                 "keepUncles": false,
                 "keepTransactionFees": false,
-                "Gas": 21000
+                "gas": 21000,
+                "maxGasLimit": 100000000000
             }
         }
     ]

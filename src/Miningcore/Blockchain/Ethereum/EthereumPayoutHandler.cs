@@ -312,6 +312,17 @@ namespace Miningcore.Blockchain.Ethereum
 
         public async Task PayoutAsync(Balance[] balances)
         {
+            //Check if gas fee is below par range
+            var latestBlockResp = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
+            var latestGasFee = latestBlockResp.FirstOrDefault(x => x.Error == null)?.Response.BaseFeePerGas;
+            if(latestGasFee.HasValue && latestGasFee.Value > extraConfig.MaxGasLimit)
+            {
+                logger.Warn(() => $"[{LogCategory}] Payout deferred until next time. Latest gas fee is above par limit " +
+                                  $"({latestGasFee}>{extraConfig.MaxGasLimit})");
+                return;
+            }
+            logger.Info(() => $"[{LogCategory}] Latest gas fee is within par limit ({latestGasFee}<={extraConfig.MaxGasLimit})");
+
             // ensure we have peers
             var infoResponse = await daemon.ExecuteCmdSingleAsync<string>(logger, EthCommands.GetPeerCount);
 

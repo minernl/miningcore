@@ -176,6 +176,12 @@ namespace Miningcore.Blockchain.Ethereum.DaemonResponses
         public ulong Size { get; set; }
 
         /// <summary>
+        /// This property will contain the value of the base fee for any block after the EIP-1559 fork
+        /// </summary>
+        [JsonConverter(typeof(HexToIntegralTypeJsonConverter<ulong>))]
+        public ulong BaseFeePerGas { get; set; }
+
+        /// <summary>
         /// the maximum gas allowed in this block
         /// </summary>
         [JsonConverter(typeof(HexToIntegralTypeJsonConverter<ulong>))]
