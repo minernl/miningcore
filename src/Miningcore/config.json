@@ -136,7 +136,7 @@
                 "keepTransactionFees": false,
                 "gas": 21000,
                 "gasLimit": 50000000000,
-                "gasLimitToleranceHrs": 24,
+                "gasLimitToleranceHrs": 48,
                 "maxGasLimit": 100000000000
             }
         }
