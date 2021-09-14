@@ -1,5 +1,7 @@
 
 
+using System;
+using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DependencyCollector;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -29,10 +31,41 @@ namespace Miningcore.Util
             return telemetryClient;
         }
 
+        public static void TrackDependency(DependencyType type, string name, string data, DateTimeOffset startTime, TimeSpan duration, bool success)
+        {
+            telemetryClient?.TrackDependency(type.ToString(), name, data, startTime, duration, success);
+        }
+
+        public static async Task<T> TrackDependency<T>(Func<Task<T>> operation, DependencyType type, string name, string data)
+        {
+            var success = false;
+            var startTime = DateTime.UtcNow;
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            try
+            {
+                var result = await operation();
+                success = true;
+                return result;
+            }
+            finally
+            {
+                timer.Stop();
+                TrackDependency(type, name, data, startTime, timer.Elapsed, success);
+            }
+        }
+
         public static void cleanup()
         {
             if(null != telemetryClient)
                 telemetryClient.Flush();
         }
+    }
+
+    public enum DependencyType
+    {
+        Sql,
+        Http,
+        Daemon,
+        Web3
     }
 }
