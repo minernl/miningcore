@@ -43,7 +43,17 @@ namespace Miningcore.Blockchain.Ethereum.Configuration
         public ulong Gas { get; set; }
 
         /// <summary>
-        /// Maximum gas price allowed for the transaction
+        /// Gas price allowed for the transaction within specified time frame since last payout for the miner
+        /// </summary>
+        public ulong GasLimit { get; set; }
+
+        /// <summary>
+        /// Time frame to use above gas limit since last payout for the miner
+        /// </summary>
+        public int GasLimitToleranceHrs { get; set; }
+
+        /// <summary>
+        /// Maximum gas price allowed for the transaction outside the specified time frame since last payout for the miner
         /// </summary>
         public ulong MaxGasLimit { get; set; }
 

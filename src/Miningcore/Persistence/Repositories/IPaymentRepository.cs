@@ -18,6 +18,7 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN 
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+using System;
 using System.Data;
 using System.Threading.Tasks;
 using Miningcore.Persistence.Model;
@@ -34,5 +35,6 @@ namespace Miningcore.Persistence.Repositories
         Task<AmountByDate[]> PageMinerPaymentsByDayAsync(IDbConnection con, string poolId, string address, int page, int pageSize);
         Task<PaymentSchedule> GetPaymentScheduleAsync(IDbConnection con, string poolId, string miner);
         Task UpdatePaymentScheduleAsync(IDbConnection con, IDbTransaction tx, PaymentSchedule paymentSchedule);
+        Task<DateTime?> GetLastPaymentDateAsync(IDbConnection con, string poolId, string address);
     }
 }
