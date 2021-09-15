@@ -43,6 +43,12 @@ namespace Miningcore.Blockchain.Ethereum.Configuration
         public ulong Gas { get; set; }
 
         /// <summary>
+        /// Gas price check has to be enforced or not
+        /// </summary>
+        public bool EnableGasLimit { get; set; }
+
+
+        /// <summary>
         /// Gas price allowed for the transaction within specified time frame since last payout for the miner
         /// </summary>
         public ulong GasLimit { get; set; }
