@@ -316,10 +316,7 @@ namespace Miningcore.Mining
                 };
 
                 // MinerNL calculate & update miner, worker hashrates
-                Parallel.ForEach(byMiner, new ParallelOptions
-                {
-                    MaxDegreeOfParallelism = clusterConfig.Statistics?.StatsUpdateInterval ?? 4
-                }, async minerHashes =>
+                foreach(var minerHashes in byMiner)
                 {
                     double minerTotalHashrate = 0;
 
@@ -391,7 +388,7 @@ namespace Miningcore.Mining
 
                     messageBus.NotifyHashrateUpdated(pool.Config.Id, minerTotalHashrate, stats.Miner, null);
                     logger.Info(() => $"[{poolId}] Total miner hashrate: {stats.Miner} | {minerTotalHashrate}");
-                });
+                }
                 // MinerNL end calculate & update miner, worker hashrates
                 stopWatch.Stop();
                 logger.Info(() => $"[{poolId}] Statistics updated in {stopWatch.Elapsed.Seconds}s");
