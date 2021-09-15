@@ -667,7 +667,7 @@ namespace Miningcore.Configuration
         public int HashrateCalculationWindow { get; set; }
         public int StatsCleanupInterval { get; set; }
         public int StatsDBCleanupHistory { get; set; }
-
+        public int MaxParallelUpdate { get; set; } = 4;
     }
 
     public partial class ZmqPubSubEndpointConfig
