@@ -47,9 +47,6 @@
         "interval": 600,
         "shareRecoveryFile": "recovered-shares.txt"
     },
-    "statistics": {
-        "maxParallelUpdate": "4" 
-    },
     "api": {
         "enabled": true,
         "listenAddress": "0.0.0.0",
