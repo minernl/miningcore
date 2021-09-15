@@ -355,7 +355,7 @@ namespace Miningcore.Mining
                             // let's not update hashrate if minerHashTimeFrame is too small, less than 10% of StatsWindowsTimeFrame. Otherwise, hashrate will be too high.
                             if(minerHashTimeFrame < statsWindowsTimeFrame.TotalSeconds * 0.1)
                             {
-                                logger.Info(() => $"minerHashTimeFrame is too small. Skip calculate minerHashrate. [{poolId}] Miner: {stats.Miner}");
+                                logger.Info(() => $"MinerHashTimeFrame is too small. Skip calculate minerHashrate. [{poolId}] Miner: {stats.Miner}");
                                 continue;
                             };
 
@@ -379,7 +379,7 @@ namespace Miningcore.Mining
 
                             // broadcast
                             messageBus.NotifyHashrateUpdated(pool.Config.Id, minerHashrate, stats.Miner, stats.Worker);
-                            logger.Info(() => $"[{poolId}] Miner: {stats.Miner}.{stats.Worker} | Hashrate: {minerHashrate} " +
+                            logger.Debug(() => $"[{poolId}] Miner: {stats.Miner}.{stats.Worker} | Hashrate: {minerHashrate} " +
                                               $"| HashTimeFrame : {minerHashTimeFrame} | Shares per sec: {stats.SharesPerSecond}");
                             // book keeping
                             currentNonZeroMinerWorkers.Add(BuildKey(stats.Miner, stats.Worker));
@@ -387,7 +387,7 @@ namespace Miningcore.Mining
                     });
 
                     messageBus.NotifyHashrateUpdated(pool.Config.Id, minerTotalHashrate, stats.Miner, null);
-                    logger.Info(() => $"[{poolId}] Total miner hashrate: {stats.Miner} | {minerTotalHashrate}");
+                    logger.Debug(() => $"[{poolId}] Total miner hashrate: {stats.Miner} | {minerTotalHashrate}");
                 }
                 // MinerNL end calculate & update miner, worker hashrates
                 stopWatch.Stop();
