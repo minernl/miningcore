@@ -158,7 +158,7 @@ namespace Miningcore.Stratum
                     IsAlive = false;
                     terminated.OnNext(Unit.Default);
 
-                    logger.Info(() => $"[{ConnectionId}] Stratum Client Connection Closed");
+                    logger.Debug(() => $"[{ConnectionId}] Stratum Client Connection Closed");
                 }
             });
         }

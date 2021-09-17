@@ -140,7 +140,7 @@ namespace Miningcore.Blockchain.Ethereum
             await EnsureInitialWorkSent(client);
 
             // log association
-            logger.Info(() => $"[{client.ConnectionId}] Authorized worker {workerValue}");
+            logger.Debug(() => $"[{client.ConnectionId}] Authorized worker {workerValue}");
         }
 
         private async Task OnSubmitAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest, CancellationToken ct)
@@ -224,7 +224,7 @@ namespace Miningcore.Blockchain.Ethereum
 
                 // update client stats
                 context.Stats.InvalidShares++;
-                logger.Info(() => $"[{client.ConnectionId}] Share rejected: {ex.Message}");
+                logger.Debug(() => $"[{client.ConnectionId}] Share rejected: {ex.Message}");
 
                 // banning
                 ConsiderBan(client, context, poolConfig.Banning);
