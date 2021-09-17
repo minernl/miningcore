@@ -2,11 +2,8 @@
     "profiles": {
         "MiningCore": {
             "commandName": "Project",
-            "commandLineArgs": "",
-            "nativeDebugging": true,
-            "environmentVariables": {
-                "cfg": "{\"persistence\":{\"postgres\":{\"host\":\"52.156.95.41\",\"port\":5432,\"user\":\"miningcore\",\"password\":\"c#VB?8?h6R\",\"database\":\"miningcore\"}},\"pools\":[{\"id\":\"eth1\",\"address\":\"0x063834a361fc70a3972aee7b05225f29f287458e\",\"rewardRecipients\":[{\"address\":\"0xa706ece9b3492c22cb5313e3413daebcf6ab062d\"}],\"daemons\":[{\"host\":\"cloudflare-eth.com\",\"port\":443}],\"paymentProcessing\":{\"coinbasePassword\":\"2S?]N+z_0>I,7Rc6\"}}]}"
-            }
+            "commandLineArgs": "-c ..\\..\\..\\config.json",
+            "nativeDebugging": true
         },
         "Docker": {
             "commandName": "Docker"
