@@ -322,7 +322,7 @@ namespace Miningcore.Blockchain.Ethereum
             }
 
             var txHashes = new List<string>();
-           
+
             foreach(var balance in balances)
             {
                 try
@@ -355,6 +355,18 @@ namespace Miningcore.Blockchain.Ethereum
 
                     var txHash = await PayoutAsync(balance);
                     txHashes.Add(txHash);
+                }
+                catch(Nethereum.JsonRpc.Client.RpcResponseException ex)
+                {
+                    if(ex.Message.Contains("Insufficient funds", StringComparison.OrdinalIgnoreCase))
+                    {
+                        logger.Warn(ex.Message);
+                    }
+                    else
+                    {
+                        logger.Error(ex);
+                    }
+                    NotifyPayoutFailure(poolConfig.Id, new[] { balance }, ex.Message, null);
                 }
                 catch(Exception ex)
                 {

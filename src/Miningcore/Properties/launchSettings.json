@@ -1,12 +1,12 @@
 {
-  "profiles": {
-    "MiningCore": {
-      "commandName": "Project",
-      "commandLineArgs": "-c ..\\..\\..\\config.json",
-      "nativeDebugging": true
-    },
-    "Docker": {
-      "commandName": "Docker"
+    "profiles": {
+        "MiningCore": {
+            "commandName": "Project",
+            "commandLineArgs": "-c ..\\..\\..\\config.json",
+            "nativeDebugging": true
+        },
+        "Docker": {
+            "commandName": "Docker"
+        }
     }
-  }
 }
