@@ -260,8 +260,8 @@ namespace Miningcore.Payments.PaymentSchemes
 
                 logger.Info(() => $"{FormatUtil.FormatQuantity(shares.Values.Sum())} ({shares.Values.Sum()}) total discarded shares, block {block?.BlockHeight}");
 
-                foreach (var address in addressesByShares)
-                    logger.Info(() => $"{address} = {FormatUtil.FormatQuantity(shares[address])} ({shares[address]}) discarded shares, block {block?.BlockHeight}");
+                //foreach (var address in addressesByShares)
+                //    logger.Info(() => $"{address} = {FormatUtil.FormatQuantity(shares[address])} ({shares[address]}) discarded shares, block {block?.BlockHeight}");
             }
         }
 

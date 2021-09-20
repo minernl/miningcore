@@ -155,7 +155,9 @@ namespace Miningcore.Messaging
         /// </param>
         public void SendMessage<T>(T message, string contract = null)
         {
-            setupSubjectIfNecessary<T>(contract).OnNext(message);
+            var subject = setupSubjectIfNecessary<T>(contract);
+            logger.Info("Current queue count {0} for {1}:{2}", subject.Count(), typeof(T), contract);
+            subject.OnNext(message);
         }
 
         private ISubject<T> setupSubjectIfNecessary<T>(string contract)
