@@ -329,16 +329,12 @@ namespace Miningcore.Blockchain.Ethereum
                 {
                     if(extraConfig.EnableGasLimit)
                     {
-                        var latestBlockResp = await TelemetryUtil.TrackDependency(
-                            () => daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true }),
-                            DependencyType.Daemon, EthCommands.GetBlockByNumber, "GasPrice");
+                        var latestBlockResp = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
                         //var latestBlockResp = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
                         var latestGasFee = latestBlockResp.FirstOrDefault(x => x.Error == null)?.Response.BaseFeePerGas;
 
                         //Check if gas fee is below par range
-                        var lastPaymentDate = await TelemetryUtil.TrackDependency(
-                            () => cf.Run(con => paymentRepo.GetLastPaymentDateAsync(con, balance.PoolId, balance.Address)),
-                            DependencyType.Sql, "GetLastPaymentDate", "GasPrice");
+                        var lastPaymentDate = await cf.Run(con => paymentRepo.GetLastPaymentDateAsync(con, balance.PoolId, balance.Address));
                         var maxGasLimit = lastPaymentDate.HasValue && (clock.UtcNow - lastPaymentDate.Value).TotalHours <= extraConfig.GasLimitToleranceHrs
                             ? extraConfig.GasLimit
                             : extraConfig.MaxGasLimit;
@@ -547,9 +543,7 @@ namespace Miningcore.Blockchain.Ethereum
             // If web3Connection was created, payout from self managed wallet
             if(web3Connection != null)
             {
-                var transaction = await TelemetryUtil.TrackDependency(
-                    () => web3Connection.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount),
-                    DependencyType.Web3, "TransferEtherAndWaitForReceipt", balance.Address);
+                var transaction = await web3Connection.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount);
 
                 if(transaction.HasErrors() != null && (bool) transaction.HasErrors())
                 {
@@ -600,8 +594,7 @@ namespace Miningcore.Blockchain.Ethereum
                 // ToDo test difference
                 // NL: Value = (BigInteger) Math.Floor(balance.Amount * EthereumConstants.Wei),
                 // AX: Value = writeHex(amount),
-                var response = await TelemetryUtil.TrackDependency(() => daemon.ExecuteCmdSingleAsync<string>(logger, EthCommands.SendTx, new[] { request }),
-                    DependencyType.Daemon, EthCommands.SendTx, balance.Address);
+                var response = await daemon.ExecuteCmdSingleAsync<string>(logger, EthCommands.SendTx, new[] { request });
 
                 if(response.Error != null)
                     throw new Exception($"{EthCommands.SendTx} returned error: {response.Error.Message} code {response.Error.Code}");

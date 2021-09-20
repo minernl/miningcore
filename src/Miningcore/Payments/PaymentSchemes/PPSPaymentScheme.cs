@@ -117,7 +117,7 @@ namespace Miningcore.Payments.PaymentSchemes
                 {
                     LogDiscardedShares(poolConfig, block, shareCutOffDate.Value);
 
-                    logger.Info(() => $"Deleting {cutOffCount} discarded shares before {shareCutOffDate.Value:O}");
+                    logger.Debug(() => $"Deleting {cutOffCount} discarded shares before {shareCutOffDate.Value:O}");
                     await shareRepo.DeleteSharesBeforeCreatedAsync(con, tx, poolConfig.Id, shareCutOffDate.Value);
                 }
             }
@@ -220,7 +220,7 @@ namespace Miningcore.Payments.PaymentSchemes
 
             while (true)
             {
-                logger.Info(() => $"Fetching page {currentPage} of discarded shares for pool {poolConfig.Id}, block {block?.BlockHeight}");
+                logger.Debug(() => $"Fetching page {currentPage} of discarded shares for pool {poolConfig.Id}, block {block?.BlockHeight}");
 
                 var  pageTask = shareReadFaultPolicy.Execute(() =>
                     cf.Run(con => shareRepo.ReadSharesBeforeCreatedAsync(con, poolConfig.Id, before, false, pageSize)));

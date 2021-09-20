@@ -33,8 +33,7 @@ namespace Miningcore.Util
 
         public static void TrackDependency(DependencyType type, string name, string data, DateTimeOffset startTime, TimeSpan duration, bool success)
         {
-            //TODO: Disabling dependency telemetry to see if it affected the memory usage
-            //telemetryClient?.TrackDependency(type.ToString(), name, data, startTime, duration, success);
+            telemetryClient?.TrackDependency(type.ToString(), name, data, startTime, duration, success);
         }
 
         public static async Task<T> TrackDependency<T>(Func<Task<T>> operation, DependencyType type, string name, string data)
