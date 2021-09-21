@@ -176,7 +176,8 @@ namespace Miningcore.Mining
 
                 lock(context.VarDiff)
                 {
-                    StartVarDiffIdleUpdate(client, poolEndpoint);
+                    //TODO: Commented out to see if it stops memory leak
+                    //StartVarDiffIdleUpdate(client, poolEndpoint);
 
                     // update it
                     newDiff = varDiffManager.Update(context.VarDiff, context.Difficulty, isIdleUpdate);
