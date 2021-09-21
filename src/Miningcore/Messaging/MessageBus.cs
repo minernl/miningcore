@@ -74,10 +74,9 @@ namespace Miningcore.Messaging
         /// </returns>
         public IObservable<T> Listen<T>(string contract = null)
         {
-            var res = setupSubjectIfNecessary<T>(contract).Skip(1);
-            logger.Info("Listening to {0}:{1}, mbct:{2}", typeof(T), contract, messageBus.Count);
+            logger.Debug("Listening to {0}:{1}", typeof(T), contract);
 
-            return res;
+            return setupSubjectIfNecessary<T>(contract).Skip(1);
         }
 
         /// <summary>
