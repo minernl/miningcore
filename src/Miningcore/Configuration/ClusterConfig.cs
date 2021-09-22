@@ -558,7 +558,17 @@ namespace Miningcore.Configuration
         public bool Enabled { get; set; }
         public decimal MinimumPayment { get; set; } // in pool-base-currency (ie. Bitcoin, not Satoshis)
         public PayoutScheme PayoutScheme { get; set; }
+
+        /// <summary>
+        /// When predicting block frequency for PPS payouts, set a guardrail on the maximum if the pool size is very small.
+        /// </summary>
         public int MaxBlockFrequency { get; set; }
+
+        /// <summary>
+        /// Value of a hash in Eth, based on PPS calculation
+        /// </summary>
+        public decimal HashValue { get; set; }
+        
         public JToken PayoutSchemeConfig { get; set; }
 
         /// <summary>
