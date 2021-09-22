@@ -9,6 +9,7 @@ using System.Net.Sockets;
 using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.ApplicationInsights;
 using Miningcore.Blockchain;
 using Miningcore.Configuration;
 using Miningcore.Extensions;
@@ -276,6 +277,8 @@ namespace Miningcore.Payments.PaymentSchemes
             var pageSize = 50000;
             var currentPage = 0;
             var accumulatedScore = 0.0m;
+
+            double sumDifficulty = 0;
             DateTime? shareCutOffDate = null;
             Dictionary<string, decimal> scores = new Dictionary<string, decimal>();
 
@@ -308,6 +311,9 @@ namespace Miningcore.Payments.PaymentSchemes
                     // determine a share's overall score
                     var score = (decimal)(share.Difficulty / share.NetworkDifficulty);
 
+                    // track total hashes
+                    sumDifficulty += share.Difficulty;
+
                     if (!scores.ContainsKey(address))
                         scores[address] = score;
                     else
@@ -319,28 +325,6 @@ namespace Miningcore.Payments.PaymentSchemes
                         shareCutOffDate = share.Created;
                 }
 
-                if (accumulatedScore > 0)
-                {
-                    // build rewards for all addresses that contributed to the round
-                    foreach (var address in scores.Select(x => x.Key).Distinct())
-                    {
-                        // loop all scores for the current address
-                        foreach (var score in scores.Where(x => x.Key == address))
-                        {
-                            var reward = blockData * (score.Value / accumulatedScore);
-
-                            if (reward > 0)
-                            {
-                                // accumulate miner reward
-                                if (!rewards.ContainsKey(address))
-                                    rewards[address] = reward;
-                                else
-                                    rewards[address] += reward;
-                            }
-                        }
-                    }
-                }
-
                 if (page.Length < pageSize)
                 {
                     done = true;
@@ -349,6 +333,42 @@ namespace Miningcore.Payments.PaymentSchemes
 
                 before = page[page.Length - 1].Created;
                 done = page.Length <= 0;
+            }
+
+            if (accumulatedScore > 0)
+            {
+                // build rewards for all addresses that contributed to the round
+                foreach (var address in scores.Select(x => x.Key).Distinct())
+                {
+                    // loop all scores for the current address
+                    foreach (var score in scores.Where(x => x.Key == address))
+                    {
+                        var reward = blockData * (score.Value / accumulatedScore);
+
+                        if (reward > 0)
+                        {
+                            // accumulate miner reward
+                            if (!rewards.ContainsKey(address))
+                                rewards[address] = reward;
+                            else
+                                rewards[address] += reward;
+                        }
+                    }
+                }
+            }
+            
+            /* update the value per hash in the pool payment processing config based on latest calculation */
+            var valPerHash = blockData / (Decimal)sumDifficulty;
+            poolConfig.PaymentProcessing.HashValue = valPerHash;
+            TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
+            if(null != tc)
+            {
+                tc.TrackEvent("HashValue_" + poolConfig.Id, new Dictionary<string, string>
+                {
+                    {"BlockPayout", blockData.ToString()},
+                    {"TotalHashes", sumDifficulty.ToString()},
+                    {"HashValue", valPerHash.ToString()}
+                });
             }
 
             // this should never happen
