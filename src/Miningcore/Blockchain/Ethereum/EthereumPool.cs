@@ -207,7 +207,7 @@ namespace Miningcore.Blockchain.Ethereum
                 TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
                 if(null != tc)
                 {
-                    tc.GetMetric("ACCEPTED_SHARES").TrackValue(difficulty);
+                    tc.GetMetric("ACCEPT_SHARES").TrackValue(difficulty);
                 }
             }
 
@@ -219,7 +219,7 @@ namespace Miningcore.Blockchain.Ethereum
                 TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
                 if(null != tc)
                 {
-                    tc.GetMetric("REJECTED_SHARES", "Cause").TrackValue(difficulty, ex.Message);
+                    tc.GetMetric("REJECT_SHARES", "Cause").TrackValue(difficulty, ex.Message);
                 }
 
                 // update client stats
