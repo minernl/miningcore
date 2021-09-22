@@ -57,9 +57,9 @@
         <PackageReference Include="JetBrains.Annotations" Version="2019.1.1" />
         <PackageReference Include="MailKit" Version="2.1.5.1" />
         <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="2.3.4" />
-        <PackageReference Include="Microsoft.ApplicationInsights" Version="2.17.0" />
-        <PackageReference Include="Microsoft.ApplicationInsights.DependencyCollector" Version="2.17.0" />
-        <PackageReference Include="Microsoft.ApplicationInsights.NLogTarget" Version="2.17.0" />
+        <PackageReference Include="Microsoft.ApplicationInsights" Version="2.18.0" />
+        <PackageReference Include="Microsoft.ApplicationInsights.DependencyCollector" Version="2.18.0" />
+        <PackageReference Include="Microsoft.ApplicationInsights.NLogTarget" Version="2.18.0" />
         <PackageReference Include="Microsoft.AspNetCore.All" Condition="'$(TargetFramework)' == 'netcoreapp2.1'" />
         <PackageReference Include="Microsoft.AspNetCore.Cors" Version="2.2.0" Condition="'$(TargetFramework)' == 'netcoreapp2.1'" />
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="2.2.0" Condition="'$(TargetFramework)' == 'netcoreapp2.1'" />
@@ -128,14 +128,14 @@
     <Target Name="NativeLibsPublishIncludeWin" BeforeTargets="PrepareForPublish" Condition="'$(IsWindows)' == 'true'">
         <ItemGroup>
             <Libs Include="$(ProjectDir)..\..\libs\runtimes\win-x64\*.dll" />
-            <ContentWithTargetPath Include="@(Libs-&gt;'%(FullPath)')" RelativePath="%(Libs.Identity)" TargetPath="%(Libs.Filename)%(Libs.Extension)" CopyToPublishDirectory="PreserveNewest" />
+            <ContentWithTargetPath Include="@(Libs->'%(FullPath)')" RelativePath="%(Libs.Identity)" TargetPath="%(Libs.Filename)%(Libs.Extension)" CopyToPublishDirectory="PreserveNewest" />
         </ItemGroup>
     </Target>
     <!-- Include library binaries in publish on Linux -->
     <Target Name="NativeLibsPublishIncludeLinux" BeforeTargets="PrepareForPublish" Condition="'$(IsLinux)' == 'true'">
         <ItemGroup>
             <Libs Include="$(OutDir)libmultihash.so;$(OutDir)libcryptonote.so;$(OutDir)libcryptonight.so" />
-            <ContentWithTargetPath Include="@(Libs-&gt;'%(FullPath)')" RelativePath="%(Libs.Identity)" TargetPath="%(Libs.Filename)%(Libs.Extension)" CopyToPublishDirectory="PreserveNewest" />
+            <ContentWithTargetPath Include="@(Libs->'%(FullPath)')" RelativePath="%(Libs.Identity)" TargetPath="%(Libs.Filename)%(Libs.Extension)" CopyToPublishDirectory="PreserveNewest" />
         </ItemGroup>
     </Target>
 </Project>

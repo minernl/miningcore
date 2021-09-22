@@ -140,7 +140,7 @@ namespace Miningcore.Blockchain.Ethereum
             await EnsureInitialWorkSent(client);
 
             // log association
-            logger.Info(() => $"[{client.ConnectionId}] Authorized worker {workerValue}");
+            logger.Debug(() => $"[{client.ConnectionId}] Authorized worker {workerValue}");
         }
 
         private async Task OnSubmitAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest, CancellationToken ct)
@@ -193,7 +193,7 @@ namespace Miningcore.Blockchain.Ethereum
                 // telemetry
                 PublishTelemetry(TelemetryCategory.Share, clock.UtcNow - tsRequest.Timestamp.UtcDateTime, true);
 
-                logger.Info(() => $"[{client.ConnectionId}] Share accepted: D={difficulty} ND={Math.Round(share.NetworkDifficulty / EthereumConstants.Pow2x32, 3)}");
+                logger.Debug(() => $"[{client.ConnectionId}] Share accepted: D={difficulty} ND={Math.Round(share.NetworkDifficulty / EthereumConstants.Pow2x32, 3)}");
                 await EnsureInitialWorkSent(client);
 
                 // update pool stats
@@ -207,7 +207,7 @@ namespace Miningcore.Blockchain.Ethereum
                 TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
                 if(null != tc)
                 {
-                    tc.GetMetric("ACCEPTED_SHARES").TrackValue(difficulty);
+                    tc.GetMetric("ACCEPT_SHARES").TrackValue(difficulty);
                 }
             }
 
@@ -216,14 +216,15 @@ namespace Miningcore.Blockchain.Ethereum
                 // telemetry
                 PublishTelemetry(TelemetryCategory.Share, clock.UtcNow - tsRequest.Timestamp.UtcDateTime, false);
 
-                var tc = TelemetryUtil.GetTelemetryClient();
-                tc?.GetMetric("REJECTED_SHARES").TrackValue(difficulty);
+                TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
+                if(null != tc)
+                {
+                    tc.GetMetric("REJECT_SHARES", "Cause").TrackValue(difficulty, ex.Message);
+                }
 
                 // update client stats
                 context.Stats.InvalidShares++;
-                logger.Info(() => $"[{client.ConnectionId}] Share rejected: {ex.Message}");
-                logger.Error(ex);
-
+                logger.Debug(() => $"[{client.ConnectionId}] Share rejected: {ex.Message}");
                 // banning
                 ConsiderBan(client, context, poolConfig.Banning);
 

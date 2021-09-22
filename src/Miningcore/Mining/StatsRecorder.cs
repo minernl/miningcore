@@ -197,8 +197,7 @@ namespace Miningcore.Mining
 
                 // fetch stats from DB for the last X minutes
                 // MinerNL get stats
-                var result = await readFaultPolicy.ExecuteAsync(() =>
-                    cf.Run(con => shareRepo.GetHashAccumulationBetweenCreatedAsync(con, poolId, timeFrom, currentTimeUtc)));
+                var result = await readFaultPolicy.ExecuteAsync(() => cf.Run(con => shareRepo.GetHashAccumulationBetweenCreatedAsync(con, poolId, timeFrom, currentTimeUtc)));
 
                 var byMiner = result.GroupBy(x => x.Miner).ToArray();
 
@@ -209,9 +208,9 @@ namespace Miningcore.Mining
                     pool.PoolStats.ConnectedMiners = byMiner.Length; // update connected miners
 
                     // Stats calc windows
-                    var TimeFrameBeforeFirstShare = ((result.Min(x => x.FirstShare) - timeFrom).TotalSeconds);
-                    var TimeFrameAfterLastShare = ((currentTimeUtc - result.Max(x => x.LastShare)).TotalSeconds);
-                    var TimeFrameFirstLastShare = (statsWindowsTimeFrame.TotalSeconds - TimeFrameBeforeFirstShare - TimeFrameAfterLastShare);
+                    var timeFrameBeforeFirstShare = ((result.Min(x => x.FirstShare) - timeFrom).TotalSeconds);
+                    var timeFrameAfterLastShare = ((currentTimeUtc - result.Max(x => x.LastShare)).TotalSeconds);
+                    var timeFrameFirstLastShare = (statsWindowsTimeFrame.TotalSeconds - timeFrameBeforeFirstShare - timeFrameAfterLastShare);
 
                     //var poolHashTimeFrame         = Math.Floor(TimeFrameFirstLastShare + (TimeFrameBeforeFirstShare / 3) + (TimeFrameAfterLastShare * 3)) ;
 
@@ -245,7 +244,7 @@ namespace Miningcore.Mining
                 logger.Info(() => $"[{poolId}] Pool hashrate    : {pool.PoolStats.PoolHashrate} hashes/sec");
                 logger.Info(() => $"[{poolId}] Pool shares      : {pool.PoolStats.SharesPerSecond} shares/sec");
 
-                TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
+                var tc = TelemetryUtil.GetTelemetryClient();
                 if(null != tc)
                 {
                     tc.GetMetric("PoolHashRate_" + poolId).TrackValue(pool.PoolStats.PoolHashrate);
@@ -268,19 +267,14 @@ namespace Miningcore.Mining
                 });
 
                 // retrieve most recent miner/worker hashrate sample, if non-zero
-                var previousMinerWorkerHashrates = await cf.Run(async (con) =>
-                {
-                    return await statsRepo.GetPoolMinerWorkerHashratesAsync(con, poolId);
-                });
+                var previousMinerWorkerHashrates = await cf.Run(async (con) => await statsRepo.GetPoolMinerWorkerHashratesAsync(con, poolId));
 
-                string buildKey(string miner, string worker = null)
+                string BuildKey(string miner, string worker = null)
                 {
                     return !string.IsNullOrEmpty(worker) ? $"{miner}:{worker}" : miner;
                 }
 
-                var previousNonZeroMinerWorkers = new HashSet<string>(
-                    previousMinerWorkerHashrates.Select(x => buildKey(x.Miner, x.Worker)));
-
+                var previousNonZeroMinerWorkers = new HashSet<string>(previousMinerWorkerHashrates.Select(x => BuildKey(x.Miner, x.Worker)));
                 var currentNonZeroMinerWorkers = new HashSet<string>();
 
                 if(result.Length == 0)
@@ -315,12 +309,14 @@ namespace Miningcore.Mining
                                 logger.Info(() => $"[{poolId}] Reset performance stats for miner {stats.Miner}.{stats.Worker}");
                         }
                     });
+                    stopWatch.Stop();
+                    logger.Info(() => $"[{poolId}] Statistics updated in {stopWatch.Elapsed.Seconds}s");
                     logger.Info(() => "--------------------------------------------");
                     continue;
                 };
 
                 // MinerNL calculate & update miner, worker hashrates
-                Parallel.ForEach(byMiner, async minerHashes =>
+                foreach(var minerHashes in byMiner)
                 {
                     double minerTotalHashrate = 0;
 
@@ -329,7 +325,7 @@ namespace Miningcore.Mining
                         stats.Miner = minerHashes.Key;
 
                         // book keeping
-                        currentNonZeroMinerWorkers.Add(buildKey(stats.Miner));
+                        currentNonZeroMinerWorkers.Add(BuildKey(stats.Miner));
 
                         foreach(var item in minerHashes)
                         {
@@ -340,26 +336,26 @@ namespace Miningcore.Mining
                             stats.SharesPerSecond = 0;
 
                             // miner stats calculation windows
-                            var TimeFrameBeforeFirstShare = ((minerHashes.Min(x => x.FirstShare) - timeFrom).TotalSeconds);
-                            var TimeFrameAfterLastShare = ((currentTimeUtc - minerHashes.Max(x => x.LastShare)).TotalSeconds);
-                            var TimeFrameFirstLastShare = (statsWindowsTimeFrame.TotalSeconds - TimeFrameBeforeFirstShare - TimeFrameAfterLastShare);
+                            var timeFrameBeforeFirstShare = ((minerHashes.Min(x => x.FirstShare) - timeFrom).TotalSeconds);
+                            var timeFrameAfterLastShare = ((currentTimeUtc - minerHashes.Max(x => x.LastShare)).TotalSeconds);
+                            var timeFrameFirstLastShare = (statsWindowsTimeFrame.TotalSeconds - timeFrameBeforeFirstShare - timeFrameAfterLastShare);
 
                             var minerHashTimeFrame = statsWindowsTimeFrame.TotalSeconds;
 
-                            if(TimeFrameBeforeFirstShare >= (statsWindowsTimeFrame.TotalSeconds * 0.1))
-                                minerHashTimeFrame = Math.Floor(statsWindowsTimeFrame.TotalSeconds - TimeFrameBeforeFirstShare);
+                            if(timeFrameBeforeFirstShare >= (statsWindowsTimeFrame.TotalSeconds * 0.1))
+                                minerHashTimeFrame = Math.Floor(statsWindowsTimeFrame.TotalSeconds - timeFrameBeforeFirstShare);
 
-                            if(TimeFrameAfterLastShare >= (statsWindowsTimeFrame.TotalSeconds * 0.1))
-                                minerHashTimeFrame = Math.Floor(statsWindowsTimeFrame.TotalSeconds + TimeFrameAfterLastShare);
+                            if(timeFrameAfterLastShare >= (statsWindowsTimeFrame.TotalSeconds * 0.1))
+                                minerHashTimeFrame = Math.Floor(statsWindowsTimeFrame.TotalSeconds + timeFrameAfterLastShare);
 
-                            if((TimeFrameBeforeFirstShare >= (statsWindowsTimeFrame.TotalSeconds * 0.1)) &&
-                               (TimeFrameAfterLastShare >= (statsWindowsTimeFrame.TotalSeconds * 0.1)))
-                                minerHashTimeFrame = (statsWindowsTimeFrame.TotalSeconds - TimeFrameBeforeFirstShare + TimeFrameAfterLastShare);
+                            if((timeFrameBeforeFirstShare >= (statsWindowsTimeFrame.TotalSeconds * 0.1)) &&
+                               (timeFrameAfterLastShare >= (statsWindowsTimeFrame.TotalSeconds * 0.1)))
+                                minerHashTimeFrame = (statsWindowsTimeFrame.TotalSeconds - timeFrameBeforeFirstShare + timeFrameAfterLastShare);
 
                             // let's not update hashrate if minerHashTimeFrame is too small, less than 10% of StatsWindowsTimeFrame. Otherwise, hashrate will be too high.
                             if(minerHashTimeFrame < statsWindowsTimeFrame.TotalSeconds * 0.1)
                             {
-                                logger.Info(() => $"minerHashTimeFrame is too small. Skip calculate minerHashrate. [{poolId}] Miner: {stats.Miner}");
+                                logger.Info(() => $"MinerHashTimeFrame is too small. Skip calculate minerHashrate. [{poolId}] Miner: {stats.Miner}");
                                 continue;
                             };
 
@@ -383,16 +379,16 @@ namespace Miningcore.Mining
 
                             // broadcast
                             messageBus.NotifyHashrateUpdated(pool.Config.Id, minerHashrate, stats.Miner, stats.Worker);
-                            logger.Info(() => $"[{poolId}] Miner: {stats.Miner}.{stats.Worker} | Hashrate: {minerHashrate} " +
+                            logger.Debug(() => $"[{poolId}] Miner: {stats.Miner}.{stats.Worker} | Hashrate: {minerHashrate} " +
                                               $"| HashTimeFrame : {minerHashTimeFrame} | Shares per sec: {stats.SharesPerSecond}");
                             // book keeping
-                            currentNonZeroMinerWorkers.Add(buildKey(stats.Miner, stats.Worker));
+                            currentNonZeroMinerWorkers.Add(BuildKey(stats.Miner, stats.Worker));
                         }
                     });
 
                     messageBus.NotifyHashrateUpdated(pool.Config.Id, minerTotalHashrate, stats.Miner, null);
-                    logger.Info(() => $"[{poolId}] Total miner hashrate: {stats.Miner} | {minerTotalHashrate}");
-                });
+                    logger.Debug(() => $"[{poolId}] Total miner hashrate: {stats.Miner} | {minerTotalHashrate}");
+                }
                 // MinerNL end calculate & update miner, worker hashrates
                 stopWatch.Stop();
                 logger.Info(() => $"[{poolId}] Statistics updated in {stopWatch.Elapsed.Seconds}s");

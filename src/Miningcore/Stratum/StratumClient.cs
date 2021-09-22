@@ -99,7 +99,7 @@ namespace Miningcore.Stratum
 
                     // create stream
                     networkStream = new NetworkStream(socket, true);
-                    logger.Info(() => $"[{ConnectionId}] Accepting connection from {RemoteEndpoint.Address}:{RemoteEndpoint.Port} ...");
+                    logger.Debug(() => $"[{ConnectionId}] Accepting connection from {RemoteEndpoint.Address}:{RemoteEndpoint.Port} ...");
 
                     using(var disposables = new CompositeDisposable(networkStream, cts))
                     {
@@ -112,11 +112,11 @@ namespace Miningcore.Stratum
                             await sslStream.AuthenticateAsServerAsync(cert, false, SslProtocols.Tls11 | SslProtocols.Tls12, false);
                             networkStream = sslStream;
 
-                            logger.Info(() => $"[{ConnectionId}] {sslStream.SslProtocol.ToString().ToUpper()}-{sslStream.CipherAlgorithm.ToString().ToUpper()} Connection from {RemoteEndpoint.Address}:{RemoteEndpoint.Port} accepted on port {endpoint.IPEndPoint.Port}");
+                            logger.Debug(() => $"[{ConnectionId}] {sslStream.SslProtocol.ToString().ToUpper()}-{sslStream.CipherAlgorithm.ToString().ToUpper()} Connection from {RemoteEndpoint.Address}:{RemoteEndpoint.Port} accepted on port {endpoint.IPEndPoint.Port}");
                         }
                         else
                         {
-                            logger.Info(() => $"[{ConnectionId}] Connection from {RemoteEndpoint.Address}:{RemoteEndpoint.Port} accepted on port {endpoint.IPEndPoint.Port}");
+                            logger.Debug(() => $"[{ConnectionId}] Connection from {RemoteEndpoint.Address}:{RemoteEndpoint.Port} accepted on port {endpoint.IPEndPoint.Port}");
                         }
 
                         // Async I/O loop(s)
@@ -158,7 +158,7 @@ namespace Miningcore.Stratum
                     IsAlive = false;
                     terminated.OnNext(Unit.Default);
 
-                    logger.Info(() => $"[{ConnectionId}] Stratum Client Connection Closed");
+                    logger.Debug(() => $"[{ConnectionId}] Stratum Client Connection Closed");
                 }
             });
         }
