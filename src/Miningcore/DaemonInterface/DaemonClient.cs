@@ -79,8 +79,7 @@ namespace Miningcore.DaemonInterface
 
         protected void PublishTelemetry(TelemetryCategory cat, TimeSpan elapsed, string info, bool? success = null, string error = null)
         {
-            //TODO: Commented out to see if it stops memory leak
-            //messageBus.SendMessage(new TelemetryEvent(server, poolId, cat, info, elapsed, success));
+            messageBus.SendMessage(new TelemetryEvent(server, poolId, cat, info, elapsed, success));
         }
 
         #region API-Surface

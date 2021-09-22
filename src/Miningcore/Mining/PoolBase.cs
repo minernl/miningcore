@@ -145,8 +145,7 @@ namespace Miningcore.Mining
 
         protected void PublishTelemetry(TelemetryCategory cat, TimeSpan elapsed, bool? success = null)
         {
-            //TODO: Commented out to see if it stops memory leak
-            //messageBus.SendMessage(new TelemetryEvent(clusterConfig.ClusterName ?? poolConfig.PoolName, poolConfig.Id, cat, elapsed, success));
+            messageBus.SendMessage(new TelemetryEvent(clusterConfig.ClusterName ?? poolConfig.PoolName, poolConfig.Id, cat, elapsed, success));
         }
 
         #region VarDiff
