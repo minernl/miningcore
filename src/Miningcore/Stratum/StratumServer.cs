@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Security;
 using System.Net.Sockets;
 using System.Reactive;
 using System.Reflection;
@@ -42,7 +41,7 @@ namespace Miningcore.Stratum
         {
             if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                ignoredSocketErrors = new HashSet<int>
+                IgnoredSocketErrors = new HashSet<int>
                 {
                     (int) SocketError.ConnectionReset,
                     (int) SocketError.ConnectionAborted,
@@ -53,7 +52,7 @@ namespace Miningcore.Stratum
             else if(RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 // see: http://www.virtsync.com/c-error-codes-include-errno
-                ignoredSocketErrors = new HashSet<int>
+                IgnoredSocketErrors = new HashSet<int>
                 {
                     104, // ECONNRESET
                     125, // ECANCELED
@@ -64,9 +63,9 @@ namespace Miningcore.Stratum
             }
         }
 
-        protected readonly Dictionary<string, StratumClient> clients = new Dictionary<string, StratumClient>();
-        protected static readonly ConcurrentDictionary<string, X509Certificate2> certs = new ConcurrentDictionary<string, X509Certificate2>();
-        protected static readonly HashSet<int> ignoredSocketErrors;
+        protected readonly ConcurrentDictionary<string, StratumClient> clients = new();
+        protected static readonly ConcurrentDictionary<string, X509Certificate2> Certs = new();
+        protected static readonly HashSet<int> IgnoredSocketErrors;
         protected static readonly MethodBase StreamWriterCtor = typeof(StreamWriter).GetConstructor(new[] { typeof(Stream), typeof(Encoding), typeof(int), typeof(bool) });
 
         protected readonly IComponentContext ctx;
@@ -162,7 +161,7 @@ namespace Miningcore.Stratum
 
             if(port.PoolEndpoint.Tls)
             {
-                if(!certs.TryGetValue(port.PoolEndpoint.TlsPfxFile, out cert))
+                if(!Certs.TryGetValue(port.PoolEndpoint.TlsPfxFile, out cert))
                     cert = AddCert(port);
             }
 
@@ -192,25 +191,16 @@ namespace Miningcore.Stratum
         protected virtual void RegisterClient(StratumClient client, string connectionId)
         {
             Contract.RequiresNonNull(client, nameof(client));
-
-            lock(clients)
-            {
-                clients[connectionId] = client;
-            }
+            clients.TryAdd(connectionId, client);
         }
 
         protected virtual void UnregisterClient(StratumClient client)
         {
             Contract.RequiresNonNull(client, nameof(client));
 
-            var subscriptionId = client.ConnectionId;
-
-            if(!string.IsNullOrEmpty(subscriptionId))
+            if(!string.IsNullOrEmpty(client.ConnectionId))
             {
-                lock(clients)
-                {
-                    clients.Remove(subscriptionId);
-                }
+                clients.TryRemove(client.ConnectionId, out _);
             }
         }
 
@@ -243,7 +233,7 @@ namespace Miningcore.Stratum
             switch(ex)
             {
                 case SocketException sockEx:
-                    if(!ignoredSocketErrors.Contains(sockEx.ErrorCode))
+                    if(!IgnoredSocketErrors.Contains(sockEx.ErrorCode))
                         logger.Error(() => $"[{client.ConnectionId}] Connection error state: {ex}");
                     break;
 
@@ -324,7 +314,7 @@ namespace Miningcore.Stratum
             try
             {
                 var tlsCert = port.PoolEndpoint.TlsPfx ?? new X509Certificate2(port.PoolEndpoint.TlsPfxFile);
-                certs.TryAdd(port.PoolEndpoint.TlsPfxFile, tlsCert);
+                Certs.TryAdd(port.PoolEndpoint.TlsPfxFile, tlsCert);
                 return tlsCert;
             }
 
@@ -337,12 +327,7 @@ namespace Miningcore.Stratum
 
         protected void ForEachClient(Action<StratumClient> action)
         {
-            StratumClient[] tmp;
-
-            lock(clients)
-            {
-                tmp = clients.Values.ToArray();
-            }
+            var tmp = clients.Values.ToArray();
 
             foreach(var client in tmp)
             {
@@ -360,17 +345,11 @@ namespace Miningcore.Stratum
 
         protected IEnumerable<Task> ForEachClient(Func<StratumClient, Task> func)
         {
-            StratumClient[] tmp;
+            var tmp = clients.Values.ToArray();
 
-            lock(clients)
-            {
-                tmp = clients.Values.ToArray();
-            }
-
-            return tmp.Select(x => func(x));
+            return tmp.Select(func);
         }
 
-        protected abstract Task OnRequestAsync(StratumClient client,
-            Timestamped<JsonRpcRequest> request, CancellationToken ct);
+        protected abstract Task OnRequestAsync(StratumClient client, Timestamped<JsonRpcRequest> request, CancellationToken ct);
     }
 }
