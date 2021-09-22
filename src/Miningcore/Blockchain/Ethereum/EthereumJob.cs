@@ -43,13 +43,17 @@ namespace Miningcore.Blockchain.Ethereum
             {
                 nonces = new HashSet<string>(new[] { nonceLower });
                 workerNonces[worker] = nonces;
+                logger.Info("New worker share. val={0},wor={1}", nonceLower, worker.ConnectionId);
             }
-
             else
             {
                 if(nonces.Contains(nonceLower))
+                {
+                    logger.Info("Duplicate worker share received. val={0},cnt={1},wor={2}", nonceLower, nonces.Count, worker.ConnectionId);
                     throw new StratumException(StratumError.MinusOne, "duplicate share");
+                }
 
+                logger.Info("Existing worker share received. val={0},cnt={1},wor={2}", nonceLower, nonces.Count, worker.ConnectionId);
                 nonces.Add(nonceLower);
             }
         }
