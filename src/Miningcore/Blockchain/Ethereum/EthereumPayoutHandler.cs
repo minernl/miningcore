@@ -64,6 +64,7 @@ namespace Miningcore.Blockchain.Ethereum
         private EthereumPoolPaymentProcessingConfigExtra extraConfig;
         private Web3 web3Connection;
         private bool isParity = true;
+        private ulong latestGasFee;
 
         protected override string LogCategory => "Ethereum Payout Handler";
 
@@ -131,7 +132,9 @@ namespace Miningcore.Blockchain.Ethereum
 
                 // get latest block
                 var latestBlockResponses = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
-                var latestBlockHeight = latestBlockResponses.First(x => x.Error == null && x.Response?.Height != null).Response.Height.Value;
+                var latestBlockResponse = latestBlockResponses.First(x => x.Error == null && x.Response?.Height != null).Response;
+                var latestBlockHeight = latestBlockResponse.Height.Value;
+                latestGasFee = latestBlockResponse.BaseFeePerGas;
 
                 // execute batch
                 var blockInfos = await FetchBlocks(blockCache, page.Select(block => (long) block.BlockHeight).ToArray());
@@ -329,16 +332,15 @@ namespace Miningcore.Blockchain.Ethereum
                 {
                     if(extraConfig.EnableGasLimit)
                     {
-                        var latestBlockResp = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
                         //var latestBlockResp = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
-                        var latestGasFee = latestBlockResp.FirstOrDefault(x => x.Error == null)?.Response.BaseFeePerGas;
+                        //var latestGasFee = latestBlockResp.FirstOrDefault(x => x.Error == null)?.Response.BaseFeePerGas;
 
                         //Check if gas fee is below par range
                         var lastPaymentDate = await cf.Run(con => paymentRepo.GetLastPaymentDateAsync(con, balance.PoolId, balance.Address));
                         var maxGasLimit = lastPaymentDate.HasValue && (clock.UtcNow - lastPaymentDate.Value).TotalHours <= extraConfig.GasLimitToleranceHrs
                             ? extraConfig.GasLimit
                             : extraConfig.MaxGasLimit;
-                        if(latestGasFee > maxGasLimit)
+                        if(latestGasFee == 0 || latestGasFee > maxGasLimit)
                         {
                             logger.Warn(() => $"[{LogCategory}] Payout deferred until next time. Latest gas fee is above par limit " +
                                               $"({latestGasFee}>{maxGasLimit}), lastPmt={lastPaymentDate}, address={balance.Address}");
