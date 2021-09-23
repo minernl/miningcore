@@ -353,15 +353,7 @@ namespace Miningcore.Blockchain.Ethereum
 
                 if(context.IsSubscribed && context.IsAuthorized && context.IsInitialWorkSent)
                 {
-                    // check alive
-                    var lastActivityAgo = clock.UtcNow - context.LastActivity;
-
-                    if(poolConfig.ClientConnectionTimeout > 0 && lastActivityAgo.TotalSeconds > poolConfig.ClientConnectionTimeout)
-                    {
-                        logger.Info(() => $"[{client.ConnectionId}] Booting zombie-worker (idle-timeout exceeded)");
-                        DisconnectClient(client);
-                        return;
-                    }
+                    if(CloseIfDead(client, context)) return;
 
                     // varDiff: if the client has a pending difficulty change, apply it now
                     if(context.ApplyPendingDifficulty())
