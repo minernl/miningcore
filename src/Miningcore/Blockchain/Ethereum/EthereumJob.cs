@@ -49,7 +49,7 @@ namespace Miningcore.Blockchain.Ethereum
                     try
                     {
                         var res = workerNonces.TryRemove(worker, out var staleNonces);
-                        logger.Info(() => $"[{worker.ConnectionId}] Worker nonces removed. ncnt={staleNonces.Count},success={res}");
+                        logger.Debug(() => $"[{worker.ConnectionId}] Worker nonces removed. ncnt={staleNonces.Count},success={res}");
                     }
                     catch(Exception ex)
                     {
