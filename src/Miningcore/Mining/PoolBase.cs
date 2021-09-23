@@ -228,6 +228,22 @@ namespace Miningcore.Mining
 
         #endregion // VarDiff
 
+        protected bool CloseIfDead(StratumClient client, WorkerContextBase context)
+        {
+            var lastActivityAgo = clock.Now - context.LastActivity;
+
+            if(poolConfig.ClientConnectionTimeout > 0 &&
+               lastActivityAgo.TotalSeconds > poolConfig.ClientConnectionTimeout)
+            {
+                logger.Info(() => $"[[{client.ConnectionId}] Booting zombie-worker (idle-timeout exceeded)");
+                DisconnectClient(client);
+
+                return true;
+            }
+
+            return false;
+        }
+
         protected void SetupBanning(ClusterConfig clusterConfig)
         {
             if(poolConfig.Banning?.Enabled == true)

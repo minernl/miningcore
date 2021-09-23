@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Numerics;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Miningcore.Crypto.Hashing.Ethash;
@@ -27,8 +29,7 @@ namespace Miningcore.Blockchain.Ethereum
             blockTarget = new uint256(target.HexToReverseByteArray());
         }
 
-        private readonly Dictionary<StratumClient, HashSet<string>> workerNonces =
-            new Dictionary<StratumClient, HashSet<string>>();
+        private readonly ConcurrentDictionary<StratumClient, HashSet<string>> workerNonces = new();
 
         public string Id { get; }
         public EthereumBlockTemplate BlockTemplate { get; }
@@ -42,13 +43,29 @@ namespace Miningcore.Blockchain.Ethereum
             if(!workerNonces.TryGetValue(worker, out var nonces))
             {
                 nonces = new HashSet<string>(new[] { nonceLower });
-                workerNonces[worker] = nonces;
+                workerNonces.TryAdd(worker, nonces);
+                worker.Terminated.Where(_ => !worker.IsAlive).Subscribe(_ =>
+                {
+                    try
+                    {
+                        var res = workerNonces.TryRemove(worker, out var staleNonces);
+                        logger.Info(() => $"[{worker.ConnectionId}] Worker nonces removed. ncnt={staleNonces.Count},success={res}");
+                    }
+                    catch(Exception ex)
+                    {
+                        logger.Error(ex);
+                    }
+                }, ex =>
+                {
+                    logger.Error(ex, nameof(RegisterNonce));
+                });
             }
-
             else
             {
                 if(nonces.Contains(nonceLower))
+                {
                     throw new StratumException(StratumError.MinusOne, "duplicate share");
+                }
 
                 nonces.Add(nonceLower);
             }
@@ -58,10 +75,7 @@ namespace Miningcore.Blockchain.Ethereum
             StratumClient worker, string nonce, EthashFull ethash, CancellationToken ct)
         {
             // duplicate nonce?
-            lock(workerNonces)
-            {
-                RegisterNonce(worker, nonce);
-            }
+            RegisterNonce(worker, nonce);
 
             // assemble full-nonce
             var context = worker.ContextAs<EthereumWorkerContext>();
