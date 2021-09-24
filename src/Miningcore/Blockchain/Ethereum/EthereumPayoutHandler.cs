@@ -334,7 +334,8 @@ namespace Miningcore.Blockchain.Ethereum
                         var latestGasFee = latestBlockResp.FirstOrDefault(x => x.Error == null)?.Response.BaseFeePerGas;
 
                         //Check if gas fee is below par range
-                        var lastPaymentDate = await cf.Run(con => paymentRepo.GetLastPaymentDateAsync(con, balance.PoolId, balance.Address));
+                        //var lastPaymentDate = await cf.Run(con => paymentRepo.GetLastPaymentDateAsync(con, balance.PoolId, balance.Address));
+                        var lastPaymentDate = balance.PaidDate;
                         var maxGasLimit = lastPaymentDate.HasValue && (clock.UtcNow - lastPaymentDate.Value).TotalHours <= extraConfig.GasLimitToleranceHrs
                             ? extraConfig.GasLimit
                             : extraConfig.MaxGasLimit;
