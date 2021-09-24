@@ -123,6 +123,8 @@
             },
             "paymentProcessing": {
                 "enabled": true,
+                "balanceUpdateEnabled": true,
+                "payoutEnabled": true,
                 "minimumPayment": "0.000044",
                 "minimumPaymentToPaymentId": 5.0,
                 "payoutScheme": "PPS3",

@@ -64,7 +64,6 @@ namespace Miningcore.Blockchain.Ethereum
         private EthereumPoolPaymentProcessingConfigExtra extraConfig;
         private Web3 web3Connection;
         private bool isParity = true;
-        private ulong latestGasFee;
 
         protected override string LogCategory => "Ethereum Payout Handler";
 
@@ -132,9 +131,7 @@ namespace Miningcore.Blockchain.Ethereum
 
                 // get latest block
                 var latestBlockResponses = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
-                var latestBlockResponse = latestBlockResponses.First(x => x.Error == null && x.Response?.Height != null).Response;
-                var latestBlockHeight = latestBlockResponse.Height.Value;
-                latestGasFee = latestBlockResponse.BaseFeePerGas;
+                var latestBlockHeight = latestBlockResponses.First(x => x.Error == null && x.Response?.Height != null).Response.Height.Value;
 
                 // execute batch
                 var blockInfos = await FetchBlocks(blockCache, page.Select(block => (long) block.BlockHeight).ToArray());
@@ -324,7 +321,10 @@ namespace Miningcore.Blockchain.Ethereum
                 return;
             }
 
+            var latestBlockResp = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
+            var latestGasFee = latestBlockResp.FirstOrDefault(x => x.Error == null)?.Response.BaseFeePerGas;
             var txHashes = new List<string>();
+            var logInfo = string.Empty;
 
             foreach(var balance in balances)
             {
@@ -332,15 +332,12 @@ namespace Miningcore.Blockchain.Ethereum
                 {
                     if(extraConfig.EnableGasLimit)
                     {
-                        //var latestBlockResp = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
-                        //var latestGasFee = latestBlockResp.FirstOrDefault(x => x.Error == null)?.Response.BaseFeePerGas;
-
                         //Check if gas fee is below par range
                         var lastPaymentDate = await cf.Run(con => paymentRepo.GetLastPaymentDateAsync(con, balance.PoolId, balance.Address));
                         var maxGasLimit = lastPaymentDate.HasValue && (clock.UtcNow - lastPaymentDate.Value).TotalHours <= extraConfig.GasLimitToleranceHrs
                             ? extraConfig.GasLimit
                             : extraConfig.MaxGasLimit;
-                        if(latestGasFee == 0 || latestGasFee > maxGasLimit)
+                        if(latestGasFee > maxGasLimit)
                         {
                             logger.Warn(() => $"[{LogCategory}] Payout deferred until next time. Latest gas fee is above par limit " +
                                               $"({latestGasFee}>{maxGasLimit}), lastPmt={lastPaymentDate}, address={balance.Address}");
@@ -351,6 +348,7 @@ namespace Miningcore.Blockchain.Ethereum
                                           $"lastPmt={lastPaymentDate}, address={balance.Address}");
                     }
 
+                    logInfo = $", address={balance.Address}";
                     var txHash = await PayoutAsync(balance);
                     txHashes.Add(txHash);
                 }
@@ -358,17 +356,17 @@ namespace Miningcore.Blockchain.Ethereum
                 {
                     if(ex.Message.Contains("Insufficient funds", StringComparison.OrdinalIgnoreCase))
                     {
-                        logger.Warn(ex.Message);
+                        logger.Warn($"[{LogCategory}] {ex.Message}{logInfo}");
                     }
                     else
                     {
-                        logger.Error(ex);
+                        logger.Error(ex, $"[{LogCategory}] {ex.Message}{logInfo}");
                     }
                     NotifyPayoutFailure(poolConfig.Id, new[] { balance }, ex.Message, null);
                 }
                 catch(Exception ex)
                 {
-                    logger.Error(ex);
+                    logger.Error(ex, $"[{LogCategory}] {ex.Message}{logInfo}");
                     NotifyPayoutFailure(poolConfig.Id, new[] { balance }, ex.Message, null);
                 }
             }

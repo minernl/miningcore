@@ -91,8 +91,8 @@ namespace Miningcore.Payments
                             // resolve payout scheme
                             var scheme = ctx.ResolveKeyed<IPayoutScheme>(pool.PaymentProcessing.PayoutScheme);
 
-                            await UpdatePoolBalancesAsync(pool, handler, scheme);
-                            await PayoutPoolBalancesAsync(pool, handler);
+                            if(pool.PaymentProcessing.BalanceUpdateEnabled) await UpdatePoolBalancesAsync(pool, handler, scheme);
+                            if(pool.PaymentProcessing.PayoutEnabled) await PayoutPoolBalancesAsync(pool, handler);
                         }
 
                         catch(InvalidOperationException ex)
