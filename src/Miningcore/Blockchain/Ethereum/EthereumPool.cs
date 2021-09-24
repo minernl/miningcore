@@ -197,18 +197,15 @@ namespace Miningcore.Blockchain.Ethereum
                 await EnsureInitialWorkSent(client);
 
                 // update pool stats
-                if (share.IsBlockCandidate)
+                if(share.IsBlockCandidate)
                     poolStats.LastPoolBlockTime = clock.UtcNow;
 
                 // update client stats
                 context.Stats.ValidShares++;
                 await UpdateVarDiffAsync(client);
 
-                TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
-                if(null != tc)
-                {
-                    tc.GetMetric("ACCEPT_SHARES").TrackValue(difficulty);
-                }
+                var tc = TelemetryUtil.GetTelemetryClient();
+                tc?.GetMetric("ACCEPT_SHARES").TrackValue(difficulty);
             }
 
             catch(StratumException ex)
@@ -216,16 +213,12 @@ namespace Miningcore.Blockchain.Ethereum
                 // telemetry
                 PublishTelemetry(TelemetryCategory.Share, clock.UtcNow - tsRequest.Timestamp.UtcDateTime, false);
 
-                TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
-                if(null != tc)
-                {
-                    tc.GetMetric("REJECT_SHARES", "Cause").TrackValue(difficulty, ex.Message);
-                }
+                var tc = TelemetryUtil.GetTelemetryClient();
+                tc?.GetMetric("REJECT_SHARES", "Cause").TrackValue(difficulty, ex.Message);
 
                 // update client stats
                 context.Stats.InvalidShares++;
                 logger.Debug(() => $"[{client.ConnectionId}] Share rejected: {ex.Message}");
-
                 // banning
                 ConsiderBan(client, context, poolConfig.Banning);
 
@@ -255,8 +248,8 @@ namespace Miningcore.Blockchain.Ethereum
             }
         }
 
-		// >>>>>>>>>>>>>>>>>>> Start new
-       // Stratum-Proxy
+        // >>>>>>>>>>>>>>>>>>> Start new
+        // Stratum-Proxy
         private async Task OnSubmitLoginAsync(StratumClient client, Timestamped<JsonRpcRequest> tsRequest)
         {
             var request = tsRequest.Value;
@@ -336,7 +329,7 @@ namespace Miningcore.Blockchain.Ethereum
             await client.RespondAsync(true, request.Id);
 
         }
-		// <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< end new
+        // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< end new
 
         protected virtual Task OnNewJobAsync(object jobParams)
         {
@@ -353,15 +346,7 @@ namespace Miningcore.Blockchain.Ethereum
 
                 if(context.IsSubscribed && context.IsAuthorized && context.IsInitialWorkSent)
                 {
-                    // check alive
-                    var lastActivityAgo = clock.UtcNow - context.LastActivity;
-
-                    if(poolConfig.ClientConnectionTimeout > 0 && lastActivityAgo.TotalSeconds > poolConfig.ClientConnectionTimeout)
-                    {
-                        logger.Info(() => $"[{client.ConnectionId}] Booting zombie-worker (idle-timeout exceeded)");
-                        DisconnectClient(client);
-                        return;
-                    }
+                    if(CloseIfDead(client, context)) return;
 
                     // varDiff: if the client has a pending difficulty change, apply it now
                     if(context.ApplyPendingDifficulty())
