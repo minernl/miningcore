@@ -556,6 +556,8 @@ namespace Miningcore.Configuration
     public partial class PoolPaymentProcessingConfig
     {
         public bool Enabled { get; set; }
+        public bool BalanceUpdateEnabled { get; set; }
+        public bool PayoutEnabled { get; set; }
         public decimal MinimumPayment { get; set; } // in pool-base-currency (ie. Bitcoin, not Satoshis)
         public PayoutScheme PayoutScheme { get; set; }
 
@@ -568,7 +570,7 @@ namespace Miningcore.Configuration
         /// Value of a hash in Eth, based on PPS calculation
         /// </summary>
         public decimal HashValue { get; set; }
-        
+
         public JToken PayoutSchemeConfig { get; set; }
 
         /// <summary>
