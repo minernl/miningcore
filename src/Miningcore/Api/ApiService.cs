@@ -179,7 +179,6 @@ namespace Miningcore.Api
                     app.UseRouting();
                     app.UseAuthentication();
                     app.UseAuthorization();
-                    logger.Error("called use authentication");
                     app.UseEndpoints(endpoints => {
                         endpoints.MapDefaultControllerRoute();
                         endpoints.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");
