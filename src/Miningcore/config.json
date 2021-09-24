@@ -61,7 +61,11 @@
                 }
             ],
             "ipWhitelist": []
-        }
+        },
+        "oidcValidateAudience":  false,
+        "oidcValidAudience": "",
+        "oidcValidIssuer": "https://login-int.norton.com/sso/oidc1/token",
+        "oidcMetadataAddress": "https://login-int.norton.com/sso/oidc1/token/.well-known/openid-configuration"
     },
     "pools": [
         {
@@ -123,8 +127,6 @@
             },
             "paymentProcessing": {
                 "enabled": true,
-                "balanceUpdateEnabled": true,
-                "payoutEnabled": true,
                 "minimumPayment": "0.000044",
                 "minimumPaymentToPaymentId": 5.0,
                 "payoutScheme": "PPS3",
@@ -140,7 +142,7 @@
                 "enableGasLimit": true,
                 "gasLimit": 50000000000,
                 "gasLimitToleranceHrs": 168,
-                "maxGasLimit": 60000000000
+                "maxGasLimit": 100000000000
             }
         }
     ]
