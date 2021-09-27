@@ -54,6 +54,23 @@ namespace Miningcore.Util
             }
         }
 
+        public static async Task TrackDependency(Func<Task> operation, DependencyType type, string name, string data)
+        {
+            var success = false;
+            var startTime = DateTime.UtcNow;
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            try
+            {
+                await operation();
+                success = true;
+            }
+            finally
+            {
+                timer.Stop();
+                TrackDependency(type, name, data, startTime, timer.Elapsed, success);
+            }
+        }
+
         public static void cleanup()
         {
             if(null != telemetryClient)
