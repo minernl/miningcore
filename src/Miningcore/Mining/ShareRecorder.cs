@@ -30,7 +30,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
-using Microsoft.ApplicationInsights;
 using Miningcore.Configuration;
 using Miningcore.Extensions;
 using Miningcore.Messaging;
@@ -110,31 +109,28 @@ namespace Miningcore.Mining
         {
             try
             {
-                await cf.RunTx(async (con, tx) =>
+                await TelemetryUtil.TrackDependency(async () => await cf.RunTx(async (con, tx) =>
                 {
                     // Insert shares
                     var mapped = shares.Select(mapper.Map<Persistence.Model.Share>).ToArray();
                     await shareRepo.BatchInsertAsync(con, tx, mapped);
-
                     // Insert blocks
                     foreach(var share in shares)
                     {
-                        if(!share.IsBlockCandidate)
-                            continue;
+                        if(!share.IsBlockCandidate) continue;
 
                         var blockEntity = mapper.Map<Block>(share);
                         blockEntity.Status = BlockStatus.Pending;
                         await blockRepo.InsertAsync(con, tx, blockEntity);
-
                         messageBus.NotifyBlockFound(share.PoolId, blockEntity, pools[share.PoolId].Template);
                     }
-                });
+                }), DependencyType.Sql, "PersistSharesCoreAsync", $"{shares} shares");
             }
-            catch (Exception e)
+            catch(Exception e)
             {
                 var tc = TelemetryUtil.GetTelemetryClient();
                 tc.TrackException(e);
-                throw(e);
+                throw;
             }
         }
 
@@ -350,10 +346,11 @@ namespace Miningcore.Mining
                 .Concat()
                 .Subscribe(
                     _ => { },
-                    ex => {
+                    ex =>
+                    {
                         Console.WriteLine(ex);
                         logger.Fatal(() => $"{nameof(ShareRecorder)} queue terminated with {ex}");
-                        },
+                    },
                     () => logger.Info(() => $"{nameof(ShareRecorder)} queue completed"));
         }
 
