@@ -116,5 +116,11 @@ namespace Miningcore.Blockchain
         /// </summary>
         [ProtoMember(15)]
         public DateTime Created { get; set; }
+
+        /// <summary>
+        /// When the share gets inserted to db
+        /// </summary>
+        [ProtoMember(16)]
+        public DateTime Accepted { get; set; }
     }
 }

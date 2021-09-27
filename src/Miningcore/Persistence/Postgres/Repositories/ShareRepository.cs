@@ -53,9 +53,9 @@ namespace Miningcore.Persistence.Postgres.Repositories
             var mapped = mapper.Map<Entities.Share>(share);
 
             const string query = "INSERT INTO shares(poolid, blockheight, difficulty, " +
-                "networkdifficulty, miner, worker, useragent, ipaddress, source, created) " +
+                "networkdifficulty, miner, worker, useragent, ipaddress, source, created, accepted) " +
                 "VALUES(@poolid, @blockheight, @difficulty, " +
-                "@networkdifficulty, @miner, @worker, @useragent, @ipaddress, @source, @created)";
+                "@networkdifficulty, @miner, @worker, @useragent, @ipaddress, @source, @created, now())";
 
             await con.ExecuteAsync(query, mapped, tx);
         }
@@ -70,7 +70,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
             var pgCon = (NpgsqlConnection) con;
 
             const string query = "COPY shares (poolid, blockheight, difficulty, " +
-                "networkdifficulty, miner, worker, useragent, ipaddress, source, created) FROM STDIN (FORMAT BINARY)";
+                "networkdifficulty, miner, worker, useragent, ipaddress, source, created, accepted) FROM STDIN (FORMAT BINARY)";
 
             using(var writer = pgCon.BeginBinaryImport(query))
             {
@@ -88,12 +88,25 @@ namespace Miningcore.Persistence.Postgres.Repositories
                     writer.Write(share.IpAddress);
                     writer.Write(share.Source);
                     writer.Write(share.Created, NpgsqlDbType.Timestamp);
+                    writer.Write(DateTime.UtcNow, NpgsqlDbType.Timestamp);
                 }
 
                 writer.Complete();
             }
 
             return Task.FromResult(true);
+        }
+
+        public async Task<Share[]> ReadSharesBeforeAcceptedAsync(IDbConnection con, string poolId, DateTime before, bool inclusive, int pageSize)
+        {
+            logger.LogInvoke(new[] { poolId });
+
+            var query = $"SELECT * FROM shares WHERE poolid = @poolId AND accepted {(inclusive ? " <= " : " < ")} @before " +
+                        "ORDER BY created DESC FETCH NEXT (@pageSize) ROWS ONLY";
+
+            return (await con.QueryAsync<Entities.Share>(query, new { poolId, before, pageSize }))
+                .Select(mapper.Map<Share>)
+                .ToArray();
         }
 
         public async Task<Share[]> ReadSharesBeforeCreatedAsync(IDbConnection con, string poolId, DateTime before, bool inclusive, int pageSize)
@@ -150,7 +163,16 @@ namespace Miningcore.Persistence.Postgres.Repositories
 
             await con.ExecuteAsync(query, new { poolId, before }, tx);
         }
-           
+
+        public async Task DeleteSharesBeforeAcceptedAsync(IDbConnection con, IDbTransaction tx, string poolId, DateTime before)
+        {
+            logger.LogInvoke(new[] { poolId });
+
+            const string query = "DELETE FROM shares WHERE poolid = @poolId AND accepted <= @before";
+
+            await con.ExecuteAsync(query, new { poolId, before }, tx);
+        }
+
         public Task<long> CountSharesSoloBeforeCreatedAsync(IDbConnection con, IDbTransaction tx, string poolId, string miner, DateTime before)
         {
             logger.LogInvoke(new[] { poolId });

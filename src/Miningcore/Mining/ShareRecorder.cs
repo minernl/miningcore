@@ -124,7 +124,7 @@ namespace Miningcore.Mining
                         await blockRepo.InsertAsync(con, tx, blockEntity);
                         messageBus.NotifyBlockFound(share.PoolId, blockEntity, pools[share.PoolId].Template);
                     }
-                }), DependencyType.Sql, "PersistSharesCoreAsync", $"{shares} shares");
+                }), DependencyType.Sql, "PersistSharesCoreAsync", $"{shares.Count} shares");
             }
             catch(Exception e)
             {
