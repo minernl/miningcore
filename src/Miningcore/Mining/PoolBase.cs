@@ -235,7 +235,7 @@ namespace Miningcore.Mining
             if(poolConfig.ClientConnectionTimeout > 0 &&
                lastActivityAgo.TotalSeconds > poolConfig.ClientConnectionTimeout)
             {
-                logger.Info(() => $"[[{client.ConnectionId}] Booting zombie-worker (idle-timeout exceeded)");
+                logger.Info(() => $"[[{client.ConnectionId}] Booting zombie-worker (idle-timeout exceeded). Active before {lastActivityAgo.TotalSeconds}s");
                 DisconnectClient(client);
 
                 return true;
