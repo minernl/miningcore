@@ -30,7 +30,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
-using Microsoft.ApplicationInsights;
 using Miningcore.Configuration;
 using Miningcore.Extensions;
 using Miningcore.Messaging;
