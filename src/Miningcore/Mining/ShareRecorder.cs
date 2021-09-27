@@ -38,6 +38,7 @@ using Miningcore.Persistence;
 using Miningcore.Persistence.Model;
 using Miningcore.Persistence.Repositories;
 using Miningcore.Time;
+using Miningcore.Util;
 using Newtonsoft.Json;
 using NLog;
 using Polly;
@@ -106,7 +107,7 @@ namespace Miningcore.Mining
 
         private async Task PersistSharesCoreAsync(IList<Share> shares)
         {
-            await cf.RunTx(async (con, tx) =>
+            await TelemetryUtil.TrackDependency(async () => await cf.RunTx(async (con, tx) =>
             {
                 // Insert shares
                 var mapped = shares.Select(mapper.Map<Persistence.Model.Share>).ToArray();
@@ -115,8 +116,7 @@ namespace Miningcore.Mining
                 // Insert blocks
                 foreach(var share in shares)
                 {
-                    if(!share.IsBlockCandidate)
-                        continue;
+                    if(!share.IsBlockCandidate) continue;
 
                     var blockEntity = mapper.Map<Block>(share);
                     blockEntity.Status = BlockStatus.Pending;
@@ -124,7 +124,7 @@ namespace Miningcore.Mining
 
                     messageBus.NotifyBlockFound(share.PoolId, blockEntity, pools[share.PoolId].Template);
                 }
-            });
+            }), DependencyType.Sql, "PersistSharesCoreAsync", $"{shares} shares");
         }
 
         private static void OnPolicyRetry(Exception ex, TimeSpan timeSpan, int retry, object context)
