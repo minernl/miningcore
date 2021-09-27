@@ -94,7 +94,7 @@ namespace Miningcore.Payments.PaymentSchemes
             // calculate rewards
             var shares = new Dictionary<string, double>();
             var rewards = new Dictionary<string, decimal>();
-            var paidUntil = DateTime.Now;
+            var paidUntil = DateTime.UtcNow.AddSeconds(-5);
             var shareCutOffDate = CalculateRewards(poolConfig, shares, rewards, blockData, paidUntil);
 
             // update balances
@@ -113,22 +113,8 @@ namespace Miningcore.Payments.PaymentSchemes
             }
 
             // delete discarded shares
-            if (shareCutOffDate.HasValue)
-            {
-                var cutOffCount = await TelemetryUtil.TrackDependency(() => shareRepo.CountSharesBeforeCreatedAsync(con, tx, poolConfig.Id, shareCutOffDate.Value),
-                    DependencyType.Sql, "CountSharesToDelete", "CountSharesToDelete");
-
-
-                if (cutOffCount > 0)
-                {
-                    LogDiscardedShares(poolConfig, block, shareCutOffDate.Value);
-
-                    logger.Debug(() => $"Deleting {cutOffCount} discarded shares before {shareCutOffDate.Value:O}");
-
-                    await TelemetryUtil.TrackDependency(() => shareRepo.DeleteSharesBeforeCreatedAsync(con, tx, poolConfig.Id, shareCutOffDate.Value),
-                    DependencyType.Sql, "DeleteOldShares", "DeleteOldShares");
-                }
-            }
+            await TelemetryUtil.TrackDependency(() => shareRepo.DeleteSharesBeforeCreatedAsync(con, null, poolConfig.Id, shareCutOffDate.Value),
+            DependencyType.Sql, "DeleteOldShares", "DeleteOldShares");
 
             // diagnostics
             var totalShareCount = shares.Values.ToList().Sum(x => new decimal(x));
@@ -219,60 +205,6 @@ namespace Miningcore.Payments.PaymentSchemes
             return (decimal)blockData;
         }
 
-        private void LogDiscardedShares(PoolConfig poolConfig, Block block, DateTime value)
-        {
-            var before = value;
-            var pageSize = 50000;
-            var currentPage = 0;
-            var shares = new Dictionary<string, double>();
-
-            while (true)
-            {
-                logger.Debug(() => $"Fetching page {currentPage} of discarded shares for pool {poolConfig.Id}, block {block?.BlockHeight}");
-
-                var  pageTask = shareReadFaultPolicy.Execute(() =>
-                    cf.Run(con => shareRepo.ReadSharesBeforeCreatedAsync(con, poolConfig.Id, before, false, pageSize)));
-
-                Task.WaitAll(pageTask);
-                
-                var page = pageTask.Result;
-
-                currentPage++;
-
-                for (var i = 0;i < page.Length; i++)
-                {
-                    var share = page[i];
-
-                    // build address
-                    var address = share.Miner;
-                    if (!string.IsNullOrEmpty(share.Miner))
-                        address += PayoutConstants.PayoutInfoSeperator + share.Miner;
-
-                    // record attributed shares for diagnostic purposes
-                    if (!shares.ContainsKey(address))
-                        shares[address] = share.Difficulty;
-                    else
-                        shares[address] += share.Difficulty;
-                }
-
-                if (page.Length < pageSize)
-                    break;
-
-                before = page[page.Length - 1].Created;
-            }
-
-            if (shares.Keys.Count > 0)
-            {
-                // sort addresses by shares
-                var addressesByShares = shares.Keys.OrderByDescending(x => shares[x]);
-
-                logger.Info(() => $"{FormatUtil.FormatQuantity(shares.Values.Sum())} ({shares.Values.Sum()}) total discarded shares, block {block?.BlockHeight}");
-
-                //foreach (var address in addressesByShares)
-                //    logger.Info(() => $"{address} = {FormatUtil.FormatQuantity(shares[address])} ({shares[address]}) discarded shares, block {block?.BlockHeight}");
-            }
-        }
-
         #endregion // IPayoutScheme
 
         private DateTime? CalculateRewards(PoolConfig poolConfig,
@@ -295,7 +227,7 @@ namespace Miningcore.Payments.PaymentSchemes
 
                 var pageTask = TelemetryUtil.TrackDependency(() => shareReadFaultPolicy.Execute(() =>
                     cf.Run(con => shareRepo.ReadSharesBeforeCreatedAsync(con, poolConfig.Id, before, inclusive, pageSize))),
-                    DependencyType.Sql, "CountSharesToDelete", "CountSharesToDelete");
+                    DependencyType.Sql, "ReadAllSharesMined", "ReadAllSharesMined");
  
                 Task.WaitAll(pageTask);
                 var page = pageTask.Result;
