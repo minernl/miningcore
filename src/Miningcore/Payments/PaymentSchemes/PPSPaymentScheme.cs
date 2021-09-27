@@ -113,7 +113,7 @@ namespace Miningcore.Payments.PaymentSchemes
             }
 
             // delete discarded shares
-            await TelemetryUtil.TrackDependency(() => shareRepo.DeleteSharesBeforeCreatedAsync(con, tx, poolConfig.Id, shareCutOffDate.Value),
+            await TelemetryUtil.TrackDependency(() => shareRepo.DeleteSharesBeforeCreatedAsync(con, null, poolConfig.Id, shareCutOffDate.Value),
             DependencyType.Sql, "DeleteOldShares", "DeleteOldShares");
 
             // diagnostics
