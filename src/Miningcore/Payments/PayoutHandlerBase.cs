@@ -178,7 +178,7 @@ namespace Miningcore.Payments
         public string FormatAmount(decimal amount)
         {
             var coin = poolConfig.Template.As<CoinTemplate>();
-            return $"{amount:0.#####} {coin.Symbol}";
+            return $"{amount:0.#######} {coin.Symbol}";
         }
 
         protected virtual void NotifyPayoutSuccess(string poolId, Balance[] balances, string[] txHashes, decimal? txFee)
