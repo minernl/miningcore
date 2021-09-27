@@ -570,7 +570,7 @@ namespace Miningcore.Configuration
         /// Value of a hash in Eth, based on PPS calculation
         /// </summary>
         public decimal HashValue { get; set; }
-
+        
         public JToken PayoutSchemeConfig { get; set; }
 
         /// <summary>
@@ -671,6 +671,11 @@ namespace Miningcore.Configuration
         /// If this list null or empty, the default is 127.0.0.1
         /// </summary>
         public string[] MetricsIpWhitelist { get; set; }
+
+        public bool OidcValidateAudience { get; set; }
+        public string OidcValidAudience { get; set; }
+        public string OidcValidIssuer { get; set; }
+        public string OidcMetadataAddress { get; set; }
     }
 
     public partial class Statistics

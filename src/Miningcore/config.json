@@ -61,7 +61,11 @@
                 }
             ],
             "ipWhitelist": []
-        }
+        },
+        "oidcValidateAudience":  false,
+        "oidcValidAudience": "",
+        "oidcValidIssuer": "https://login-int.norton.com/sso/oidc1/token",
+        "oidcMetadataAddress": "https://login-int.norton.com/sso/oidc1/token/.well-known/openid-configuration"
     },
     "pools": [
         {

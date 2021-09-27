@@ -1,4 +1,6 @@
 using Autofac;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Miningcore.Api.Requests;
 using Miningcore.Api.Responses;
@@ -10,10 +12,12 @@ using Miningcore.Persistence.Repositories;
 using Miningcore.Util;
 using System;
 using System.Collections.Concurrent;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace Miningcore.Api.Controllers
 {
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     [Route("api/admin")]
     [ApiController]
     public class AdminApiController : ControllerBase
@@ -60,26 +64,6 @@ namespace Miningcore.Api.Controllers
         public async Task<decimal> GetMinerBalanceAsync(string poolId, string address)
         {
             return await cf.Run(con => balanceRepo.GetBalanceAsync(con, poolId, address));
-        }
-
-        [HttpPost("addbalance")]
-        public async Task<object> AddMinerBalanceAsync(AddBalanceRequest request)
-        {
-            request.Usage = request.Usage?.Trim();
-
-            if(string.IsNullOrEmpty(request.Usage))
-                request.Usage = $"Admin balance change from {Request.HttpContext.Connection.RemoteIpAddress}";
-
-            var oldBalance = await cf.Run(con => balanceRepo.GetBalanceAsync(con, request.PoolId, request.Address));
-
-            var count = await cf.RunTx(async (con, tx) =>
-            {
-                return await balanceRepo.AddAmountAsync(con, tx, request.PoolId, request.Address, request.Amount, request.Usage);
-            });
-
-            var newBalance = await cf.Run(con => balanceRepo.GetBalanceAsync(con, request.PoolId, request.Address));
-
-            return new { oldBalance, newBalance };
         }
 
         #endregion // Actions
