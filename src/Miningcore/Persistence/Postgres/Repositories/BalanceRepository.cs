@@ -121,7 +121,10 @@ namespace Miningcore.Persistence.Postgres.Repositories
         {
             logger.LogInvoke();
 
-            const string query = "SELECT * FROM balances WHERE poolid = @poolId AND amount >= @minimum";
+            const string query = "SELECT b.poolid, b.address, b.amount, b.created, b.updated, MAX(p.created) AS paiddate FROM balances AS b " +
+                                 "LEFT JOIN payments AS p ON  p.address = b.address AND p.poolid = b.poolid " +
+                                 "WHERE b.poolid = @poolId AND b.amount >= @minimum " +
+                                 "GROUP BY b.poolid, b.address, b.amount, b.created, b.updated";
 
             return (await con.QueryAsync<Entities.Balance>(query, new { poolId, minimum }))
                 .Select(mapper.Map<Balance>)
