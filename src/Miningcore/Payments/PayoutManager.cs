@@ -153,8 +153,10 @@ namespace Miningcore.Payments
         private async Task UpdatePoolBalancesAsync(PoolConfig pool, IPayoutHandler handler, IPayoutScheme scheme)
         {
             // get pending blockRepo for pool
-            var pendingBlocks = await cf.Run(con => blockRepo.GetPendingBlocksForPoolAsync(con, pool.Id));
 
+            var pendingBlocks = await TelemetryUtil.TrackDependency(() => cf.Run(con => blockRepo.GetPendingBlocksForPoolAsync(con, pool.Id)),
+                DependencyType.Sql, "getPendingBlocks", "getPendingBlocks");
+            
             // classify
             var updatedBlocks = await handler.ClassifyBlocksAsync(pendingBlocks);
 
@@ -287,8 +289,6 @@ namespace Miningcore.Payments
             interval = TimeSpan.FromSeconds(clusterConfig.PaymentProcessing.Interval > 0 ? clusterConfig.PaymentProcessing.Interval : 600);
         }
 
-
-
         public void Stop()
         {
             logger.Info(() => "Payments Service Stopping ..");
@@ -297,7 +297,5 @@ namespace Miningcore.Payments
 
             logger.Info(() => "Payment Service Stopped");
         }
-
-
     }
 }
