@@ -332,13 +332,17 @@ namespace Miningcore.Mining
 
                     catch(Exception ex)
                     {
+                        Console.WriteLine(ex);
                         logger.Error(ex);
                     }
                 }))
                 .Concat()
                 .Subscribe(
                     _ => { },
-                    ex => logger.Fatal(() => $"{nameof(ShareRecorder)} queue terminated with {ex}"),
+                    ex => {
+                            Console.WriteLine(ex);
+                            logger.Fatal(() => $"{nameof(ShareRecorder)} queue terminated with {ex}");
+                        },
                     () => logger.Info(() => $"{nameof(ShareRecorder)} queue completed"));
         }
 
