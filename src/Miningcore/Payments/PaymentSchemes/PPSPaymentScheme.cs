@@ -252,8 +252,8 @@ namespace Miningcore.Payments.PaymentSchemes
                     accumulatedScore += score;
 
                     // set the cutoff date to clean up old shares after a successful payout
-                    if(shareCutOffDate == null || share.Created > shareCutOffDate)
-                        shareCutOffDate = share.Created;
+                    if(shareCutOffDate == null || share.Accepted > shareCutOffDate)
+                        shareCutOffDate = share.Accepted;
                 }
 
                 if(page.Length < pageSize)
@@ -262,7 +262,7 @@ namespace Miningcore.Payments.PaymentSchemes
                     break;
                 }
 
-                before = page[page.Length - 1].Created;
+                before = page[page.Length - 1].Accepted;
                 done = page.Length <= 0;
             }
 
