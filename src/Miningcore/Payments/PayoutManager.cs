@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
 using Autofac.Features.Metadata;
+using Microsoft.ApplicationInsights;
 using Miningcore.Configuration;
 using Miningcore.Extensions;
 using Miningcore.Messaging;
@@ -18,6 +19,7 @@ using Miningcore.Notifications.Messages;
 using Miningcore.Persistence;
 using Miningcore.Persistence.Model;
 using Miningcore.Persistence.Repositories;
+using Miningcore.Util;
 using NLog;
 using Contract = Miningcore.Contracts.Contract;
 
@@ -200,10 +202,23 @@ namespace Miningcore.Payments
             else
             {
                 logger.Info(() => $"No updated blocks for pool {pool.Id} but still payment processed");
-                await cf.RunTx(async (con, tx) =>
+
+                var success = false;
+                var startTime = DateTime.UtcNow;
+                var timer = System.Diagnostics.Stopwatch.StartNew();
+                try
                 {
-                    await scheme.UpdateBalancesAsync(con, tx, pool, clusterConfig, handler, null, 1m);
-                });
+                    await cf.RunTx(async (con, tx) =>
+                    {
+                        await scheme.UpdateBalancesAsync(con, tx, pool, clusterConfig, handler, null, 1m);
+                    });
+                    success = true;
+                }
+                finally
+                {
+                    timer.Stop();
+                    TelemetryUtil.TrackDependency(DependencyType.Sql, "UpdateBalancesAsync", "UpdateBalances", startTime, timer.Elapsed, success);
+                }
             }
         }
 
