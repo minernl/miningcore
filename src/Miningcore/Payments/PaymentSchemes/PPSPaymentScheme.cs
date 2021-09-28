@@ -109,13 +109,13 @@ namespace Miningcore.Payments.PaymentSchemes
                 }
             }
 
-            shares.ForEach(s => s.Value.Shares.ForEach(
-                async v =>
-                {
-                    // delete discarded shares
-                    await TelemetryUtil.TrackDependency(() => shareRepo.DeleteSharesForUserByAcceptedAsync(con, tx, poolConfig.Id, s.Key, v.Accepted),
-                        DependencyType.Sql, "DeleteMinerSharesByAccepted", $"miner:{s.Key}, cutoffDate:{shareCutOffDate}");
-                }));
+            await TelemetryUtil.TrackDependency(async () => shares.ForEach(s => s.Value.Shares.ForEach(
+                    async v =>
+                    {
+                        // delete discarded shares
+                        await shareRepo.DeleteSharesForUserByAcceptedAsync(con, tx, poolConfig.Id, s.Key, v.Accepted);
+                    })),
+                DependencyType.Sql, "DeleteMinerSharesByAccepted", $"shares:{shares.Sum(s => s.Value.Shares.Count)}, cutoffDate:{shareCutOffDate}");
 
             // diagnostics
             var totalShareCount = shares.Values.ToList().Sum(x => new decimal(x.Difficulty));
