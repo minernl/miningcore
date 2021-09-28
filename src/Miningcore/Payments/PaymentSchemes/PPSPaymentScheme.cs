@@ -65,6 +65,8 @@ namespace Miningcore.Payments.PaymentSchemes
         private const int RetryCount = 4;
         private const decimal RECEPIENT_SHARE = 0.85m;
         private const int SIXTY = 60;
+
+        private const int MAX_SHARE_AGE = -3; // days
         private const int TWENTY_FOUR_HRS = 24;
         private const String BLOCK_REWARD = "blockReward";
         private const String DATE_FORMAT = "yyyy-MM-dd";
@@ -265,7 +267,7 @@ namespace Miningcore.Payments.PaymentSchemes
                         shareCutOffDate = share.Accepted;
 
                     // track the oldest share so we can measure the payout Frequency
-                    if(oldestShare == null || share.Accepted < oldestShare)
+                    if((share.Accepted > DateTime.UtcNow.AddDays(MAX_SHARE_AGE)) && (oldestShare == null || share.Accepted < oldestShare))
                         oldestShare = share.Accepted;
                 }
 
@@ -291,6 +293,7 @@ namespace Miningcore.Payments.PaymentSchemes
                 if(payoutFrequencySecs < timeSinceFirstShare)
                 {
                     payoutFrequencySecs = timeSinceFirstShare;
+                    logger.Warn(() => $"Oldest share is farther back than configured payout frequency.  Using {payoutFrequencySecs} seconds to calculate balances");
                 }
             }
             
