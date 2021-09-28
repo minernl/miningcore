@@ -17,12 +17,10 @@ using Miningcore.Persistence;
 using Miningcore.Persistence.Model;
 using Miningcore.Persistence.Repositories;
 using Miningcore.Util;
-using MoreLinq;
 using Newtonsoft.Json;
 using NLog;
 using Polly;
 using Contract = Miningcore.Contracts.Contract;
-using Share = Miningcore.Persistence.Model.Share;
 
 namespace Miningcore.Payments.PaymentSchemes
 {
@@ -89,7 +87,7 @@ namespace Miningcore.Payments.PaymentSchemes
 
             var blockData = await CalculateBlockData((decimal) blockRewardInCache, poolConfig, clusterConfig);
             // calculate rewards
-            var shares = new Dictionary<string, ShareDifficulty>();
+            var shares = new Dictionary<string, double>();
             var rewards = new Dictionary<string, decimal>();
             var paidUntil = DateTime.UtcNow.AddSeconds(-5);
             var shareCutOffDate = CalculateRewards(poolConfig, shares, rewards, blockData, paidUntil);
@@ -101,24 +99,20 @@ namespace Miningcore.Payments.PaymentSchemes
 
                 if(amount > 0)
                 {
-                    logger.Info(() => $"Adding {payoutHandler.FormatAmount(amount)} to balance of {address} for {FormatUtil.FormatQuantity(shares[address].Difficulty)} ({shares[address]}) shares for block {block?.BlockHeight}");
+                    logger.Info(() => $"Adding {payoutHandler.FormatAmount(amount)} to balance of {address} for {FormatUtil.FormatQuantity(shares[address])} ({shares[address]}) shares for block {block?.BlockHeight}");
 
                     await TelemetryUtil.TrackDependency(
-                            () => balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, address, amount, $"Reward for {FormatUtil.FormatQuantity(shares[address].Difficulty)} shares for block {block?.BlockHeight}"),
-                            DependencyType.Sql, "AddBalanceAmount", $"miner:{address}, amount:{amount}");
+                            () => balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, address, amount, $"Reward for {FormatUtil.FormatQuantity(shares[address])} shares for block {block?.BlockHeight}"),
+                            DependencyType.Sql, "AddBalanceAmount",  $"miner:{address}, amount:{amount}");
+
+                    // delete discarded shares
+                    await TelemetryUtil.TrackDependency(() => shareRepo.DeleteSharesForUserBeforeAcceptedAsync(con, tx, poolConfig.Id, address, shareCutOffDate.Value),
+                    DependencyType.Sql, "DeleteMinerShares", $"miner:{address}, cutoffDate:{shareCutOffDate.Value}");
                 }
             }
 
-            shares.ForEach(s => s.Value.Shares.ForEach(
-                async v =>
-                {
-                    // delete discarded shares
-                    await TelemetryUtil.TrackDependency(() => shareRepo.DeleteSharesForUserByAcceptedAsync(con, tx, poolConfig.Id, s.Key, v.Accepted),
-                        DependencyType.Sql, "DeleteMinerSharesByAccepted", $"miner:{s.Key}, cutoffDate:{shareCutOffDate}");
-                }));
-
             // diagnostics
-            var totalShareCount = shares.Values.ToList().Sum(x => new decimal(x.Difficulty));
+            var totalShareCount = shares.Values.ToList().Sum(x => new decimal(x));
             var totalRewards = rewards.Values.ToList().Sum(x => x);
 
             if(totalRewards > 0)
@@ -206,7 +200,8 @@ namespace Miningcore.Payments.PaymentSchemes
 
         #endregion // IPayoutScheme
 
-        private DateTime? CalculateRewards(PoolConfig poolConfig, Dictionary<string, ShareDifficulty> shares, Dictionary<string, decimal> rewards, decimal blockData, DateTime paidUntil)
+        private DateTime? CalculateRewards(PoolConfig poolConfig,
+            Dictionary<string, double> shares, Dictionary<string, decimal> rewards, decimal blockData, DateTime paidUntil)
         {
             var done = false;
             var before = paidUntil;
@@ -241,16 +236,9 @@ namespace Miningcore.Payments.PaymentSchemes
 
                     // record attributed shares for diagnostic purposes
                     if(!shares.ContainsKey(address))
-                        shares[address] = new ShareDifficulty
-                        {
-                            Difficulty = share.Difficulty,
-                            Shares = new List<Share> { share }
-                        };
+                        shares[address] = share.Difficulty;
                     else
-                    {
-                        shares[address].Difficulty += share.Difficulty;
-                        shares[address].Shares.Add(share);
-                    }
+                        shares[address] += share.Difficulty;
 
                     // determine a share's overall score
                     var score = (decimal) (share.Difficulty / share.NetworkDifficulty);

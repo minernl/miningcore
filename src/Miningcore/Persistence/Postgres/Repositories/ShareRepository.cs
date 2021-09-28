@@ -182,15 +182,6 @@ namespace Miningcore.Persistence.Postgres.Repositories
             await con.ExecuteAsync(query, new { poolId, miner, before }, tx);
         }
 
-        public async Task DeleteSharesForUserByAcceptedAsync(IDbConnection con, IDbTransaction tx, string poolId, string miner, DateTime accepted)
-        {
-            logger.LogInvoke(new[] { poolId });
-
-            const string query = "DELETE FROM shares WHERE poolid = @poolId AND miner = @miner AND accepted = @accepted";
-
-            await con.ExecuteAsync(query, new { poolId, miner, accepted }, tx);
-        }
-
         public Task<long> CountSharesSoloBeforeCreatedAsync(IDbConnection con, IDbTransaction tx, string poolId, string miner, DateTime before)
         {
             logger.LogInvoke(new[] { poolId });
