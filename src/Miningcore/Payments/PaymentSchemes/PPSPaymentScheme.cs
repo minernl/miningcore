@@ -83,13 +83,13 @@ namespace Miningcore.Payments.PaymentSchemes
             IPayoutHandler payoutHandler, Block block, decimal blockReward)
         {
             var blockRewardInCache = cache.Get(BLOCK_REWARD) ?? await GetBlockReward(poolConfig);
-
             var blockData = await CalculateBlockData((decimal) blockRewardInCache, poolConfig, clusterConfig);
+
             // calculate rewards
             var shares = new Dictionary<string, double>();
             var rewards = new Dictionary<string, decimal>();
             var paidUntil = DateTime.UtcNow.AddSeconds(-5);
-            var shareCutOffDate = CalculateRewards(poolConfig, shares, rewards, blockData, paidUntil);
+            var shareCutOffDate = CalculateRewards(poolConfig, clusterConfig, shares, rewards, blockData, paidUntil);
 
             // update balances
             foreach(var address in rewards.Keys)
@@ -182,15 +182,16 @@ namespace Miningcore.Payments.PaymentSchemes
             {
                 blockFrequency = maxBlockFrequency;
             }
-            int payoutConfig = clusterConfig.PaymentProcessing.Interval;
-            if(payoutConfig == 0)
+
+            int payoutFrequency = clusterConfig.PaymentProcessing.Interval;
+            if(payoutFrequency == 0)
             {
                 logger.Warn(() => $"Payments are misconfigured. Interval should not be zero");
-                payoutConfig = 600;
+                payoutFrequency = 600;
             }
 
             double recepientBlockReward = (double) (blockRewardInEth * RECEPIENT_SHARE);
-            double blockFrequencyPerPayout = blockFrequency / (payoutConfig / SIXTY);
+            double blockFrequencyPerPayout = blockFrequency / (payoutFrequency / SIXTY);
             double blockData = recepientBlockReward / blockFrequencyPerPayout;
             logger.Info(() => $"BlockData : {blockData}, Network Block Time : {avgBlockTime}, Block Frequency : {blockFrequency}");
 
@@ -199,7 +200,7 @@ namespace Miningcore.Payments.PaymentSchemes
 
         #endregion // IPayoutScheme
 
-        private DateTime? CalculateRewards(PoolConfig poolConfig,
+        private DateTime? CalculateRewards(PoolConfig poolConfig, ClusterConfig clusterConfig,
             Dictionary<string, double> shares, Dictionary<string, decimal> rewards, decimal blockData, DateTime paidUntil)
         {
             var done = false;
@@ -211,6 +212,7 @@ namespace Miningcore.Payments.PaymentSchemes
 
             double sumDifficulty = 0;
             DateTime? shareCutOffDate = null;
+            DateTime? oldestShare = null;
             Dictionary<string, decimal> scores = new Dictionary<string, decimal>();
 
             while(!done)
