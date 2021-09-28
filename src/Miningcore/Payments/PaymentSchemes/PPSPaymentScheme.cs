@@ -105,10 +105,10 @@ namespace Miningcore.Payments.PaymentSchemes
                             DependencyType.Sql, "AddBalanceAmount", "AddBalanceAmount");
                 }
             }
-
+            
             // delete discarded shares
             await TelemetryUtil.TrackDependency(() => shareRepo.DeleteSharesBeforeAcceptedAsync(con, tx, poolConfig.Id, shareCutOffDate.Value),
-            DependencyType.Sql, "DeleteOldShares", "DeleteOldShares");
+            DependencyType.Sql, "DeleteOldShares", $"shares:{shares.Count}, cutoffDate:{shareCutOffDate.Value}");
 
             // diagnostics
             var totalShareCount = shares.Values.ToList().Sum(x => new decimal(x));
