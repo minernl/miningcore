@@ -50,12 +50,14 @@ namespace Miningcore.Persistence.Postgres.Repositories
         {
             logger.LogInvoke();
 
+            share.Accepted = DateTime.UtcNow;
+
             var mapped = mapper.Map<Entities.Share>(share);
 
             const string query = "INSERT INTO shares(poolid, blockheight, difficulty, " +
                 "networkdifficulty, miner, worker, useragent, ipaddress, source, created, accepted) " +
                 "VALUES(@poolid, @blockheight, @difficulty, " +
-                "@networkdifficulty, @miner, @worker, @useragent, @ipaddress, @source, @created, now())";
+                "@networkdifficulty, @miner, @worker, @useragent, @ipaddress, @source, @created, @accepted)";
 
             await con.ExecuteAsync(query, mapped, tx);
         }
