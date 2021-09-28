@@ -111,12 +111,12 @@ namespace Miningcore.Mining
             {
                 await TelemetryUtil.TrackDependency(async () => await cf.RunTx(async (con, tx) =>
                 {
-                    // Insert shares into ShareRepo, blocks into BlockRepo
+                    // Insert shares
+                    var mapped = shares.Select(mapper.Map<Persistence.Model.Share>).ToArray();
+                    await shareRepo.BatchInsertAsync(con, tx, mapped);
+                    // Insert blocks
                     foreach(var share in shares)
                     {
-                        var dbShare = mapper.Map<Miningcore.Persistence.Model.Share>(share); 
-                        await shareRepo.InsertAsync(con, tx, dbShare);
-
                         if(!share.IsBlockCandidate) continue;
 
                         var blockEntity = mapper.Map<Block>(share);
