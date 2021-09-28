@@ -66,6 +66,7 @@ namespace Miningcore.Payments.PaymentSchemes
         private const decimal RECEPIENT_SHARE = 0.85m;
         private const int SIXTY = 60;
         private const int TWENTY_FOUR_HRS = 24;
+        private const int MAX_PAYOUT_INTERVAL = 259200; // 3 days in seconds
         private const String BLOCK_REWARD = "blockReward";
         private const String DATE_FORMAT = "yyyy-MM-dd";
         private const String ACCEPT_TEXT_HTML = "text/html";
@@ -102,13 +103,13 @@ namespace Miningcore.Payments.PaymentSchemes
 
                     await TelemetryUtil.TrackDependency(
                             () => balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, address, amount, $"Reward for {FormatUtil.FormatQuantity(shares[address])} shares for block {block?.BlockHeight}"),
-                            DependencyType.Sql, "AddBalanceAmount", "AddBalanceAmount");
+                            DependencyType.Sql, "AddBalanceAmount",  $"miner:{address}, amount:{amount}");
+
+                    // delete discarded shares
+                    await TelemetryUtil.TrackDependency(() => shareRepo.DeleteSharesForUserBeforeAcceptedAsync(con, tx, poolConfig.Id, address, shareCutOffDate.Value),
+                    DependencyType.Sql, "DeleteMinerShares", $"miner:{address}, cutoffDate:{shareCutOffDate.Value}");
                 }
             }
-            
-            // delete discarded shares
-            await TelemetryUtil.TrackDependency(() => shareRepo.DeleteSharesBeforeAcceptedAsync(con, tx, poolConfig.Id, shareCutOffDate.Value),
-            DependencyType.Sql, "DeleteOldShares", $"shares:{shares.Count}, cutoffDate:{shareCutOffDate.Value}");
 
             // diagnostics
             var totalShareCount = shares.Values.ToList().Sum(x => new decimal(x));
