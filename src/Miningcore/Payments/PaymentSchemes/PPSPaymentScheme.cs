@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.Extensions.Caching.Memory;
@@ -112,6 +113,11 @@ namespace Miningcore.Payments.PaymentSchemes
             }
 
             // diagnostics
+            ThreadPool.GetMaxThreads(out int maxWorker, out int maxIo);
+            ThreadPool.GetMinThreads(out int minWorker, out int minIO);
+            ThreadPool.GetAvailableThreads(out int availableWorker, out int availableIo);
+            logger.Info(() => $"GetMaxThreads - workers {maxWorker}, io {maxIo}  | GetMinThreads - workers {minWorker}, io {minIO} | GetAvailableThreads - workers {availableWorker}, io {availableIo}");
+
             var totalShareCount = shares.Values.ToList().Sum(x => new decimal(x));
             var totalRewards = rewards.Values.ToList().Sum(x => x);
 
