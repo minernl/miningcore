@@ -213,7 +213,7 @@ namespace Miningcore.Payments
                     await cf.RunTx(async (con, tx) =>
                     {
                         await scheme.UpdateBalancesAsync(con, tx, pool, clusterConfig, handler, null, 1m);
-                    }, true, System.Data.IsolationLevel.ReadUncommitted);
+                    });
                     success = true;
                 }
                 finally

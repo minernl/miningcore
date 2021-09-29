@@ -106,7 +106,7 @@ namespace Miningcore.Payments.PaymentSchemes
                             DependencyType.Sql, "AddBalanceAmount",  $"miner:{address}, amount:{amount}");
 
                     // delete discarded shares
-                    await TelemetryUtil.TrackDependency(() => shareRepo.DeleteSharesForUserBeforeAcceptedAsync(con, tx, poolConfig.Id, address, shareCutOffDate.Value),
+                    await TelemetryUtil.TrackDependency(() => shareRepo.ProcessSharesForUserBeforeAcceptedAsync(con, tx, poolConfig.Id, address, shareCutOffDate.Value),
                     DependencyType.Sql, "DeleteMinerShares", $"miner:{address}, cutoffDate:{shareCutOffDate.Value}");
                 }
             }
@@ -225,7 +225,7 @@ namespace Miningcore.Payments.PaymentSchemes
                 logger.Info(() => $"Fetching page {currentPage} of shares for pool {poolConfig.Id}");
 
                 var pageTask = TelemetryUtil.TrackDependency(() => shareReadFaultPolicy.Execute(() =>
-                    cf.Run(con => shareRepo.ReadSharesBeforeAcceptedAsync(con, poolConfig.Id, before, inclusive, pageSize))),
+                    cf.Run(con => shareRepo.ReadUnprocessedSharesBeforeAcceptedAsync(con, poolConfig.Id, before, inclusive, pageSize))),
                     DependencyType.Sql, "ReadAllSharesMined", "ReadAllSharesMined");
 
                 Task.WaitAll(pageTask);
