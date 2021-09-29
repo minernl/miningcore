@@ -102,7 +102,19 @@ namespace Miningcore.Persistence.Postgres.Repositories
             logger.LogInvoke(new[] { poolId });
 
             var query = $"SELECT * FROM shares WHERE poolid = @poolId AND accepted {(inclusive ? " <= " : " < ")} @before " +
-                        "ORDER BY created DESC FETCH NEXT (@pageSize) ROWS ONLY";
+                        "ORDER BY accepted DESC FETCH NEXT (@pageSize) ROWS ONLY";
+
+            return (await con.QueryAsync<Entities.Share>(query, new { poolId, before, pageSize }))
+                .Select(mapper.Map<Share>)
+                .ToArray();
+        }
+
+        public async Task<Share[]> ReadUnprocessedSharesBeforeAcceptedAsync(IDbConnection con, string poolId, DateTime before, bool inclusive, int pageSize)
+        {
+            logger.LogInvoke(new[] { poolId });
+
+            var query = $"SELECT * FROM shares WHERE poolid = @poolId AND processed is NULL AND accepted {(inclusive ? " <= " : " < ")} @before " +
+                        "ORDER BY accepted DESC FETCH NEXT (@pageSize) ROWS ONLY";
 
             return (await con.QueryAsync<Entities.Share>(query, new { poolId, before, pageSize }))
                 .Select(mapper.Map<Share>)
@@ -172,6 +184,25 @@ namespace Miningcore.Persistence.Postgres.Repositories
 
             await con.ExecuteAsync(query, new { poolId, before }, tx);
         }
+
+        public async Task DeleteSharesForUserBeforeAcceptedAsync(IDbConnection con, IDbTransaction tx, string poolId, string miner, DateTime before)
+        {
+            logger.LogInvoke(new[] { poolId });
+
+            const string query = "DELETE FROM shares WHERE poolid = @poolId AND miner = @miner AND accepted <= @before";
+
+            await con.ExecuteAsync(query, new { poolId, miner, before }, tx);
+        }
+
+        public async Task ProcessSharesForUserBeforeAcceptedAsync(IDbConnection con, IDbTransaction tx, string poolId, string miner, DateTime before)
+        {
+            logger.LogInvoke(new[] { poolId });
+
+            const string query = "UPDATE shares SET processed = now() at time zone 'utc' WHERE poolid = @poolId AND miner = @miner AND accepted <= @before";
+
+            await con.ExecuteAsync(query, new { poolId, miner, before }, tx);
+        }
+
 
         public Task<long> CountSharesSoloBeforeCreatedAsync(IDbConnection con, IDbTransaction tx, string poolId, string miner, DateTime before)
         {
