@@ -135,7 +135,13 @@ namespace Miningcore.Payments.PaymentSchemes
                 var dataObjects = await response.Content.ReadAsStringAsync();
 
                 dynamic desrializedObject = JsonConvert.DeserializeObject(dataObjects);
+                if(desrializedObject.result?.Count <= 0)
+                {
+                    throw new Exception($"Get Block reward info request failed.  Successful response but invalid content from Etherscan: {dataObjects}");
+                }
+
                 dynamic result = desrializedObject.result[0];
+
                 decimal blockCount = result.blockCount;
                 decimal blockRewardsInEth = result.blockRewards_Eth;
                 blockReward = blockRewardsInEth / blockCount;
