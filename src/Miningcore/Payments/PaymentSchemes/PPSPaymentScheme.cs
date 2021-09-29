@@ -296,8 +296,13 @@ namespace Miningcore.Payments.PaymentSchemes
             }
 
             /* update the value per hash in the pool payment processing config based on latest calculation */
-            var valPerHash = blockData / (Decimal) sumDifficulty;
+            Decimal valPerHash = 0;
+            if(sumDifficulty > 0)
+            {
+                valPerHash = blockData / (Decimal) sumDifficulty;
+            }
             poolConfig.PaymentProcessing.HashValue = valPerHash;
+            
             TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
             if(null != tc)
             {
