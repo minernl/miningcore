@@ -65,9 +65,8 @@ namespace Miningcore.Payments.PaymentSchemes
         private const int RetryCount = 4;
         private const decimal RECEPIENT_SHARE = 0.85m;
         private const int SIXTY = 60;
-
-        private const int MAX_SHARE_AGE = -3; // days
         private const int TWENTY_FOUR_HRS = 24;
+        private const int MAX_PAYOUT_INTERVAL = 259200; // 3 days in seconds
         private const String BLOCK_REWARD = "blockReward";
         private const String DATE_FORMAT = "yyyy-MM-dd";
         private const String ACCEPT_TEXT_HTML = "text/html";
@@ -84,13 +83,14 @@ namespace Miningcore.Payments.PaymentSchemes
         public async Task UpdateBalancesAsync(IDbConnection con, IDbTransaction tx, PoolConfig poolConfig, ClusterConfig clusterConfig,
             IPayoutHandler payoutHandler, Block block, decimal blockReward)
         {
+            var blockRewardInCache = cache.Get(BLOCK_REWARD) ?? await GetBlockReward(poolConfig);
+
+            var blockData = await CalculateBlockData((decimal) blockRewardInCache, poolConfig, clusterConfig);
             // calculate rewards
-            var paidUntil = DateTime.UtcNow;
-            var rewardData = await CalculateRewards(poolConfig, clusterConfig, paidUntil);
-            
-            DateTime? shareCutOffDate = rewardData.Item1;
-            Dictionary<string, double> shareCounts = rewardData.Item2;
-            Dictionary<string, decimal> rewards = rewardData.Item3;
+            var shares = new Dictionary<string, double>();
+            var rewards = new Dictionary<string, decimal>();
+            var paidUntil = DateTime.UtcNow.AddSeconds(-5);
+            var shareCutOffDate = CalculateRewards(poolConfig, shares, rewards, blockData, paidUntil);
 
             // update balances
             foreach(var address in rewards.Keys)
@@ -99,39 +99,24 @@ namespace Miningcore.Payments.PaymentSchemes
 
                 if(amount > 0)
                 {
-                    logger.Info(() => $"Adding {payoutHandler.FormatAmount(amount)} to balance of {address} for {FormatUtil.FormatQuantity(shareCounts[address])} ({shareCounts[address]}) shares for block {block?.BlockHeight}");
+                    logger.Info(() => $"Adding {payoutHandler.FormatAmount(amount)} to balance of {address} for {FormatUtil.FormatQuantity(shares[address])} ({shares[address]}) shares for block {block?.BlockHeight}");
 
                     await TelemetryUtil.TrackDependency(
-                            () => balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, address, amount, $"Reward for {FormatUtil.FormatQuantity(shareCounts[address])} shares for block {block?.BlockHeight}"),
-                            DependencyType.Sql, "AddBalanceAmount", "AddBalanceAmount");
+                            () => balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, address, amount, $"Reward for {FormatUtil.FormatQuantity(shares[address])} shares for block {block?.BlockHeight}"),
+                            DependencyType.Sql, "AddBalanceAmount",  $"miner:{address}, amount:{amount}");
+
+                    // delete discarded shares
+                    await TelemetryUtil.TrackDependency(() => shareRepo.ProcessSharesForUserBeforeAcceptedAsync(con, tx, poolConfig.Id, address, shareCutOffDate.Value),
+                    DependencyType.Sql, "DeleteMinerShares", $"miner:{address}, cutoffDate:{shareCutOffDate.Value}");
                 }
             }
 
-            // delete discarded shares
-            await TelemetryUtil.TrackDependency(() => shareRepo.DeleteSharesBeforeAcceptedAsync(con, tx, poolConfig.Id, shareCutOffDate.Value),
-            DependencyType.Sql, "DeleteOldShares", "DeleteOldShares");
-
             // diagnostics
-            var totalShareCount = shareCounts.Values.ToList().Sum(x => new decimal(x));
+            var totalShareCount = shares.Values.ToList().Sum(x => new decimal(x));
             var totalRewards = rewards.Values.ToList().Sum(x => x);
 
             if(totalRewards > 0)
-            {
-                decimal blockPercent = totalRewards / blockReward * 100;
-                logger.Info(() => $"{FormatUtil.FormatQuantity((double) totalShareCount)} ({Math.Round(totalShareCount, 2)}) shares contributed to a total payout of {payoutHandler.FormatAmount(totalRewards)} ({blockPercent:0.00}% of block reward) to {rewards.Keys.Count} addresses");
-
-                TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
-                if(null != tc)
-                {
-                    tc.TrackEvent("PendingBalance_" + poolConfig.Id, new Dictionary<string, string>
-                    {
-                        {"TotalShares", totalShareCount.ToString()},
-                        {"TotalRewards", totalRewards.ToString()},
-                        {"BlockPercent", blockPercent.ToString()},
-                        {"MinerCount", rewards.Keys.Count.ToString()}, 
-                    });
-                }
-            }
+                logger.Info(() => $"{FormatUtil.FormatQuantity((double) totalShareCount)} ({Math.Round(totalShareCount, 2)}) shares contributed to a total payout of {payoutHandler.FormatAmount(totalRewards)} ({totalRewards / blockReward * 100:0.00}% of block reward) to {rewards.Keys.Count} addresses");
         }
 
         private async Task<decimal> GetBlockReward(PoolConfig poolConfig)
@@ -150,7 +135,13 @@ namespace Miningcore.Payments.PaymentSchemes
                 var dataObjects = await response.Content.ReadAsStringAsync();
 
                 dynamic desrializedObject = JsonConvert.DeserializeObject(dataObjects);
+                if(desrializedObject.result?.Count <= 0)
+                {
+                    throw new Exception($"Get Block reward info request failed.  Successful response but invalid content from Etherscan: {dataObjects}");
+                }
+
                 dynamic result = desrializedObject.result[0];
+
                 decimal blockCount = result.blockCount;
                 decimal blockRewardsInEth = result.blockRewards_Eth;
                 blockReward = blockRewardsInEth / blockCount;
@@ -166,7 +157,7 @@ namespace Miningcore.Payments.PaymentSchemes
             return blockReward;
         }
 
-        private async Task<decimal> CalculateBlockData(decimal blockRewardInEth, double payoutFrequency, PoolConfig poolConfig)
+        private async Task<decimal> CalculateBlockData(decimal blockRewardInEth, PoolConfig poolConfig, ClusterConfig clusterConfig)
         {
             var stats = await cf.Run(con => statsRepo.GetLastPoolStatsAsync(con, poolConfig.Id));
             PoolStats poolStats = new PoolStats();
@@ -198,9 +189,15 @@ namespace Miningcore.Payments.PaymentSchemes
             {
                 blockFrequency = maxBlockFrequency;
             }
+            int payoutConfig = clusterConfig.PaymentProcessing.Interval;
+            if(payoutConfig == 0)
+            {
+                logger.Warn(() => $"Payments are misconfigured. Interval should not be zero");
+                payoutConfig = 600;
+            }
 
             double recepientBlockReward = (double) (blockRewardInEth * RECEPIENT_SHARE);
-            double blockFrequencyPerPayout = blockFrequency / (payoutFrequency / SIXTY);
+            double blockFrequencyPerPayout = blockFrequency / (payoutConfig / SIXTY);
             double blockData = recepientBlockReward / blockFrequencyPerPayout;
             logger.Info(() => $"BlockData : {blockData}, Network Block Time : {avgBlockTime}, Block Frequency : {blockFrequency}");
 
@@ -209,11 +206,9 @@ namespace Miningcore.Payments.PaymentSchemes
 
         #endregion // IPayoutScheme
 
-        private async Task<Tuple<DateTime?, Dictionary<String, Double>, Dictionary<String, Decimal>>> CalculateRewards(PoolConfig poolConfig, ClusterConfig clusterConfig, DateTime paidUntil)
+        private DateTime? CalculateRewards(PoolConfig poolConfig,
+            Dictionary<string, double> shares, Dictionary<string, decimal> rewards, decimal blockData, DateTime paidUntil)
         {
-            var shares = new Dictionary<string, double>();
-            var rewards = new Dictionary<string, decimal>();
-
             var done = false;
             var before = paidUntil;
             var inclusive = true;
@@ -223,17 +218,18 @@ namespace Miningcore.Payments.PaymentSchemes
 
             double sumDifficulty = 0;
             DateTime? shareCutOffDate = null;
-            DateTime? oldestShare = null;
             Dictionary<string, decimal> scores = new Dictionary<string, decimal>();
 
             while(!done)
             {
                 logger.Info(() => $"Fetching page {currentPage} of shares for pool {poolConfig.Id}");
 
-                var page = await TelemetryUtil.TrackDependency(() => shareReadFaultPolicy.Execute(() =>
-                    cf.Run(con => shareRepo.ReadSharesBeforeAcceptedAsync(con, poolConfig.Id, before, inclusive, pageSize))),
+                var pageTask = TelemetryUtil.TrackDependency(() => shareReadFaultPolicy.Execute(() =>
+                    cf.Run(con => shareRepo.ReadUnprocessedSharesBeforeAcceptedAsync(con, poolConfig.Id, before, inclusive, pageSize))),
                     DependencyType.Sql, "ReadAllSharesMined", "ReadAllSharesMined");
 
+                Task.WaitAll(pageTask);
+                var page = pageTask.Result;
                 inclusive = false;
                 currentPage++;
 
@@ -265,10 +261,6 @@ namespace Miningcore.Payments.PaymentSchemes
                     // set the cutoff date to clean up old shares after a successful payout
                     if(shareCutOffDate == null || share.Accepted > shareCutOffDate)
                         shareCutOffDate = share.Accepted;
-
-                    // track the oldest share so we can measure the payout Frequency
-                    if((share.Accepted > DateTime.UtcNow.AddDays(MAX_SHARE_AGE)) && (oldestShare == null || share.Accepted < oldestShare))
-                        oldestShare = share.Accepted;
                 }
 
                 if(page.Length < pageSize)
@@ -280,31 +272,6 @@ namespace Miningcore.Payments.PaymentSchemes
                 before = page[page.Length - 1].Accepted;
                 done = page.Length <= 0;
             }
-
-            // Calculate how much in total we should payout this round.
-
-            double payoutFrequencySecs = clusterConfig.PaymentProcessing.Interval;
-
-            if(oldestShare.HasValue)
-            {
-                double timeSinceFirstShare = (DateTime.UtcNow - oldestShare.Value).TotalSeconds;
-                // Use the time since first share if it is farther back than the configured payoutFrequency
-                // This way, miners will get the full credit for all the shares in the .
-                if(payoutFrequencySecs < timeSinceFirstShare)
-                {
-                    payoutFrequencySecs = timeSinceFirstShare;
-                    logger.Warn(() => $"Oldest share is farther back than configured payout frequency.  Using {payoutFrequencySecs} seconds to calculate balances");
-                }
-            }
-            
-            if(payoutFrequencySecs == 0)
-            {
-                logger.Warn(() => $"Payments are misconfigured. Interval should not be zero");
-                payoutFrequencySecs = 600;
-            }
-
-            var blockReward = cache.Get(BLOCK_REWARD) ?? await GetBlockReward(poolConfig);           
-            var blockData = await CalculateBlockData((decimal) blockReward, payoutFrequencySecs, poolConfig);
 
             if(accumulatedScore > 0)
             {
@@ -329,11 +296,7 @@ namespace Miningcore.Payments.PaymentSchemes
             }
 
             /* update the value per hash in the pool payment processing config based on latest calculation */
-            Decimal valPerHash = 0;
-            if(sumDifficulty > 0)
-            {
-                valPerHash = blockData / (Decimal) sumDifficulty;
-            }
+            var valPerHash = blockData / (Decimal) sumDifficulty;
             poolConfig.PaymentProcessing.HashValue = valPerHash;
             TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
             if(null != tc)
@@ -352,7 +315,7 @@ namespace Miningcore.Payments.PaymentSchemes
 
             logger.Info(() => $"Balance-calculation for pool {poolConfig.Id} completed with accumulated score {accumulatedScore:0.#######} ({accumulatedScore * 100:0.#####}%)");
 
-            return new Tuple<DateTime?, Dictionary<String, Double>, Dictionary<String, Decimal>>(shareCutOffDate, shares, rewards);
+            return shareCutOffDate;
         }
 
         private void BuildFaultHandlingPolicy()

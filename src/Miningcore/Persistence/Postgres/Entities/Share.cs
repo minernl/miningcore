@@ -34,5 +34,6 @@ namespace Miningcore.Persistence.Postgres.Entities
         public string IpAddress { get; set; }
         public string Source { get; set; }
         public DateTime Created { get; set; }
+        public DateTime Accepted { get; set; }
     }
 }
