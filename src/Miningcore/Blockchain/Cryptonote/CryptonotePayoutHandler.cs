@@ -554,6 +554,12 @@ namespace Miningcore.Blockchain.Cryptonote
             await walletDaemon.ExecuteCmdSingleAsync<JToken>(logger, CryptonoteWalletCommands.Store);
         }
 
+        public decimal getTransactionDeduction(decimal amount)
+        {
+            // if using CryptoNote with PPS, implement this function to estimate the transaction cost for the given amount
+            return 0;
+        }
+
         #endregion // IPayoutHandler
     }
 }

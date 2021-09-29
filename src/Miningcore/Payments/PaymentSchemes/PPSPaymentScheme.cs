@@ -99,15 +99,19 @@ namespace Miningcore.Payments.PaymentSchemes
 
                 if(amount > 0)
                 {
-                    logger.Info(() => $"Adding {payoutHandler.FormatAmount(amount)} to balance of {address} for {FormatUtil.FormatQuantity(shares[address])} ({shares[address]}) shares for block {block?.BlockHeight}");
+                    // Deduct the predicted transaction fee
+                    var txDeduction = payoutHandler.getTransactionDeduction(amount);
+                    amount = amount - txDeduction;
+
+                    logger.Info(() => $"Adding {payoutHandler.FormatAmount(amount)} to balance of {address} for {FormatUtil.FormatQuantity(shares[address])} ({shares[address]}) shares after deducting {payoutHandler.FormatAmount(txDeduction)}");
 
                     await TelemetryUtil.TrackDependency(
                             () => balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, address, amount, $"Reward for {FormatUtil.FormatQuantity(shares[address])} shares for block {block?.BlockHeight}"),
-                            DependencyType.Sql, "AddBalanceAmount",  $"miner:{address}, amount:{amount}");
+                            DependencyType.Sql, "AddBalanceAmount",  $"miner:{address}, amount:{payoutHandler.FormatAmount(amount)}, txDeduction:{payoutHandler.FormatAmount(txDeduction)}");
 
                     // delete discarded shares
                     await TelemetryUtil.TrackDependency(() => shareRepo.ProcessSharesForUserBeforeAcceptedAsync(con, tx, poolConfig.Id, address, shareCutOffDate.Value),
-                    DependencyType.Sql, "DeleteMinerShares", $"miner:{address}, cutoffDate:{shareCutOffDate.Value}");
+                    DependencyType.Sql, "ProcessMinerShares", $"miner:{address}, cutoffDate:{shareCutOffDate.Value}");
                 }
             }
 
