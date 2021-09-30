@@ -122,18 +122,27 @@ namespace Miningcore.Payments
 
         public async Task<string> PayoutSingleBalanceAsync(PoolConfig pool, string miner)
         {
+            var success = true;
+            var startTs = DateTimeOffset.UtcNow;
+            Balance balance = null;
             try
             {
                 logger.Info($"Forcing payout for {miner}");
                 var handler = await ResolveAndConfigurePayoutHandlerAsync(pool);
-                var balance = await cf.Run(con => balanceRepo.GetMinerBalanceAsync(con, pool.Id, miner));
+                balance = await cf.Run(con => balanceRepo.GetMinerBalanceAsync(con, pool.Id, miner));
 
                 return await handler.PayoutSingleBalanceAsync(balance);
             }
             catch (Exception ex)
             {
                 logger.Error($"Failed to force payout for {miner}: {ex}");
+                success = false;
                 throw;
+            }
+            finally
+            {
+                var transferredBalance = balance == null ? 0 : balance.Amount;
+                TelemetryUtil.GetTelemetryClient()?.GetMetric("FORCED_PAYOUT", "success", "duration").TrackValue($"{transferredBalance}", $"{success}", $"{DateTimeOffset.UtcNow - startTs}");
             }
         }
 

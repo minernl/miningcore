@@ -73,14 +73,10 @@ namespace Miningcore.Api.Controllers
         [HttpPost("pools/{poolId}/miners/{address}/forcePayout")]
         public async Task<string> ForcePayout(string poolId, string address)
         { 
-            var success = true;
-            var responseCode = HttpStatusCode.OK;
-            var startTime = DateTimeOffset.UtcNow;
             try
             {
                 if(string.IsNullOrEmpty(poolId))
                 {
-                    responseCode = HttpStatusCode.NotFound;
                     throw new ApiException($"Invalid pool id", HttpStatusCode.NotFound);
                 }
 
@@ -88,7 +84,6 @@ namespace Miningcore.Api.Controllers
 
                 if(pool == null)
                 {
-                    responseCode = HttpStatusCode.NotFound;
                     throw new ApiException($"Pool {poolId} is not known", HttpStatusCode.NotFound);
                 }
 
@@ -96,14 +91,8 @@ namespace Miningcore.Api.Controllers
             }
             catch(Exception ex)
             {
-                //Mark request as failure and rethrow as ApiException to be handled by ApiExceptionHandlingMiddleware
-                success = false;
-                responseCode = HttpStatusCode.InternalServerError;
+                //rethrow as ApiException to be handled by ApiExceptionHandlingMiddleware
                 throw new ApiException(ex.Message, HttpStatusCode.InternalServerError);
-            }
-            finally
-            {
-                TelemetryUtil.GetTelemetryClient()?.TrackRequest("ForcePayout", startTime, DateTimeOffset.UtcNow - startTime, $"{responseCode}", success);
             }
         }
 
