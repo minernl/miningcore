@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Globalization;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
@@ -15,8 +14,6 @@ using Miningcore.Configuration;
 using Miningcore.DaemonInterface;
 using Miningcore.Extensions;
 using Miningcore.Messaging;
-using Miningcore.Notifications;
-using Miningcore.Notifications.Messages;
 using Miningcore.Payments;
 using Miningcore.Persistence;
 using Miningcore.Persistence.Model;
@@ -350,7 +347,7 @@ namespace Miningcore.Blockchain.Ethereum
                     }
 
                     logInfo = $", address={balance.Address}";
-                    var txHash = await PayoutAsync(balance);
+                    var txHash = await PayoutSingleBalanceAsync(balance);
                     txHashes.Add(txHash);
                 }
                 catch(Nethereum.JsonRpc.Client.RpcResponseException ex)
@@ -374,6 +371,83 @@ namespace Miningcore.Blockchain.Ethereum
 
             if(txHashes.Any())
                 NotifyPayoutSuccess(poolConfig.Id, balances, txHashes.ToArray(), null);
+        }
+
+        public async Task<string> PayoutSingleBalanceAsync(string miner, decimal amount)
+        {
+            string txId = null;
+            // If web3Connection was created, payout from self managed wallet
+            if(web3Connection != null)
+            {
+                var transaction = await web3Connection.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(miner, amount);
+
+                if(transaction.HasErrors() != null && (bool) transaction.HasErrors())
+                {
+                    throw new Exception($"Transfer failed for {miner}: {transaction}");
+                }
+
+                txId = transaction.TransactionHash;
+
+                if(string.IsNullOrEmpty(txId) || EthereumConstants.ZeroHashPattern.IsMatch(txId))
+                {
+                    throw new Exception($"Transfer did not return a valid transaction hash for {miner}");
+                }
+            }
+            else // else payout from daemon managed wallet
+            {
+                try
+                {
+
+                    var unlockResponse = await daemon.ExecuteCmdSingleAsync<object>(logger, EthCommands.UnlockAccount, new[]
+                    {
+                    poolConfig.Address,
+                    extraConfig.CoinbasePassword,
+                    null
+                });
+
+                    if(unlockResponse.Error != null || unlockResponse.Response == null || (bool) unlockResponse.Response == false)
+                    {
+                        logger.Warn(() => $"[{LogCategory}] Account Unlock failed. Code={unlockResponse.Error.Code}, Data={unlockResponse.Error.Data}, Msg={unlockResponse.Error.Message}");
+                    }
+                }
+                catch
+                {
+                    throw new Exception("Unable to unlock coinbase account for sending transaction");
+                }
+
+                var amountWei = (BigInteger) Math.Floor(amount * EthereumConstants.Wei);
+                // send transaction
+                logger.Info(() => $"[{LogCategory}] Sending {FormatAmount(amount)} {amountWei} to {miner}");
+
+                var request = new SendTransactionRequest
+                {
+                    From = poolConfig.Address,
+                    To = miner,
+                    Value = amountWei,
+                    Gas = extraConfig.Gas
+                };
+
+                // ToDo test difference
+                // NL: Value = (BigInteger) Math.Floor(balance.Amount * EthereumConstants.Wei),
+                // AX: Value = writeHex(amount),
+                var response = await daemon.ExecuteCmdSingleAsync<string>(logger, EthCommands.SendTx, new[] { request });
+
+                if(response.Error != null)
+                    throw new Exception($"{EthCommands.SendTx} returned error: {response.Error.Message} code {response.Error.Code}");
+
+                if(string.IsNullOrEmpty(response.Response) || EthereumConstants.ZeroHashPattern.IsMatch(response.Response))
+                    throw new Exception($"{EthCommands.SendTx} did not return a valid transaction hash");
+
+                txId = response.Response;
+            }
+
+            logger.Info(() => $"[{LogCategory}] Payout transaction id: {txId}");
+
+            // update db
+            await PersistPaymentsAsync(new[] { balance }, txId);
+
+            // done
+            return txId;
         }
 
         #endregion // IPayoutHandler
@@ -536,83 +610,6 @@ namespace Miningcore.Blockchain.Ethereum
             {
                 logger.Warn(() => $"Unable to determine Ethereum Chain ID: " + chainIdResult);
             }
-        }
-
-        private async Task<string> PayoutAsync(Balance balance)
-        {
-            string txId = null;
-            // If web3Connection was created, payout from self managed wallet
-            if(web3Connection != null)
-            {
-                var transaction = await web3Connection.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount);
-
-                if(transaction.HasErrors() != null && (bool) transaction.HasErrors())
-                {
-                    throw new Exception($"Transfer failed for {balance}: {transaction}");
-                }
-
-                txId = transaction.TransactionHash;
-
-                if(string.IsNullOrEmpty(txId) || EthereumConstants.ZeroHashPattern.IsMatch(txId))
-                {
-                    throw new Exception($"Transfer did not return a valid transaction hash for {balance}");
-                }
-            }
-            else // else payout from daemon managed wallet
-            {
-                try
-                {
-
-                    var unlockResponse = await daemon.ExecuteCmdSingleAsync<object>(logger, EthCommands.UnlockAccount, new[]
-                    {
-                    poolConfig.Address,
-                    extraConfig.CoinbasePassword,
-                    null
-                });
-
-                    if(unlockResponse.Error != null || unlockResponse.Response == null || (bool) unlockResponse.Response == false)
-                    {
-                        logger.Warn(() => $"[{LogCategory}] Account Unlock failed. Code={unlockResponse.Error.Code}, Data={unlockResponse.Error.Data}, Msg={unlockResponse.Error.Message}");
-                    }
-                }
-                catch
-                {
-                    throw new Exception("Unable to unlock coinbase account for sending transaction");
-                }
-
-                var amount = (BigInteger) Math.Floor(balance.Amount * EthereumConstants.Wei);
-                // send transaction
-                logger.Info(() => $"[{LogCategory}] Sending {FormatAmount(balance.Amount)} {amount} to {balance.Address}");
-
-                var request = new SendTransactionRequest
-                {
-                    From = poolConfig.Address,
-                    To = balance.Address,
-                    Value = amount,
-                    Gas = extraConfig.Gas
-                };
-
-                // ToDo test difference
-                // NL: Value = (BigInteger) Math.Floor(balance.Amount * EthereumConstants.Wei),
-                // AX: Value = writeHex(amount),
-                var response = await daemon.ExecuteCmdSingleAsync<string>(logger, EthCommands.SendTx, new[] { request });
-
-                if(response.Error != null)
-                    throw new Exception($"{EthCommands.SendTx} returned error: {response.Error.Message} code {response.Error.Code}");
-
-                if(string.IsNullOrEmpty(response.Response) || EthereumConstants.ZeroHashPattern.IsMatch(response.Response))
-                    throw new Exception($"{EthCommands.SendTx} did not return a valid transaction hash");
-
-                txId = response.Response;
-            }
-
-            logger.Info(() => $"[{LogCategory}] Payout transaction id: {txId}");
-
-            // update db
-            await PersistPaymentsAsync(new[] { balance }, txId);
-
-            // done
-            return txId;
         }
 
         private static string writeHex(BigInteger value)

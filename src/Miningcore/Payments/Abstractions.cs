@@ -33,6 +33,7 @@ namespace Miningcore.Payments
         Task CalculateBlockEffortAsync(Block block, double accumulatedBlockShareDiff);
         Task<decimal> UpdateBlockRewardBalancesAsync(IDbConnection con, IDbTransaction tx, Block block, PoolConfig pool);
         Task PayoutAsync(Balance[] balances);
+        Task<string> PayoutSingleBalanceAsync(Balance balance);
 
         string FormatAmount(decimal amount);
     }

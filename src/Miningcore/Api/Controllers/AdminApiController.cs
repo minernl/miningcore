@@ -7,11 +7,13 @@ using Miningcore.Api.Responses;
 using Miningcore.Configuration;
 using Miningcore.Extensions;
 using Miningcore.Mining;
+using Miningcore.Payments;
 using Miningcore.Persistence;
 using Miningcore.Persistence.Repositories;
 using Miningcore.Util;
 using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 
@@ -30,6 +32,9 @@ namespace Miningcore.Api.Controllers
             cf = ctx.Resolve<IConnectionFactory>();
             paymentsRepo = ctx.Resolve<IPaymentRepository>();
             balanceRepo = ctx.Resolve<IBalanceRepository>();
+            payoutManager = ctx.Resolve<PayoutManager>();
+                
+            this.ctx = ctx;
         }
 
         private readonly ClusterConfig clusterConfig;
@@ -37,8 +42,10 @@ namespace Miningcore.Api.Controllers
         private readonly IPaymentRepository paymentsRepo;
         private readonly IBalanceRepository balanceRepo;
         private readonly ConcurrentDictionary<string, IMiningPool> pools;
+        private readonly PayoutManager payoutManager;
 
         private AdminGcStats gcStats;
+        private IComponentContext ctx;
 
         #region Actions
 
@@ -66,6 +73,56 @@ namespace Miningcore.Api.Controllers
             return await cf.Run(con => balanceRepo.GetBalanceAsync(con, poolId, address));
         }
 
+        [HttpPost("pools/{poolId}/miners/{address}/forcePayout")]
+        public async Task<string> ForcePayout(string poolId, string address)
+        {
+            var success = true;
+            var responseCode = HttpStatusCode.OK;
+            var startTime = DateTimeOffset.UtcNow;
+            try
+            {
+                if(string.IsNullOrEmpty(poolId))
+                {
+                    responseCode = HttpStatusCode.NotFound;
+                    throw new ApiException($"Invalid pool id", HttpStatusCode.NotFound);
+                }
+
+                var pool = clusterConfig.Pools.FirstOrDefault(x => x.Id == poolId && x.Enabled);
+
+                if(pool == null)
+                {
+                    responseCode = HttpStatusCode.NotFound;
+                    throw new ApiException($"Pool {poolId} is not known", HttpStatusCode.NotFound);
+                }
+
+                return await payoutManager.PayoutSingleBalance(GetPool(poolId), address);
+            }
+            catch(Exception ex)
+            {
+                //Mark request as failure and rethrow as ApiException to be handled by ApiExceptionHandlingMiddleware
+                success = false;
+                responseCode = HttpStatusCode.InternalServerError;
+                throw new ApiException(ex.Message, HttpStatusCode.InternalServerError);
+            }
+            finally
+            {
+                TelemetryUtil.GetTelemetryClient()?.TrackRequest("ForcePayout", startTime, DateTimeOffset.UtcNow - startTime, $"{responseCode}", success);
+            }
+        }
+
         #endregion // Actions
+
+        private PoolConfig GetPool(string poolId)
+        {
+            if(string.IsNullOrEmpty(poolId))
+                throw new ApiException($"Invalid pool id", HttpStatusCode.NotFound);
+
+            var pool = clusterConfig.Pools.FirstOrDefault(x => x.Id == poolId && x.Enabled);
+
+            if(pool == null)
+                throw new ApiException($"Pool {poolId} is not known", HttpStatusCode.NotFound);
+
+            return pool;
+        }
     }
 }

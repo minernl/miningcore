@@ -121,16 +121,37 @@ namespace Miningcore.Payments
                             logger.Error(ex, () => $"[{pool.Id}] Payment processing failed");
                         }
                     }
-                    //}
-
-                    //catch(Exception ex)
-                    //{
-                    //    logger.Error(ex);
-                    //}
 
                     await Task.Delay(interval, cts.Token);
                 }
             });
+        }
+
+        public async Task<string> PayoutSingleBalance(PoolConfig pool, string miner)
+        {
+            try
+            {
+                var family = HandleFamilyOverride(pool.Template.Family, pool);
+
+                // resolve payout handler
+                var handlerImpl = ctx.Resolve<IEnumerable<Meta<Lazy<IPayoutHandler, CoinFamilyAttribute>>>>()
+                    .First(x => x.Value.Metadata.SupportedFamilies.Contains(family)).Value;
+
+                var handler = handlerImpl.Value;
+                await handler.ConfigureAsync(clusterConfig, pool);
+
+                // resolve payout scheme
+                var scheme = ctx.ResolveKeyed<IPayoutScheme>(pool.PaymentProcessing.PayoutScheme);
+
+                var balance = await cf.Run(con => balanceRepo.GetMinerBalanceAsync(con, pool.Id, miner));
+
+                return await handler.PayoutSingleBalanceAsync(balance);
+            }
+            catch (Exception ex)
+            {
+                logger.Error($"Failed to force payout for {miner}: {ex}");
+                throw;
+            }
         }
 
 
