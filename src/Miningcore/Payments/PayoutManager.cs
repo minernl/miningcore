@@ -124,6 +124,7 @@ namespace Miningcore.Payments
         {
             try
             {
+                logger.Info($"Forcing payout for {miner}");
                 var handler = await ResolveAndConfigurePayoutHandlerAsync(pool);
                 var balance = await cf.Run(con => balanceRepo.GetMinerBalanceAsync(con, pool.Id, miner));
 

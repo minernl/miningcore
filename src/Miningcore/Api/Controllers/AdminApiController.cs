@@ -72,7 +72,7 @@ namespace Miningcore.Api.Controllers
 
         [HttpPost("pools/{poolId}/miners/{address}/forcePayout")]
         public async Task<string> ForcePayout(string poolId, string address)
-        {
+        { 
             var success = true;
             var responseCode = HttpStatusCode.OK;
             var startTime = DateTimeOffset.UtcNow;
