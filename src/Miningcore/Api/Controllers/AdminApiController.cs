@@ -11,6 +11,7 @@ using Miningcore.Payments;
 using Miningcore.Persistence;
 using Miningcore.Persistence.Repositories;
 using Miningcore.Util;
+using NLog;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
@@ -43,6 +44,7 @@ namespace Miningcore.Api.Controllers
         private readonly PayoutManager payoutManager;
 
         private AdminGcStats gcStats;
+        private static readonly ILogger logger = LogManager.GetCurrentClassLogger();
 
         #region Actions
 
@@ -72,7 +74,8 @@ namespace Miningcore.Api.Controllers
 
         [HttpPost("pools/{poolId}/miners/{address}/forcePayout")]
         public async Task<string> ForcePayout(string poolId, string address)
-        { 
+        {
+            logger.Info($"Forcing payout for {address}");
             try
             {
                 if(string.IsNullOrEmpty(poolId))
