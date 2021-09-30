@@ -33,8 +33,6 @@ namespace Miningcore.Api.Controllers
             paymentsRepo = ctx.Resolve<IPaymentRepository>();
             balanceRepo = ctx.Resolve<IBalanceRepository>();
             payoutManager = ctx.Resolve<PayoutManager>();
-                
-            this.ctx = ctx;
         }
 
         private readonly ClusterConfig clusterConfig;
@@ -45,7 +43,6 @@ namespace Miningcore.Api.Controllers
         private readonly PayoutManager payoutManager;
 
         private AdminGcStats gcStats;
-        private IComponentContext ctx;
 
         #region Actions
 

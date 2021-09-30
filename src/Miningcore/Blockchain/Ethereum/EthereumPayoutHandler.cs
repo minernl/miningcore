@@ -373,24 +373,24 @@ namespace Miningcore.Blockchain.Ethereum
                 NotifyPayoutSuccess(poolConfig.Id, balances, txHashes.ToArray(), null);
         }
 
-        public async Task<string> PayoutSingleBalanceAsync(string miner, decimal amount)
+        public async Task<string> PayoutSingleBalanceAsync(Balance balance)
         {
             string txId = null;
             // If web3Connection was created, payout from self managed wallet
             if(web3Connection != null)
             {
-                var transaction = await web3Connection.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(miner, amount);
+                var transaction = await web3Connection.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount);
 
                 if(transaction.HasErrors() != null && (bool) transaction.HasErrors())
                 {
-                    throw new Exception($"Transfer failed for {miner}: {transaction}");
+                    throw new Exception($"Transfer failed for {balance}: {transaction}");
                 }
 
                 txId = transaction.TransactionHash;
 
                 if(string.IsNullOrEmpty(txId) || EthereumConstants.ZeroHashPattern.IsMatch(txId))
                 {
-                    throw new Exception($"Transfer did not return a valid transaction hash for {miner}");
+                    throw new Exception($"Transfer did not return a valid transaction hash for {balance}");
                 }
             }
             else // else payout from daemon managed wallet
@@ -415,15 +415,15 @@ namespace Miningcore.Blockchain.Ethereum
                     throw new Exception("Unable to unlock coinbase account for sending transaction");
                 }
 
-                var amountWei = (BigInteger) Math.Floor(amount * EthereumConstants.Wei);
+                var amount = (BigInteger) Math.Floor(balance.Amount * EthereumConstants.Wei);
                 // send transaction
-                logger.Info(() => $"[{LogCategory}] Sending {FormatAmount(amount)} {amountWei} to {miner}");
+                logger.Info(() => $"[{LogCategory}] Sending {FormatAmount(balance.Amount)} {amount} to {balance.Address}");
 
                 var request = new SendTransactionRequest
                 {
                     From = poolConfig.Address,
-                    To = miner,
-                    Value = amountWei,
+                    To = balance.Address,
+                    Value = amount,
                     Gas = extraConfig.Gas
                 };
 
