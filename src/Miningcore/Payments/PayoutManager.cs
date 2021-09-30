@@ -81,14 +81,7 @@ namespace Miningcore.Payments
 
                         try
                         {
-                            var family = HandleFamilyOverride(pool.Template.Family, pool);
-
-                            // resolve payout handler
-                            var handlerImpl = ctx.Resolve<IEnumerable<Meta<Lazy<IPayoutHandler, CoinFamilyAttribute>>>>()
-                                .First(x => x.Value.Metadata.SupportedFamilies.Contains(family)).Value;
-
-                            var handler = handlerImpl.Value;
-                            await handler.ConfigureAsync(clusterConfig, pool);
+                            var handler = await ResolveAndConfigurePayoutHandlerAsync(pool);
 
                             // resolve payout scheme
                             var scheme = ctx.ResolveKeyed<IPayoutScheme>(pool.PaymentProcessing.PayoutScheme);
@@ -131,18 +124,7 @@ namespace Miningcore.Payments
         {
             try
             {
-                var family = HandleFamilyOverride(pool.Template.Family, pool);
-
-                // resolve payout handler
-                var handlerImpl = ctx.Resolve<IEnumerable<Meta<Lazy<IPayoutHandler, CoinFamilyAttribute>>>>()
-                    .First(x => x.Value.Metadata.SupportedFamilies.Contains(family)).Value;
-
-                var handler = handlerImpl.Value;
-                await handler.ConfigureAsync(clusterConfig, pool);
-
-                // resolve payout scheme
-                var scheme = ctx.ResolveKeyed<IPayoutScheme>(pool.PaymentProcessing.PayoutScheme);
-
+                var handler = await ResolveAndConfigurePayoutHandlerAsync(pool);
                 var balance = await cf.Run(con => balanceRepo.GetMinerBalanceAsync(con, pool.Id, miner));
 
                 return await handler.PayoutSingleBalanceAsync(balance);
@@ -301,6 +283,20 @@ namespace Miningcore.Payments
             // handler has the final say
             if(accumulatedShareDiffForBlock.HasValue)
                 await handler.CalculateBlockEffortAsync(block, accumulatedShareDiffForBlock.Value);
+        }
+
+        private async Task<IPayoutHandler> ResolveAndConfigurePayoutHandlerAsync(PoolConfig pool)
+        {
+            var family = HandleFamilyOverride(pool.Template.Family, pool);
+
+            // resolve payout handler
+            var handlerImpl = ctx.Resolve<IEnumerable<Meta<Lazy<IPayoutHandler, CoinFamilyAttribute>>>>()
+                .First(x => x.Value.Metadata.SupportedFamilies.Contains(family)).Value;
+
+            var handler = handlerImpl.Value;
+            await handler.ConfigureAsync(clusterConfig, pool);
+
+            return handler;
         }
 
 
