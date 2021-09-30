@@ -123,7 +123,7 @@ namespace Miningcore.Payments
         public async Task<string> PayoutSingleBalanceAsync(PoolConfig pool, string miner)
         {
             var success = true;
-            var startTs = DateTimeOffset.UtcNow;
+            var timer = System.Diagnostics.Stopwatch.StartNew();
             decimal amount = 0;
             IPayoutHandler handler = null;
             try
@@ -141,7 +141,7 @@ namespace Miningcore.Payments
             }
             finally
             {
-                TelemetryUtil.GetTelemetryClient()?.GetMetric("FORCED_PAYOUT", "success", "duration").TrackValue($"{handler?.FormatAmount(amount)}", $"{success}", $"{DateTimeOffset.UtcNow - startTs}");
+                TelemetryUtil.GetTelemetryClient()?.GetMetric("FORCED_PAYOUT", "success", "duration").TrackValue(amount, $"{success}", $"{timer.ElapsedMilliseconds}");
             }
         }
 
