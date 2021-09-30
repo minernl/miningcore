@@ -124,7 +124,7 @@ namespace Miningcore.Payments
         {
             var success = true;
             var timer = System.Diagnostics.Stopwatch.StartNew();
-            decimal amount = 0;
+            Decimal amount = 0;
             IPayoutHandler handler = null;
             try
             {
@@ -141,7 +141,7 @@ namespace Miningcore.Payments
             }
             finally
             {
-                TelemetryUtil.GetTelemetryClient()?.GetMetric("FORCED_PAYOUT", "success", "duration").TrackValue(amount, $"{success}", $"{timer.ElapsedMilliseconds}");
+                TelemetryUtil.GetTelemetryClient()?.GetMetric("FORCED_PAYOUT", "success", "duration").TrackValue((double)amount, $"{success}", $"{timer.ElapsedMilliseconds}");
             }
         }
 
