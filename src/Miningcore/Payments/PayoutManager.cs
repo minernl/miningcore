@@ -127,7 +127,7 @@ namespace Miningcore.Payments
             });
         }
 
-        public async Task<string> PayoutSingleBalance(PoolConfig pool, string miner)
+        public async Task<string> PayoutSingleBalanceAsync(PoolConfig pool, string miner)
         {
             try
             {

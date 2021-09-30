@@ -92,7 +92,7 @@ namespace Miningcore.Api.Controllers
                     throw new ApiException($"Pool {poolId} is not known", HttpStatusCode.NotFound);
                 }
 
-                return await payoutManager.PayoutSingleBalance(GetPool(poolId), address);
+                return await payoutManager.PayoutSingleBalanceAsync(GetPool(poolId), address);
             }
             catch(Exception ex)
             {
