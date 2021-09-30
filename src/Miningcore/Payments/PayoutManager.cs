@@ -124,12 +124,13 @@ namespace Miningcore.Payments
         {
             var success = true;
             var startTs = DateTimeOffset.UtcNow;
-            Balance balance = null;
+            decimal amount = 0;
+            IPayoutHandler handler = null;
             try
             {
-                var handler = await ResolveAndConfigurePayoutHandlerAsync(pool);
-                balance = await cf.Run(con => balanceRepo.GetMinerBalanceAsync(con, pool.Id, miner));
-
+                handler = await ResolveAndConfigurePayoutHandlerAsync(pool);
+                var balance = await cf.Run(con => balanceRepo.GetMinerBalanceAsync(con, pool.Id, miner));
+                amount = balance.Amount;
                 return await handler.PayoutSingleBalanceAsync(balance);
             }
             catch (Exception ex)
@@ -140,8 +141,7 @@ namespace Miningcore.Payments
             }
             finally
             {
-                var transferredBalance = balance == null ? 0 : balance.Amount;
-                TelemetryUtil.GetTelemetryClient()?.GetMetric("FORCED_PAYOUT", "success", "duration").TrackValue($"{transferredBalance}", $"{success}", $"{DateTimeOffset.UtcNow - startTs}");
+                TelemetryUtil.GetTelemetryClient()?.GetMetric("FORCED_PAYOUT", "success", "duration").TrackValue($"{handler?.FormatAmount(amount)}", $"{success}", $"{DateTimeOffset.UtcNow - startTs}");
             }
         }
 
