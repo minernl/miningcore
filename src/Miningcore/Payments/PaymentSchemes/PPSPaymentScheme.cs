@@ -71,7 +71,8 @@ namespace Miningcore.Payments.PaymentSchemes
         private const String BLOCK_REWARD = "blockReward";
         private const String DATE_FORMAT = "yyyy-MM-dd";
         private const String ACCEPT_TEXT_HTML = "text/html";
-        private String URL_PARAMETER_FORMAT = "?module=stats&action=dailyblkcount&startdate={0}&enddate={1}&sort=asc&apikey={2}";
+        private const int defaultHashrateCalculationWindow = 10; // mins
+        private const String URL_PARAMETER_FORMAT = "?module=stats&action=dailyblkcount&startdate={0}&enddate={1}&sort=asc&apikey={2}";
         private Policy shareReadFaultPolicy;
 
         private class Config
@@ -90,7 +91,7 @@ namespace Miningcore.Payments.PaymentSchemes
             // calculate rewards
             var shares = new Dictionary<string, double>();
             var rewards = new Dictionary<string, decimal>();
-            var paidUntil = DateTime.UtcNow.AddSeconds(-5);
+            var paidUntil = DateTime.UtcNow;
             var shareCutOffDate = CalculateRewards(poolConfig, shares, rewards, blockData, paidUntil);
 
             // update balances
@@ -102,7 +103,15 @@ namespace Miningcore.Payments.PaymentSchemes
                 {
                     // Deduct the predicted transaction fee
                     var txDeduction = payoutHandler.getTransactionDeduction(amount);
-                    amount = amount - txDeduction;
+                    if(txDeduction > 0 && txDeduction < amount)
+                    {
+                        amount = amount - txDeduction;
+                    }
+                    else
+                    {
+                        logger.Error(() => $"Payouts are mis-configured. Transaction Deduction was calculated to be an invalid value: {payoutHandler.FormatAmount(txDeduction)}");
+                    }
+
 
                     logger.Info(() => $"Adding {payoutHandler.FormatAmount(amount)} to balance of {address} for {FormatUtil.FormatQuantity(shares[address])} ({shares[address]}) shares after deducting {payoutHandler.FormatAmount(txDeduction)}");
 
@@ -110,18 +119,19 @@ namespace Miningcore.Payments.PaymentSchemes
                             () => balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, address, amount, $"Reward for {FormatUtil.FormatQuantity(shares[address])} shares for block {block?.BlockHeight}"),
                             DependencyType.Sql, "AddBalanceAmount",  $"miner:{address}, amount:{payoutHandler.FormatAmount(amount)}, txDeduction:{payoutHandler.FormatAmount(txDeduction)}");
 
-                    // delete discarded shares
                     await TelemetryUtil.TrackDependency(() => shareRepo.ProcessSharesForUserBeforeAcceptedAsync(con, tx, poolConfig.Id, address, shareCutOffDate.Value),
-                    DependencyType.Sql, "ProcessMinerShares", $"miner:{address}, cutoffDate:{shareCutOffDate.Value}");
+                    DependencyType.Sql, "ProcessMinerShares", $"miner:{address},cutoffDate:{shareCutOffDate.Value}");
                 }
             }
 
-            // diagnostics
-            ThreadPool.GetMaxThreads(out int maxWorker, out int maxIo);
-            ThreadPool.GetMinThreads(out int minWorker, out int minIO);
-            ThreadPool.GetAvailableThreads(out int availableWorker, out int availableIo);
-            logger.Info(() => $"GetMaxThreads - workers {maxWorker}, io {maxIo}  | GetMinThreads - workers {minWorker}, io {minIO} | GetAvailableThreads - workers {availableWorker}, io {availableIo}");
+            // delete discarded shares
+            var deleteWindow  = clusterConfig.Statistics?.HashrateCalculationWindow ?? defaultHashrateCalculationWindow;
+            var deleteCutoffTime = DateTime.UtcNow.AddMinutes(0-(deleteWindow + 1)); // delete any data no longer needed by the StatsRecorder, plus a one-minute buffer
 
+            await TelemetryUtil.TrackDependency(() => shareRepo.DeleteProcessedSharesBeforeAcceptedAsync(con, tx, poolConfig.Id, deleteCutoffTime),
+            DependencyType.Sql, "DeleteOldShares", $"cutoffDate:{deleteCutoffTime}");
+
+            // diagnostics
             var totalShareCount = shares.Values.ToList().Sum(x => new decimal(x));
             var totalRewards = rewards.Values.ToList().Sum(x => x);
 
