@@ -333,7 +333,7 @@ namespace Miningcore.Blockchain.Bitcoin
         public decimal getTransactionDeduction(decimal amount)
         {
             // if using BitCoin/Equihash with PPS, implement this function to estimate the transaction cost for the given amount
-            return 0;
+            throw new NotImplementedException();
         }
 
         #endregion // IPayoutHandler
