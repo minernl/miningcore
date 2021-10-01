@@ -347,7 +347,7 @@ namespace Miningcore.Blockchain.Ethereum
                     }
 
                     logInfo = $", address={balance.Address}";
-                    var txHash = await PayoutSingleBalanceAsync(balance);
+                    var txHash = await PayoutAsync(balance);
                     txHashes.Add(txHash);
                 }
                 catch(Nethereum.JsonRpc.Client.RpcResponseException ex)
@@ -373,7 +373,7 @@ namespace Miningcore.Blockchain.Ethereum
                 NotifyPayoutSuccess(poolConfig.Id, balances, txHashes.ToArray(), null);
         }
 
-        public async Task<string> PayoutSingleBalanceAsync(Balance balance)
+        public async Task<string> PayoutAsync(Balance balance)
         {
             string txId = null;
             // If web3Connection was created, payout from self managed wallet
