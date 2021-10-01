@@ -559,6 +559,11 @@ namespace Miningcore.Blockchain.Cryptonote
             throw new NotImplementedException();
         }
 
+        public decimal getTransactionDeduction(decimal amount)
+        {
+            // if using CryptoNote with PPS, implement this function to estimate the transaction cost for the given amount
+            throw new NotImplementedException();
+        }
         #endregion // IPayoutHandler
     }
 }

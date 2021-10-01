@@ -36,6 +36,7 @@ namespace Miningcore.Payments
         Task<string> PayoutSingleBalanceAsync(Balance balance);
 
         string FormatAmount(decimal amount);
+        decimal getTransactionDeduction(decimal amount);
     }
 
     public interface IPayoutScheme

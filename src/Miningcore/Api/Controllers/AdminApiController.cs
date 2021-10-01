@@ -90,7 +90,7 @@ namespace Miningcore.Api.Controllers
                     throw new ApiException($"Pool {poolId} is not known", HttpStatusCode.NotFound);
                 }
 
-                return await payoutManager.PayoutSingleBalanceAsync(GetPool(poolId), address);
+                return await payoutManager.PayoutSingleBalanceAsync(pool, address);
             }
             catch(Exception ex)
             {
@@ -100,18 +100,5 @@ namespace Miningcore.Api.Controllers
         }
 
         #endregion // Actions
-
-        private PoolConfig GetPool(string poolId)
-        {
-            if(string.IsNullOrEmpty(poolId))
-                throw new ApiException($"Invalid pool id", HttpStatusCode.NotFound);
-
-            var pool = clusterConfig.Pools.FirstOrDefault(x => x.Id == poolId && x.Enabled);
-
-            if(pool == null)
-                throw new ApiException($"Pool {poolId} is not known", HttpStatusCode.NotFound);
-
-            return pool;
-        }
     }
 }

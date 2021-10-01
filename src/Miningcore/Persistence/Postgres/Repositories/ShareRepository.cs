@@ -185,6 +185,15 @@ namespace Miningcore.Persistence.Postgres.Repositories
             await con.ExecuteAsync(query, new { poolId, before }, tx);
         }
 
+        public async Task DeleteProcessedSharesBeforeAcceptedAsync(IDbConnection con, IDbTransaction tx, string poolId, DateTime before)
+        {
+            logger.LogInvoke(new[] { poolId });
+
+            const string query = "DELETE FROM shares WHERE poolid = @poolId AND processed is not null AND accepted <= @before";
+
+            await con.ExecuteAsync(query, new { poolId, before }, tx);
+        }
+
         public async Task DeleteSharesForUserBeforeAcceptedAsync(IDbConnection con, IDbTransaction tx, string poolId, string miner, DateTime before)
         {
             logger.LogInvoke(new[] { poolId });
@@ -263,6 +272,18 @@ namespace Miningcore.Persistence.Postgres.Repositories
 
             const string query = "SELECT SUM(difficulty), COUNT(difficulty), MIN(created) AS firstshare, MAX(created) AS lastshare, miner, worker FROM shares " +
                 "WHERE poolid = @poolId AND created >= @start AND created <= @end " +
+                "GROUP BY miner, worker";
+
+            return (await con.QueryAsync<MinerWorkerHashes>(query, new { poolId, start, end }))
+                .ToArray();
+        }
+
+        public async Task<MinerWorkerHashes[]> GetHashAccumulationBetweenAcceptedAsync(IDbConnection con, string poolId, DateTime start, DateTime end)
+        {
+            logger.LogInvoke(new[] { poolId });
+
+            const string query = "SELECT SUM(difficulty), COUNT(difficulty), MIN(accepted) AS firstshare, MAX(accepted) AS lastshare, miner, worker FROM shares " +
+                "WHERE poolid = @poolId AND accepted >= @start AND accepted <= @end " +
                 "GROUP BY miner, worker";
 
             return (await con.QueryAsync<MinerWorkerHashes>(query, new { poolId, start, end }))

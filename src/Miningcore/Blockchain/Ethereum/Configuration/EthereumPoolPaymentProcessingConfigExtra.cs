@@ -64,6 +64,11 @@ namespace Miningcore.Blockchain.Ethereum.Configuration
         public ulong MaxGasLimit { get; set; }
 
         /// <summary>
+        /// if True, miners pay payment tx fees
+        /// </summary>
+        public bool MinersPayTxFees { get; set; }
+
+        /// <summary>
         /// Hex encoded private key
         /// </summary>
         public string PrivateKey { get; set; }

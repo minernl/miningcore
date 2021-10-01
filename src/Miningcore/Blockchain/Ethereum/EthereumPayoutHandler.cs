@@ -450,6 +450,29 @@ namespace Miningcore.Blockchain.Ethereum
             return txId;
         }
 
+        public decimal getTransactionDeduction(decimal amount)
+        {
+            decimal deduct = 0;
+            if(extraConfig?.MinersPayTxFees == true)
+            {
+                 // the gas limit of a single address->address transaction is currently fixed at 21000
+                var gasAmount = extraConfig?.Gas ?? 21000;
+
+                 // if no MaxGasLimit is configured, nothing will be deducted.
+                var gasPrice = extraConfig?.MaxGasLimit  ?? 0;
+                var gasFee = gasPrice / EthereumConstants.Wei;
+
+                var txCost = gasAmount * gasFee;
+
+                var payoutThreshold = poolConfig.PaymentProcessing.MinimumPayment;
+
+                var amountRatio = amount / payoutThreshold;
+                
+                deduct = txCost * amountRatio;
+            }
+            return deduct;
+        }
+
         #endregion // IPayoutHandler
 
         private async Task<DaemonResponses.Block[]> FetchBlocks(Dictionary<long, DaemonResponses.Block> blockCache, params long[] blockHeights)

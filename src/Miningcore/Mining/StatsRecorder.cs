@@ -197,7 +197,7 @@ namespace Miningcore.Mining
 
                 // fetch stats from DB for the last X minutes
                 // MinerNL get stats
-                var result = await readFaultPolicy.ExecuteAsync(() => cf.Run(con => shareRepo.GetHashAccumulationBetweenCreatedAsync(con, poolId, timeFrom, currentTimeUtc)));
+                var result = await readFaultPolicy.ExecuteAsync(() => cf.Run(con => shareRepo.GetHashAccumulationBetweenAcceptedAsync(con, poolId, timeFrom, currentTimeUtc)));
 
                 var byMiner = result.GroupBy(x => x.Miner).ToArray();
 
