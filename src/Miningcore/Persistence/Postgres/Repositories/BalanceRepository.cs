@@ -43,6 +43,11 @@ namespace Miningcore.Persistence.Postgres.Repositories
 
         public async Task<int> AddAmountAsync(IDbConnection con, IDbTransaction tx, string poolId, string address, decimal amount, string usage)
         {
+            return await AddAmountAsyncDeductingTxFee(con, tx, poolId, address, amount, usage, 0, 0);
+        }
+
+        public async Task<int> AddAmountAsyncDeductingTxFee(IDbConnection con, IDbTransaction tx, string poolId, string address, decimal amount, string usage, decimal deduction, decimal threshold)
+        {
             logger.LogInvoke();
 
             var now = DateTime.UtcNow;
@@ -70,6 +75,12 @@ namespace Miningcore.Persistence.Postgres.Repositories
 
             if(balance == null)
             {
+                if(deduction > 0 && deduction < amount)
+                {
+                    amount -= deduction;
+                }
+
+
                 balance = new Entities.Balance
                 {
                     PoolId = poolId,
@@ -84,9 +95,13 @@ namespace Miningcore.Persistence.Postgres.Repositories
 
                 return await con.ExecuteAsync(query, balance, tx);
             }
-
             else
             {
+                if(deduction > 0 && deduction < amount && balance.Amount < threshold)
+                {
+                    amount -= deduction;
+                }
+
                 query = "UPDATE balances SET amount = amount + @amount, updated = now() at time zone 'utc' " +
                     "WHERE poolid = @poolId AND address = @address";
 
