@@ -131,7 +131,7 @@ namespace Miningcore.Payments
                 handler = await ResolveAndConfigurePayoutHandlerAsync(pool);
                 var balance = await cf.Run(con => balanceRepo.GetMinerBalanceAsync(con, pool.Id, miner));
                 amount = balance.Amount;
-                return await handler.PayoutSingleBalanceAsync(balance);
+                return await handler.PayoutAsync(balance);
             }
             catch (Exception ex)
             {
