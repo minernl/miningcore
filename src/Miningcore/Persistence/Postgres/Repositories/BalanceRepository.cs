@@ -121,9 +121,9 @@ namespace Miningcore.Persistence.Postgres.Repositories
         {
             logger.LogInvoke();
 
-            const string query = "SELECT b.poolid, b.address, b.amount, b.created, b.updated, MAX(p.created) AS paiddate FROM balances AS b " +
+            const string query = "SELECT b.poolid, b.address, b.amount, b.created, b.updated, p.created AS paiddate FROM balances AS b " +
                                  "LEFT JOIN payments AS p ON  p.address = b.address AND p.poolid = b.poolid " +
-                                 "WHERE b.poolid = @poolId AND b.address = @address";
+                                 "WHERE b.poolid = @poolId AND b.address = @address ORDER BY p.created DESC LIMIT 1";
 
             return (await con.QueryAsync<Entities.Balance>(query, new { poolId, address }))
                 .Select(mapper.Map<Balance>)
