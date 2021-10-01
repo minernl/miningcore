@@ -29,8 +29,9 @@ namespace Miningcore.Blockchain.Ethereum
             blockTarget = new uint256(target.HexToReverseByteArray());
         }
 
-        private readonly ConcurrentDictionary<StratumClient, HashSet<string>> workerNonces = new();
-
+        private readonly Dictionary<StratumClient, HashSet<string>> workerNonces =
+            new Dictionary<StratumClient, HashSet<string>>();
+        
         public string Id { get; }
         public EthereumBlockTemplate BlockTemplate { get; }
         private readonly uint256 blockTarget;
@@ -43,29 +44,12 @@ namespace Miningcore.Blockchain.Ethereum
             if(!workerNonces.TryGetValue(worker, out var nonces))
             {
                 nonces = new HashSet<string>(new[] { nonceLower });
-                workerNonces.TryAdd(worker, nonces);
-                worker.Terminated.Where(_ => !worker.IsAlive).Subscribe(_ =>
-                {
-                    try
-                    {
-                        var res = workerNonces.TryRemove(worker, out var staleNonces);
-                        logger.Debug(() => $"[{worker.ConnectionId}] Worker nonces removed. ncnt={staleNonces.Count},success={res}");
-                    }
-                    catch(Exception ex)
-                    {
-                        logger.Error(ex);
-                    }
-                }, ex =>
-                {
-                    logger.Error(ex, nameof(RegisterNonce));
-                });
+                workerNonces[worker] = nonces;
             }
             else
             {
                 if(nonces.Contains(nonceLower))
-                {
                     throw new StratumException(StratumError.MinusOne, "duplicate share");
-                }
 
                 nonces.Add(nonceLower);
             }
@@ -75,7 +59,10 @@ namespace Miningcore.Blockchain.Ethereum
             StratumClient worker, string nonce, EthashFull ethash, CancellationToken ct)
         {
             // duplicate nonce?
-            RegisterNonce(worker, nonce);
+            lock(workerNonces)
+            {
+                RegisterNonce(worker, nonce);
+            }
 
             // assemble full-nonce
             var context = worker.ContextAs<EthereumWorkerContext>();
