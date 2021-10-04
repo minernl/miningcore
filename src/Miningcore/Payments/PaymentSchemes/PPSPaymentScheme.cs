@@ -103,20 +103,15 @@ namespace Miningcore.Payments.PaymentSchemes
                 {
                     // Deduct the predicted transaction fee
                     var txDeduction = payoutHandler.getTransactionDeduction(amount);
-                    if(txDeduction > 0 && txDeduction < amount)
-                    {
-                        amount = amount - txDeduction;
-                    }
-                    else
+                    if(txDeduction < 0 || txDeduction >= amount)
                     {
                         logger.Error(() => $"Payouts are mis-configured. Transaction Deduction was calculated to be an invalid value: {payoutHandler.FormatAmount(txDeduction)}");
                     }
 
-
                     logger.Info(() => $"Adding {payoutHandler.FormatAmount(amount)} to balance of {address} for {FormatUtil.FormatQuantity(shares[address])} ({shares[address]}) shares after deducting {payoutHandler.FormatAmount(txDeduction)}");
 
                     await TelemetryUtil.TrackDependency(
-                            () => balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, address, amount, $"Reward for {FormatUtil.FormatQuantity(shares[address])} shares for block {block?.BlockHeight}"),
+                            () => balanceRepo.AddAmountAsyncDeductingTxFee(con, tx, poolConfig.Id, address, amount, $"Reward for {FormatUtil.FormatQuantity(shares[address])} shares for block {block?.BlockHeight}", txDeduction, poolConfig.PaymentProcessing.MinimumPayment),
                             DependencyType.Sql, "AddBalanceAmount",  $"miner:{address}, amount:{payoutHandler.FormatAmount(amount)}, txDeduction:{payoutHandler.FormatAmount(txDeduction)}");
 
                     await TelemetryUtil.TrackDependency(() => shareRepo.ProcessSharesForUserBeforeAcceptedAsync(con, tx, poolConfig.Id, address, shareCutOffDate.Value),

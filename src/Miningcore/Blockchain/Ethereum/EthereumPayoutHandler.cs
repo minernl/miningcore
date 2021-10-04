@@ -465,6 +465,10 @@ namespace Miningcore.Blockchain.Ethereum
                 var txCost = gasAmount * gasFee;
 
                 var payoutThreshold = poolConfig.PaymentProcessing.MinimumPayment;
+                if(0 <= payoutThreshold)
+                {
+                    throw new Exception($"Misconfiguration in payments. MinimumPayment is set to {payoutThreshold}");
+                }
 
                 var amountRatio = amount / payoutThreshold;
                 
