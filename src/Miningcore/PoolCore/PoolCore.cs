@@ -33,6 +33,7 @@ using Newtonsoft.Json;
 using NLog;
 using ILogger = NLog.ILogger;
 using System.Collections.Concurrent;
+using Miningcore.DataStore.Cloud.EtherScan;
 
 namespace Miningcore.PoolCore
 {
@@ -126,8 +127,9 @@ namespace Miningcore.PoolCore
                 // AutoMapper
                 var amConf = new MapperConfiguration(cfg => { cfg.AddProfile(new AutoMapperProfile()); });
                 builder.Register((ctx, parms) => amConf.CreateMapper());
-
+                builder.Register(_ => new EtherScanEndpoint(clusterConfig)).SingleInstance();
                 PostgresInterface.ConnectDatabase(builder);
+
                 container = builder.Build();
 
                 // Configure Equihash
