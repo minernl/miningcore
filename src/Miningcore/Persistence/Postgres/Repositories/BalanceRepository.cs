@@ -132,6 +132,19 @@ namespace Miningcore.Persistence.Postgres.Repositories
             return await con.QuerySingleOrDefaultAsync<decimal>(query, new { poolId, address });
         }
 
+        public async Task<Balance> GetMinerBalanceAsync(IDbConnection con, string poolId, string address)
+        {
+            logger.LogInvoke();
+
+            const string query = "SELECT b.poolid, b.address, b.amount, b.created, b.updated, p.created AS paiddate FROM balances AS b " +
+                                 "LEFT JOIN payments AS p ON  p.address = b.address AND p.poolid = b.poolid " +
+                                 "WHERE b.poolid = @poolId AND b.address = @address ORDER BY p.created DESC LIMIT 1";
+
+            return (await con.QueryAsync<Entities.Balance>(query, new { poolId, address }))
+                .Select(mapper.Map<Balance>)
+                .FirstOrDefault();
+        }
+
         public async Task<Balance[]> GetPoolBalancesOverThresholdAsync(IDbConnection con, string poolId, decimal minimum)
         {
             logger.LogInvoke();

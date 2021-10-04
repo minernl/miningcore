@@ -554,12 +554,16 @@ namespace Miningcore.Blockchain.Cryptonote
             await walletDaemon.ExecuteCmdSingleAsync<JToken>(logger, CryptonoteWalletCommands.Store);
         }
 
+        public Task<string> PayoutAsync(Balance balance)
+        {
+            throw new NotImplementedException();
+        }
+
         public decimal getTransactionDeduction(decimal amount)
         {
             // if using CryptoNote with PPS, implement this function to estimate the transaction cost for the given amount
             throw new NotImplementedException();
         }
-
         #endregion // IPayoutHandler
     }
 }

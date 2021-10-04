@@ -81,14 +81,7 @@ namespace Miningcore.Payments
 
                         try
                         {
-                            var family = HandleFamilyOverride(pool.Template.Family, pool);
-
-                            // resolve payout handler
-                            var handlerImpl = ctx.Resolve<IEnumerable<Meta<Lazy<IPayoutHandler, CoinFamilyAttribute>>>>()
-                                .First(x => x.Value.Metadata.SupportedFamilies.Contains(family)).Value;
-
-                            var handler = handlerImpl.Value;
-                            await handler.ConfigureAsync(clusterConfig, pool);
+                            var handler = await ResolveAndConfigurePayoutHandlerAsync(pool);
 
                             // resolve payout scheme
                             var scheme = ctx.ResolveKeyed<IPayoutScheme>(pool.PaymentProcessing.PayoutScheme);
@@ -121,16 +114,35 @@ namespace Miningcore.Payments
                             logger.Error(ex, () => $"[{pool.Id}] Payment processing failed");
                         }
                     }
-                    //}
-
-                    //catch(Exception ex)
-                    //{
-                    //    logger.Error(ex);
-                    //}
 
                     await Task.Delay(interval, cts.Token);
                 }
             });
+        }
+
+        public async Task<string> PayoutSingleBalanceAsync(PoolConfig pool, string miner)
+        {
+            var success = true;
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            Decimal amount = 0;
+            IPayoutHandler handler = null;
+            try
+            {
+                handler = await ResolveAndConfigurePayoutHandlerAsync(pool);
+                var balance = await cf.Run(con => balanceRepo.GetMinerBalanceAsync(con, pool.Id, miner));
+                amount = balance.Amount;
+                return await handler.PayoutAsync(balance);
+            }
+            catch (Exception ex)
+            {
+                logger.Error($"Failed to payout {miner}: {ex}");
+                success = false;
+                throw;
+            }
+            finally
+            {
+                TelemetryUtil.GetTelemetryClient()?.GetMetric("FORCED_PAYOUT", "success", "duration").TrackValue((double)amount, success.ToString(), timer.ElapsedMilliseconds.ToString());
+            }
         }
 
 
@@ -280,6 +292,20 @@ namespace Miningcore.Payments
             // handler has the final say
             if(accumulatedShareDiffForBlock.HasValue)
                 await handler.CalculateBlockEffortAsync(block, accumulatedShareDiffForBlock.Value);
+        }
+
+        private async Task<IPayoutHandler> ResolveAndConfigurePayoutHandlerAsync(PoolConfig pool)
+        {
+            var family = HandleFamilyOverride(pool.Template.Family, pool);
+
+            // resolve payout handler
+            var handlerImpl = ctx.Resolve<IEnumerable<Meta<Lazy<IPayoutHandler, CoinFamilyAttribute>>>>()
+                .First(x => x.Value.Metadata.SupportedFamilies.Contains(family)).Value;
+
+            var handler = handlerImpl.Value;
+            await handler.ConfigureAsync(clusterConfig, pool);
+
+            return handler;
         }
 
 
