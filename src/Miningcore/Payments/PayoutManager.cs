@@ -93,7 +93,7 @@ namespace Miningcore.Payments
                                 DependencyType.Sql, "GetTotalBalanceSum", "GetTotalBalanceSum");
 
                             var tc = TelemetryUtil.GetTelemetryClient();
-                            tc?.GetMetric("TotalBalance_" + pool.Id).TrackValue(poolBalance);
+                            tc?.GetMetric("TotalBalance_" + pool.Id).TrackValue((double)poolBalance);
                         }
 
                         catch(InvalidOperationException ex)
