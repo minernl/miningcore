@@ -74,6 +74,13 @@ namespace Miningcore.Api.Controllers
                         .Select(mapper.Map<MinerPerformanceStats>)
                         .ToArray();
 
+                    // overwrite the hashvalue with the one calculated by payment processing
+                    PoolState poolState = await cf.Run(con => paymentsRepo.GetPoolState(con, pool.Config.Id));
+                    if (poolState.HashValue > 0)
+                    {
+                        result.PaymentProcessing.HashValue = (Decimal) poolState.HashValue;
+                    }
+                    
                     return result;
                 }).ToArray())
             };
@@ -107,6 +114,13 @@ namespace Miningcore.Api.Controllers
                 .Select(mapper.Map<MinerPerformanceStats>)
                 .ToArray();
 
+            // overwrite the hashvalue with the one calculated by payment processing
+            PoolState poolState = await cf.Run(con => paymentsRepo.GetPoolState(con, pool.Id));
+            if (poolState.HashValue > 0)
+            {
+                response.Pool.PaymentProcessing.HashValue = (Decimal) poolState.HashValue;
+            }
+            
             return response;
         }
 

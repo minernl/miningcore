@@ -35,7 +35,8 @@ namespace Miningcore.Payments.PaymentSchemes
             IStatsRepository statsRepo,
             IMapper mapper,
             IBlockRepository blockRepo,
-            IBalanceRepository balanceRepo)
+            IBalanceRepository balanceRepo,
+            IPaymentRepository paymentRepo)
         {
             Contract.RequiresNonNull(ctx, nameof(ctx));
             Contract.RequiresNonNull(cf, nameof(cf));
@@ -43,8 +44,9 @@ namespace Miningcore.Payments.PaymentSchemes
             Contract.RequiresNonNull(blockRepo, nameof(blockRepo));
             Contract.RequiresNonNull(balanceRepo, nameof(balanceRepo));
             Contract.RequiresNonNull(statsRepo, nameof(statsRepo));
+            Contract.RequiresNonNull(paymentRepo, nameof(paymentRepo));
             Contract.RequiresNonNull(mapper, nameof(mapper));
-
+            
             this.ctx = ctx;
             this.cf = cf;
             this.shareRepo = shareRepo;
@@ -52,6 +54,7 @@ namespace Miningcore.Payments.PaymentSchemes
             this.balanceRepo = balanceRepo;
             this.statsRepo = statsRepo;
             this.mapper = mapper;
+            this.paymentRepo = paymentRepo;
 
             BuildFaultHandlingPolicy();
         }
@@ -62,6 +65,7 @@ namespace Miningcore.Payments.PaymentSchemes
         private readonly IConnectionFactory cf;
         private readonly IShareRepository shareRepo;
         private readonly IStatsRepository statsRepo;
+        private readonly IPaymentRepository paymentRepo;
         private readonly IMapper mapper;
         private static readonly ILogger Logger = LogManager.GetLogger("PPS Payment", typeof(PPSPaymentScheme));
         private static readonly IMemoryCache Cache = new MemoryCache(new MemoryCacheOptions());
@@ -85,7 +89,7 @@ namespace Miningcore.Payments.PaymentSchemes
             var shares = new Dictionary<string, double>();
             var rewards = new Dictionary<string, decimal>();
             var paidUntil = DateTime.UtcNow;
-            var shareCutOffDate = CalculateRewards(poolConfig, shares, rewards, blockData, paidUntil);
+            var shareCutOffDate = CalculateRewards(con, tx, poolConfig, shares, rewards, blockData, paidUntil);
 
             // update balances
             foreach(var address in rewards.Keys)
@@ -195,8 +199,13 @@ namespace Miningcore.Payments.PaymentSchemes
 
         #endregion // IPayoutScheme
 
-        private DateTime? CalculateRewards(PoolConfig poolConfig,
-            Dictionary<string, double> shares, Dictionary<string, decimal> rewards, decimal blockData, DateTime paidUntil)
+        private DateTime? CalculateRewards(IDbConnection con, 
+            IDbTransaction tx,
+            PoolConfig poolConfig,
+            Dictionary<string, double> shares, 
+            Dictionary<string, decimal> rewards, 
+            decimal blockData, 
+            DateTime paidUntil)
         {
             var done = false;
             var before = paidUntil;
@@ -291,6 +300,9 @@ namespace Miningcore.Payments.PaymentSchemes
                 valPerHash = blockData / (Decimal) sumDifficulty;
             }
             poolConfig.PaymentProcessing.HashValue = valPerHash;
+
+            // Update the hashvalue in the database
+            paymentRepo.SetPoolStateHashValue(con, tx, poolConfig.Id, (double) valPerHash);
             
             TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
             if(null != tc)
