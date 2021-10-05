@@ -115,7 +115,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
             return await con.QuerySingleOrDefaultAsync<PoolState>(query, new { poolId });
         }
 
-        public async Task SetPoolStateHashValue(IDbConnection con, IDbTransaction tx, string poolId, double hashValue)
+        public async Task SetPoolStateHashValue(IDbConnection con, string poolId, double hashValue)
         {
             logger.LogInvoke();
             
@@ -123,10 +123,10 @@ namespace Miningcore.Persistence.Postgres.Repositories
                 ON CONFLICT (poolid)
                 DO UPDATE SET hashvalue = EXCLUDED.hashvalue";
 
-            await con.ExecuteAsync(query, new { poolId, hashValue }, tx);
+            await con.ExecuteAsync(query, new { poolId, hashValue });
         }
 
-        public async Task SetPoolStateLastPayout(IDbConnection con, IDbTransaction tx, string poolId, DateTime lastPayout)
+        public async Task SetPoolStateLastPayout(IDbConnection con, string poolId, DateTime lastPayout)
         {
             logger.LogInvoke();
 
@@ -134,7 +134,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
                 ON CONFLICT (poolid)
                 DO UPDATE SET lastpayout = EXCLUDED.lastpayout";
 
-            await con.ExecuteAsync(query, new { poolId, lastPayout }, tx);
+            await con.ExecuteAsync(query, new { poolId, lastPayout });
         }
     }
 }

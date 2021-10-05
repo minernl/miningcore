@@ -35,7 +35,7 @@ namespace Miningcore.Persistence.Repositories
         Task<AmountByDate[]> PageMinerPaymentsByDayAsync(IDbConnection con, string poolId, string address, int page, int pageSize);
         Task<DateTime?> GetLastPaymentDateAsync(IDbConnection con, string poolId, string address);
         Task<PoolState> GetPoolState(IDbConnection con, string poolId);
-        Task SetPoolStateHashValue(IDbConnection con, IDbTransaction tx, string poolId, double hashValue);
-        Task SetPoolStateLastPayout(IDbConnection con, IDbTransaction tx, string poolId, DateTime lastPayout);
+        Task SetPoolStateHashValue(IDbConnection con, string poolId, double hashValue);
+        Task SetPoolStateLastPayout(IDbConnection con, string poolId, DateTime lastPayout);
     }
 }

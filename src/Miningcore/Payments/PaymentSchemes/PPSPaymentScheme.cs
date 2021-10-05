@@ -89,7 +89,7 @@ namespace Miningcore.Payments.PaymentSchemes
             var shares = new Dictionary<string, double>();
             var rewards = new Dictionary<string, decimal>();
             var paidUntil = DateTime.UtcNow;
-            var shareCutOffDate = CalculateRewards(con, tx, poolConfig, shares, rewards, blockData, paidUntil);
+            var shareCutOffDate = CalculateRewards(poolConfig, shares, rewards, blockData, paidUntil);
 
             // update balances
             foreach(var address in rewards.Keys)
@@ -199,8 +199,7 @@ namespace Miningcore.Payments.PaymentSchemes
 
         #endregion // IPayoutScheme
 
-        private DateTime? CalculateRewards(IDbConnection con, 
-            IDbTransaction tx,
+        private DateTime? CalculateRewards(
             PoolConfig poolConfig,
             Dictionary<string, double> shares, 
             Dictionary<string, decimal> rewards, 
@@ -302,7 +301,7 @@ namespace Miningcore.Payments.PaymentSchemes
             poolConfig.PaymentProcessing.HashValue = valPerHash;
 
             // Update the hashvalue in the database
-            paymentRepo.SetPoolStateHashValue(con, tx, poolConfig.Id, (double) valPerHash);
+            Task.WaitAll(cf.Run(con => paymentRepo.SetPoolStateHashValue(con, poolConfig.Id, (double) valPerHash)));
             
             TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
             if(null != tc)
