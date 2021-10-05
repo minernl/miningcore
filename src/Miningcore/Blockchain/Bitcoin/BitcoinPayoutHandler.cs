@@ -21,7 +21,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Autofac;
@@ -32,8 +31,6 @@ using Miningcore.Configuration;
 using Miningcore.DaemonInterface;
 using Miningcore.Extensions;
 using Miningcore.Messaging;
-using Miningcore.Notifications;
-using Miningcore.Notifications.Messages;
 using Miningcore.Payments;
 using Miningcore.Persistence;
 using Miningcore.Persistence.Model;
@@ -328,6 +325,11 @@ namespace Miningcore.Blockchain.Bitcoin
                     NotifyPayoutFailure(poolConfig.Id, balances, $"{BitcoinCommands.SendMany} returned error: {result.Error.Message} code {result.Error.Code}", null);
                 }
             }
+        }
+
+        public Task<string> PayoutAsync(Balance balance)
+        {
+            throw new NotImplementedException();
         }
 
         public decimal getTransactionDeduction(decimal amount)

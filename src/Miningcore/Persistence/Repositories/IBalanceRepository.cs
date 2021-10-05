@@ -31,6 +31,7 @@ namespace Miningcore.Persistence.Repositories
         Task<int> AddAmountAsyncDeductingTxFee(IDbConnection con, IDbTransaction tx, string poolId, string address, decimal amount, string usage, decimal deduction, decimal threshold);
         Task<decimal> GetBalanceAsync(IDbConnection con, string poolId, string address);
         Task<decimal> GetBalanceAsync(IDbConnection con, IDbTransaction tx, string poolId, string address);
+        Task<Balance> GetMinerBalanceAsync(IDbConnection con, string poolId, string address);
         Task<Balance[]> GetPoolBalancesOverThresholdAsync(IDbConnection con, string poolId, decimal minimum);
         Task<decimal> GetTotalBalanceSum(IDbConnection connection, string poolId);
     }

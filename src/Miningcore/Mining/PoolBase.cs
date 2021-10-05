@@ -127,7 +127,7 @@ namespace Miningcore.Mining
                     {
                         if(client.LastReceive == null)
                         {
-                            logger.Info(() => $"[{client.ConnectionId}] Booting zombie-worker (post-connect silence)");
+                            logger.Debug(() => $"[{client.ConnectionId}] Booting zombie-worker (post-connect silence)");
 
                             DisconnectClient(client);
                         }
@@ -235,7 +235,7 @@ namespace Miningcore.Mining
             if(poolConfig.ClientConnectionTimeout > 0 &&
                lastActivityAgo.TotalSeconds > poolConfig.ClientConnectionTimeout)
             {
-                logger.Info(() => $"[[{client.ConnectionId}] Booting zombie-worker (idle-timeout exceeded). Active before {lastActivityAgo.TotalSeconds}s");
+                logger.Debug(() => $"[[{client.ConnectionId}] Booting zombie-worker (idle-timeout exceeded). Active before {lastActivityAgo.TotalSeconds}s");
                 DisconnectClient(client);
 
                 return true;

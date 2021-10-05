@@ -355,7 +355,7 @@ namespace Miningcore.Mining
                             // let's not update hashrate if minerHashTimeFrame is too small, less than 10% of StatsWindowsTimeFrame. Otherwise, hashrate will be too high.
                             if(minerHashTimeFrame < statsWindowsTimeFrame.TotalSeconds * 0.1)
                             {
-                                logger.Info(() => $"MinerHashTimeFrame is too small. Skip calculate minerHashrate. [{poolId}] Miner: {stats.Miner}");
+                                logger.Debug(() => $"MinerHashTimeFrame is too small. Skip calculate minerHashrate. [{poolId}] Miner: {stats.Miner}");
                                 continue;
                             };
 
