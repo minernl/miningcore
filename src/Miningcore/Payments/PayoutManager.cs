@@ -88,12 +88,6 @@ namespace Miningcore.Payments
 
                             if(pool.PaymentProcessing.BalanceUpdateEnabled) await UpdatePoolBalancesAsync(pool, handler, scheme);
                             if(pool.PaymentProcessing.PayoutEnabled) await PayoutPoolBalancesAsync(pool, handler);
-
-                            var poolBalance = await TelemetryUtil.TrackDependency(() => cf.Run(con => balanceRepo.GetTotalBalanceSum(con, pool.Id)),
-                                DependencyType.Sql, "GetTotalBalanceSum", "GetTotalBalanceSum");
-
-                            var tc = TelemetryUtil.GetTelemetryClient();
-                            tc?.GetMetric("TotalBalance_" + pool.Id).TrackValue((double)poolBalance);
                         }
 
                         catch(InvalidOperationException ex)
