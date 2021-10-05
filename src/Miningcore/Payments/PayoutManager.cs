@@ -95,6 +95,12 @@ namespace Miningcore.Payments
 
                             if(pool.PaymentProcessing.BalanceUpdateEnabled) await UpdatePoolBalancesAsync(pool, handler, scheme);
                             if(pool.PaymentProcessing.PayoutEnabled) await PayoutPoolBalancesAsync(pool, handler);
+
+                            var poolBalance = await TelemetryUtil.TrackDependency(() => cf.Run(con => balanceRepo.GetTotalBalanceSum(con, pool.Id)),
+                                DependencyType.Sql, "GetTotalBalanceSum", "GetTotalBalanceSum");
+
+                            var tc = TelemetryUtil.GetTelemetryClient();
+                            tc?.GetMetric("TotalBalance_" + pool.Id).TrackValue(poolBalance);
                         }
 
                         catch(InvalidOperationException ex)
@@ -121,12 +127,6 @@ namespace Miningcore.Payments
                             logger.Error(ex, () => $"[{pool.Id}] Payment processing failed");
                         }
                     }
-                    //}
-
-                    //catch(Exception ex)
-                    //{
-                    //    logger.Error(ex);
-                    //}
 
                     await Task.Delay(interval, cts.Token);
                 }
@@ -226,8 +226,9 @@ namespace Miningcore.Payments
 
         private async Task PayoutPoolBalancesAsync(PoolConfig pool, IPayoutHandler handler)
         {
-            var poolBalancesOverMinimum = await cf.Run(con =>
-                balanceRepo.GetPoolBalancesOverThresholdAsync(con, pool.Id, pool.PaymentProcessing.MinimumPayment));
+            var poolBalancesOverMinimum = await TelemetryUtil.TrackDependency(() => cf.Run(con =>
+                    balanceRepo.GetPoolBalancesOverThresholdAsync(con, pool.Id, pool.PaymentProcessing.MinimumPayment)),
+                    DependencyType.Sql, "GetPoolBalancesOverThresholdAsync", "GetPoolBalancesOverThresholdAsync");
 
             if(poolBalancesOverMinimum.Length > 0)
             {
@@ -242,7 +243,6 @@ namespace Miningcore.Payments
                     throw;
                 }
             }
-
             else
                 logger.Info(() => $"No balances over configured minimum payout {pool.PaymentProcessing.MinimumPayment:0.#######} for pool {pool.Id}");
         }
