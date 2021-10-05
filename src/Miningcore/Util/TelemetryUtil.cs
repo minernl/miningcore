@@ -83,6 +83,7 @@ namespace Miningcore.Util
         Sql,
         Http,
         Daemon,
-        Web3
+        Web3,
+        EtherScan
     }
 }
