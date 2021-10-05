@@ -158,5 +158,14 @@ namespace Miningcore.Persistence.Postgres.Repositories
                 .Select(mapper.Map<Balance>)
                 .ToArray();
         }
+
+        public async Task<decimal> GetTotalBalanceSum(IDbConnection con, string poolId)
+        {
+            logger.LogInvoke();
+
+            const string query = "SELECT sum(amount) FROM balances WHERE poolid = @poolId";
+
+            return await con.QuerySingleOrDefaultAsync<decimal>(query, new { poolId });
+        }
     }
 }
