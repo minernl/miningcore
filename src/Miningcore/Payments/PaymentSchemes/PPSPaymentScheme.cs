@@ -311,12 +311,12 @@ namespace Miningcore.Payments.PaymentSchemes
             }
 
             /* update the value per hash in the pool payment processing config based on latest calculation */
-            Decimal valPerHash = 0;
+            Decimal valPerMHash = 0;
             if(sumDifficulty > 0)
             {
-                valPerHash = blockData / (Decimal) sumDifficulty;
+                valPerMHash = (blockData / (Decimal) sumDifficulty) * 1000000;  // count MegaHashes instead of hashes.
             }
-            poolConfig.PaymentProcessing.HashValue = valPerHash;
+            poolConfig.PaymentProcessing.HashValue = valPerMHash;
             
             TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
             if(null != tc)
@@ -325,7 +325,7 @@ namespace Miningcore.Payments.PaymentSchemes
                 {
                     {"BlockPayout", blockData.ToString()},
                     {"TotalHashes", sumDifficulty.ToString()},
-                    {"HashValue", valPerHash.ToString()}
+                    {"HashValue", valPerMHash.ToString()}
                 });
             }
 
