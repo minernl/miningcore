@@ -102,7 +102,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
             return await con.QuerySingleOrDefaultAsync<PoolState>(query, new { poolId });
         }
 
-        public async Task SetPoolStateHashValue(IDbConnection con, string poolId, double hashValue)
+        public async Task SetPoolStateHashValue(IDbConnection con, string poolId, Decimal hashValue)
         {
             logger.LogInvoke();
             

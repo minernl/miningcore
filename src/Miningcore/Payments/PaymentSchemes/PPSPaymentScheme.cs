@@ -301,7 +301,7 @@ namespace Miningcore.Payments.PaymentSchemes
             poolConfig.PaymentProcessing.HashValue = valPerHash;
 
             // Update the hashvalue in the database
-            Task.WaitAll(cf.Run(con => paymentRepo.SetPoolStateHashValue(con, poolConfig.Id, (double) valPerHash)));
+            Task.WaitAll(cf.Run(con => paymentRepo.SetPoolStateHashValue(con, poolConfig.Id, valPerHash)));
             
             TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
             if(null != tc)

@@ -78,7 +78,7 @@ namespace Miningcore.Api.Controllers
                     PoolState poolState = await cf.Run(con => paymentsRepo.GetPoolState(con, pool.Config.Id));
                     if (poolState.HashValue > 0)
                     {
-                        result.PaymentProcessing.HashValue = (Decimal) poolState.HashValue;
+                        result.PaymentProcessing.HashValue = poolState.HashValue;
                     }
                     
                     return result;
@@ -118,7 +118,7 @@ namespace Miningcore.Api.Controllers
             PoolState poolState = await cf.Run(con => paymentsRepo.GetPoolState(con, pool.Id));
             if (poolState.HashValue > 0)
             {
-                response.Pool.PaymentProcessing.HashValue = (Decimal) poolState.HashValue;
+                response.Pool.PaymentProcessing.HashValue = poolState.HashValue;
             }
             
             return response;
