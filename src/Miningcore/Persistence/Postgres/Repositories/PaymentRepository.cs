@@ -19,6 +19,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 using System;
+using System.Collections.Concurrent;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
@@ -105,28 +106,35 @@ namespace Miningcore.Persistence.Postgres.Repositories
                 .ToArray();
         }
 
-        public async Task<PaymentSchedule> GetPaymentScheduleAsync(IDbConnection con, string poolId, string miner)
+        public async Task<PoolState> GetPoolState(IDbConnection con, string poolId)
         {
             logger.LogInvoke();
 
-            const string query = "SELECT poolid,miner,paiduntil FROM payment_schedule WHERE poolid = @poolId AND miner = @miner";
+            const string query = "SELECT poolid, hashvalue, lastpayout FROM poolstate WHERE poolid = @poolId";
 
-            return await con.QuerySingleOrDefaultAsync<PaymentSchedule>(query, new { poolId, miner });
+            return await con.QuerySingleOrDefaultAsync<PoolState>(query, new { poolId });
         }
 
-        public async Task UpdatePaymentScheduleAsync(IDbConnection con, IDbTransaction tx, PaymentSchedule paymentSchedule)
+        public async Task SetPoolStateHashValue(IDbConnection con, string poolId, double hashValue)
+        {
+            logger.LogInvoke();
+            
+            const string query = @"INSERT INTO poolstate (poolid, hashvalue) VALUES (@poolId, @hashValue)
+                ON CONFLICT (poolid)
+                DO UPDATE SET hashvalue = EXCLUDED.hashvalue";
+
+            await con.ExecuteAsync(query, new { poolId, hashValue });
+        }
+
+        public async Task SetPoolStateLastPayout(IDbConnection con, string poolId, DateTime lastPayout)
         {
             logger.LogInvoke();
 
-            var mapped = mapper.Map<Entities.PaymentSchedule>(paymentSchedule);
+            const string query = @"INSERT INTO poolstate (poolid, lastpayout) VALUES (@poolId, @lastPayout)
+                ON CONFLICT (poolid)
+                DO UPDATE SET lastpayout = EXCLUDED.lastpayout";
 
-            const string query = @"INSERT INTO payment_schedule(poolid, miner, paiduntil) 
-                                 VALUES(@poolid, @miner, @paiduntil)
-                                 ON CONFLICT (poolid, miner)
-                                 DO UPDATE
-                                 SET paiduntil = @paiduntil;";
-
-            await con.ExecuteAsync(query, mapped, tx);
+            await con.ExecuteAsync(query, new { poolId, lastPayout });
         }
     }
 }

@@ -60,24 +60,23 @@ namespace Miningcore.Mining
         private readonly IMessageBus messageBus;
         private readonly IComponentContext ctx;
         private readonly IShareRepository shareRepo;
-        private readonly CancellationTokenSource cts = new CancellationTokenSource();
-        private readonly ConcurrentDictionary<string, IMiningPool> pools = new ConcurrentDictionary<string, IMiningPool>();
+        private readonly CancellationTokenSource cts = new();
+        private readonly ConcurrentDictionary<string, IMiningPool> pools = new();
 
         // MinerNL Stats calculation variables
-        private readonly AutoResetEvent stopEvent = new AutoResetEvent(false);
-        private const int statsUpdateInterval = 60;       // seconds. Default setting if not in config.json
-        private const int hashrateCalculationWindow = 10; // minutes. Default setting if not in config.json
-        private const int statsCleanupInterval = 24;      // hours.   Default setting if not in config.json
-        private const int statsDBCleanupHistory = 24;     // hours.   Default setting if not in config.json
-        private int _StatsUpdateInterval;
-        private int _HashrateCalculationWindow;
-        private int _StatsCleanupInterval;
+        private const int StatsUpdateInterval = 60;       // seconds. Default setting if not in config.json
+        private const int HashrateCalculationWindow = 10; // minutes. Default setting if not in config.json
+        private const int StatsCleanupInterval = 24;      // hours.   Default setting if not in config.json
+        private const int StatsDbCleanupHistory = 24;     // hours.   Default setting if not in config.json
+        private int statsUpdateInterval;
+        private int hashrateCalculationWindow;
+        private int statsCleanupInterval;
         // MinerNL end
 
         private ClusterConfig clusterConfig;
         private const int RetryCount = 4;
         private IAsyncPolicy readFaultPolicy;
-        private static readonly ILogger logger = LogManager.GetCurrentClassLogger();
+        private static readonly ILogger Logger = LogManager.GetCurrentClassLogger();
 
         #region API-Surface
 
@@ -95,34 +94,34 @@ namespace Miningcore.Mining
         {
             Task.Run(async () =>
             {
-                logger.Info(() => "Starting Pool Stats Service");
+                Logger.Info(() => "Starting Pool Stats Service");
 
                 // warm-up delay
                 await Task.Delay(TimeSpan.FromSeconds(10));
 
                 // MinerNL read variables from config.json
                 // Stats broadcast interval
-                _StatsUpdateInterval = clusterConfig.Statistics?.StatsUpdateInterval ?? statsUpdateInterval;
-                if(_StatsUpdateInterval == 0)
+                statsUpdateInterval = clusterConfig.Statistics?.StatsUpdateInterval ?? StatsUpdateInterval;
+                if(statsUpdateInterval == 0)
                 {
-                    _StatsUpdateInterval = statsUpdateInterval;
-                    logger.Warn(() => $"statistics -> statsUpdateInterval not found in config.json. using default : {_StatsUpdateInterval} seconds");
+                    statsUpdateInterval = StatsUpdateInterval;
+                    Logger.Warn(() => $"statistics -> statsUpdateInterval not found in config.json. using default : {statsUpdateInterval} seconds");
                 }
 
                 // Stats calculation window
-                _HashrateCalculationWindow = clusterConfig.Statistics?.HashrateCalculationWindow ?? hashrateCalculationWindow;
-                if(_HashrateCalculationWindow == 0)
+                hashrateCalculationWindow = clusterConfig.Statistics?.HashrateCalculationWindow ?? HashrateCalculationWindow;
+                if(hashrateCalculationWindow == 0)
                 {
-                    _HashrateCalculationWindow = hashrateCalculationWindow;
-                    logger.Warn(() => $"statistics -> hashrateCalculationWindow not found in config.json. using default : {_HashrateCalculationWindow} minutes");
+                    hashrateCalculationWindow = HashrateCalculationWindow;
+                    Logger.Warn(() => $"statistics -> hashrateCalculationWindow not found in config.json. using default : {hashrateCalculationWindow} minutes");
                 }
 
                 // Stats DB cleanup interval
-                _StatsCleanupInterval = clusterConfig.Statistics?.StatsCleanupInterval ?? statsCleanupInterval;
-                if(_StatsCleanupInterval == 0)
+                statsCleanupInterval = clusterConfig.Statistics?.StatsCleanupInterval ?? StatsCleanupInterval;
+                if(statsCleanupInterval == 0)
                 {
-                    _StatsCleanupInterval = statsCleanupInterval;
-                    logger.Warn(() => $"statistics -> statsCleanupInterval not found in config.json. using default : {_StatsCleanupInterval} minutes");
+                    statsCleanupInterval = StatsCleanupInterval;
+                    Logger.Warn(() => $"statistics -> statsCleanupInterval not found in config.json. using default : {statsCleanupInterval} minutes");
                 }
 
                 // Set DB Cleanup time
@@ -136,33 +135,34 @@ namespace Miningcore.Mining
                         await UpdatePoolHashratesAsync();    // Pool stats update
 
                         // MinerNL - Stats cleanup at StatsCleanupInterval
-                        logger.Info(() => $"Next Stats DB cleanup at {performStatsGcInterval.ToLocalTime()}");
+                        Logger.Info(() => $"Next Stats DB cleanup at {performStatsGcInterval.ToLocalTime()}");
                         if(clock.UtcNow >= performStatsGcInterval)
                         {
                             await PerformStatsGcAsync();
-                            performStatsGcInterval = DateTime.UtcNow.AddHours(_StatsCleanupInterval);
+                            performStatsGcInterval = DateTime.UtcNow.AddHours(statsCleanupInterval);
                         }
                         // MinerNL end
                     }
 
                     catch(Exception ex)
                     {
-                        logger.Error(ex);
+                        Logger.Error(ex);
                     }
 
-                    await Task.Delay(TimeSpan.FromSeconds(_StatsUpdateInterval), cts.Token);
+                    await Task.Delay(TimeSpan.FromSeconds(statsUpdateInterval), cts.Token);
 
                 }
             });
-            logger.Info(() => "Pool Stats Online");
+            Logger.Info(() => "Pool Stats Online");
         }
+
         public void Stop()
         {
-            logger.Info(() => "Pool Stats Stopping ..");
+            Logger.Info(() => "Pool Stats Stopping ..");
 
             cts.Cancel();
 
-            logger.Info(() => "Pool Stats Stopped");
+            Logger.Info(() => "Pool Stats Stopped");
         }
 
         #endregion // API-Surface
@@ -170,15 +170,15 @@ namespace Miningcore.Mining
         private async Task UpdatePoolHashratesAsync()
         {
             var currentTimeUtc = clock.UtcNow;
-            var timeFrom = currentTimeUtc.AddMinutes(-_HashrateCalculationWindow);
-            var statsWindowsTimeFrame = TimeSpan.FromMinutes(_HashrateCalculationWindow);
+            var timeFrom = currentTimeUtc.AddMinutes(-hashrateCalculationWindow);
+            var statsWindowsTimeFrame = TimeSpan.FromMinutes(hashrateCalculationWindow);
 
-            logger.Info(() => "--------------------------------------------------------------------------------------------");
-            logger.Info(() => $"Stats Update Interval  : {_StatsUpdateInterval} seconds");
-            logger.Info(() => $"Hashrate Calc Windows  : {_HashrateCalculationWindow} minutes");
-            logger.Info(() => $"Current Time UTC       : {currentTimeUtc}");
-            logger.Info(() => $"Getting Stats from UTC : {timeFrom}");
-            logger.Info(() => "--------------------------------------------------------------------------------------------");
+            Logger.Info(() => "--------------------------------------------------------------------------------------------");
+            Logger.Info(() => $"Stats Update Interval  : {statsUpdateInterval} seconds");
+            Logger.Info(() => $"Hashrate Calc Windows  : {hashrateCalculationWindow} minutes");
+            Logger.Info(() => $"Current Time UTC       : {currentTimeUtc}");
+            Logger.Info(() => $"Getting Stats from UTC : {timeFrom}");
+            Logger.Info(() => "--------------------------------------------------------------------------------------------");
             // MinerNL
 
             var stats = new MinerWorkerPerformanceStats
@@ -191,7 +191,7 @@ namespace Miningcore.Mining
                 var stopWatch = Stopwatch.StartNew();
                 stats.PoolId = poolId;
 
-                logger.Info(() => $"[{poolId}] Updating Statistics for pool");
+                Logger.Info(() => $"[{poolId}] Updating Statistics for pool");
 
                 var pool = pools[poolId];
 
@@ -238,11 +238,11 @@ namespace Miningcore.Mining
 
                     messageBus.NotifyHashrateUpdated(pool.Config.Id, 0);
 
-                    logger.Info(() => $"[{poolId}] Reset performance stats for pool");
+                    Logger.Info(() => $"[{poolId}] Reset performance stats for pool");
                 }
-                logger.Info(() => $"[{poolId}] Connected Miners : {pool.PoolStats.ConnectedMiners} miners");
-                logger.Info(() => $"[{poolId}] Pool hashrate    : {pool.PoolStats.PoolHashrate} hashes/sec");
-                logger.Info(() => $"[{poolId}] Pool shares      : {pool.PoolStats.SharesPerSecond} shares/sec");
+                Logger.Info(() => $"[{poolId}] Connected Miners : {pool.PoolStats.ConnectedMiners} miners");
+                Logger.Info(() => $"[{poolId}] Pool hashrate    : {pool.PoolStats.PoolHashrate} hashes/sec");
+                Logger.Info(() => $"[{poolId}] Pool shares      : {pool.PoolStats.SharesPerSecond} shares/sec");
 
                 var tc = TelemetryUtil.GetTelemetryClient();
                 if(null != tc)
@@ -304,14 +304,14 @@ namespace Miningcore.Mining
                             messageBus.NotifyHashrateUpdated(pool.Config.Id, 0, stats.Miner, stats.Worker);
 
                             if(string.IsNullOrEmpty(stats.Worker))
-                                logger.Info(() => $"[{poolId}] Reset performance stats for miner {stats.Miner}");
+                                Logger.Info(() => $"[{poolId}] Reset performance stats for miner {stats.Miner}");
                             else
-                                logger.Info(() => $"[{poolId}] Reset performance stats for miner {stats.Miner}.{stats.Worker}");
+                                Logger.Info(() => $"[{poolId}] Reset performance stats for miner {stats.Miner}.{stats.Worker}");
                         }
                     });
                     stopWatch.Stop();
-                    logger.Info(() => $"[{poolId}] Statistics updated in {stopWatch.Elapsed.Seconds}s");
-                    logger.Info(() => "--------------------------------------------");
+                    Logger.Info(() => $"[{poolId}] Statistics updated in {stopWatch.Elapsed.Seconds}s");
+                    Logger.Info(() => "--------------------------------------------");
                     continue;
                 };
 
@@ -355,7 +355,7 @@ namespace Miningcore.Mining
                             // let's not update hashrate if minerHashTimeFrame is too small, less than 10% of StatsWindowsTimeFrame. Otherwise, hashrate will be too high.
                             if(minerHashTimeFrame < statsWindowsTimeFrame.TotalSeconds * 0.1)
                             {
-                                logger.Debug(() => $"MinerHashTimeFrame is too small. Skip calculate minerHashrate. [{poolId}] Miner: {stats.Miner}");
+                                Logger.Debug(() => $"MinerHashTimeFrame is too small. Skip calculate minerHashrate. [{poolId}] Miner: {stats.Miner}");
                                 continue;
                             };
 
@@ -379,7 +379,7 @@ namespace Miningcore.Mining
 
                             // broadcast
                             messageBus.NotifyHashrateUpdated(pool.Config.Id, minerHashrate, stats.Miner, stats.Worker);
-                            logger.Debug(() => $"[{poolId}] Miner: {stats.Miner}.{stats.Worker} | Hashrate: {minerHashrate} " +
+                            Logger.Debug(() => $"[{poolId}] Miner: {stats.Miner}.{stats.Worker} | Hashrate: {minerHashrate} " +
                                               $"| HashTimeFrame : {minerHashTimeFrame} | Shares per sec: {stats.SharesPerSecond}");
                             // book keeping
                             currentNonZeroMinerWorkers.Add(BuildKey(stats.Miner, stats.Worker));
@@ -387,42 +387,44 @@ namespace Miningcore.Mining
                     });
 
                     messageBus.NotifyHashrateUpdated(pool.Config.Id, minerTotalHashrate, stats.Miner, null);
-                    logger.Debug(() => $"[{poolId}] Total miner hashrate: {stats.Miner} | {minerTotalHashrate}");
+                    Logger.Debug(() => $"[{poolId}] Total miner hashrate: {stats.Miner} | {minerTotalHashrate}");
                 }
                 // MinerNL end calculate & update miner, worker hashrates
                 stopWatch.Stop();
-                logger.Info(() => $"[{poolId}] Statistics updated in {stopWatch.Elapsed.Seconds}s");
-                logger.Info(() => "--------------------------------------------");
+                Logger.Info(() => $"[{poolId}] Statistics updated in {stopWatch.Elapsed.Seconds}s");
+                Logger.Info(() => "--------------------------------------------");
             }
         }
 
         private async Task PerformStatsGcAsync()
         {
-            logger.Info(() => $"Performing stats DB cleanup");
+            Logger.Info(() => $"Performing stats DB cleanup");
 
             await cf.Run(async con =>
             {
                 // MinerNL Stats cleanup
-                var statsDbCleanupHistory = clusterConfig.Statistics?.StatsDBCleanupHistory ?? statsDBCleanupHistory;
-                if(statsDbCleanupHistory == 0)
+                var _StatsDBCleanupHistory = clusterConfig.Statistics?.StatsDBCleanupHistory ?? statsDBCleanupHistory;
+                if(_StatsDBCleanupHistory == 0)
                 {
-                    statsDbCleanupHistory = statsDBCleanupHistory;
-                    logger.Info(() => $"statistics -> statsDBCleanupHistory not found in config.json. using default : {statsDBCleanupHistory} hours");
+                    _StatsDBCleanupHistory = statsDBCleanupHistory;
+                    logger.Info(() => $"statistics -> statsDBCleanupHistory not found in config.json. using default : {statsDBCleanupHistory} days");
                 }
 
-                logger.Info(() => $"Removing all stats older then {statsDbCleanupHistory} hours");
+                logger.Info(() => $"Removing all stats older then {_StatsDBCleanupHistory} days");
 
                 var cutOff = DateTime.UtcNow.AddHours(-statsDbCleanupHistory);
                 // MinerNL end
 
                 var rowCount = await statsRepo.DeletePoolStatsBeforeAsync(con, cutOff);
-                logger.Info(() => $"Deleted {rowCount} old poolstats records");
+                if(rowCount > 0)
+                    logger.Info(() => $"Deleted {rowCount} old poolstats records");
 
                 rowCount = await statsRepo.DeleteMinerStatsBeforeAsync(con, cutOff);
-                logger.Info(() => $"Deleted {rowCount} old minerstats records");
+                if(rowCount > 0)
+                    logger.Info(() => $"Deleted {rowCount} old minerstats records");
             });
 
-            logger.Info(() => $"Stats cleanup DB complete");
+            Logger.Info(() => $"Stats cleanup DB complete");
         }
 
         private void BuildFaultHandlingPolicy()
@@ -438,7 +440,7 @@ namespace Miningcore.Mining
 
         private static void OnPolicyRetry(Exception ex, int retry, object context)
         {
-            logger.Warn(() => $"Retry {retry} due to {ex.Source}: {ex.GetType().Name} ({ex.Message})");
+            Logger.Warn(() => $"Retry {retry} due to {ex.Source}: {ex.GetType().Name} ({ex.Message})");
         }
     }
 }

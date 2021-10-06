@@ -31,15 +31,26 @@ namespace Miningcore.Payments.PaymentSchemes
     {
         public PPSPaymentScheme(IConnectionFactory cf,
             IShareRepository shareRepo,
-            IBalanceRepository balanceRepo)
+            IStatsRepository statsRepo,
+            IMapper mapper,
+            IBlockRepository blockRepo,
+            IBalanceRepository balanceRepo,
+            IPaymentRepository paymentRepo)
         {
             Contract.RequiresNonNull(cf, nameof(cf));
             Contract.RequiresNonNull(shareRepo, nameof(shareRepo));
             Contract.RequiresNonNull(balanceRepo, nameof(balanceRepo));
-
+            Contract.RequiresNonNull(statsRepo, nameof(statsRepo));
+            Contract.RequiresNonNull(paymentRepo, nameof(paymentRepo));
+            Contract.RequiresNonNull(mapper, nameof(mapper));
+            
+            this.ctx = ctx;
             this.cf = cf;
             this.shareRepo = shareRepo;
             this.balanceRepo = balanceRepo;
+            this.statsRepo = statsRepo;
+            this.mapper = mapper;
+            this.paymentRepo = paymentRepo;
 
             BuildFaultHandlingPolicy();
         }
@@ -47,6 +58,9 @@ namespace Miningcore.Payments.PaymentSchemes
         private readonly IBalanceRepository balanceRepo;
         private readonly IConnectionFactory cf;
         private readonly IShareRepository shareRepo;
+        private readonly IStatsRepository statsRepo;
+        private readonly IPaymentRepository paymentRepo;
+        private readonly IMapper mapper;
         private static readonly ILogger Logger = LogManager.GetLogger("PPS Payment", typeof(PPSPaymentScheme));
         private const int RetryCount = 4;
         private const int DefaultHashRateCalculationWindow = 10; // mins
@@ -104,8 +118,12 @@ namespace Miningcore.Payments.PaymentSchemes
 
         #endregion // IPayoutScheme
 
-        private DateTime? CalculateRewards(PoolConfig poolConfig,
-            Dictionary<string, double> shares, Dictionary<string, decimal> rewards, decimal blockData, DateTime paidUntil)
+        private DateTime? CalculateRewards(
+            PoolConfig poolConfig,
+            Dictionary<string, double> shares, 
+            Dictionary<string, decimal> rewards, 
+            decimal blockData, 
+            DateTime paidUntil)
         {
             var done = false;
             var before = paidUntil;
@@ -194,13 +212,16 @@ namespace Miningcore.Payments.PaymentSchemes
             }
 
             /* update the value per hash in the pool payment processing config based on latest calculation */
-            Decimal valPerHash = 0;
+            Decimal valPerMHash = 0;
             if(sumDifficulty > 0)
             {
-                valPerHash = blockData / (Decimal) sumDifficulty;
+                valPerMHash = (blockData / (Decimal) sumDifficulty) * 1000000;  // count MegaHashes instead of hashes.
             }
-            poolConfig.PaymentProcessing.HashValue = valPerHash;
+            poolConfig.PaymentProcessing.HashValue = valPerMHash;
 
+            // Update the hashvalue in the database
+            Task.WaitAll(cf.Run(con => paymentRepo.SetPoolStateHashValue(con, poolConfig.Id, (double) valPerMHash)));
+            
             TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
             if(null != tc)
             {
@@ -208,7 +229,7 @@ namespace Miningcore.Payments.PaymentSchemes
                 {
                     {"BlockPayout", blockData.ToString()},
                     {"TotalHashes", sumDifficulty.ToString()},
-                    {"HashValue", valPerHash.ToString()}
+                    {"HashValue", valPerMHash.ToString()}
                 });
             }
 
