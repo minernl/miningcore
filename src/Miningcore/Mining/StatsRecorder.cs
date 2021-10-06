@@ -67,8 +67,8 @@ namespace Miningcore.Mining
         private readonly AutoResetEvent stopEvent = new AutoResetEvent(false);
         private const int statsUpdateInterval = 60;       // seconds. Default setting if not in config.json
         private const int hashrateCalculationWindow = 10; // minutes. Default setting if not in config.json
-        private const int statsCleanupInterval = 96;      // hours.   Default setting if not in config.json
-        private const int statsDBCleanupHistory = 180;    // days.    Default setting if not in config.json
+        private const int statsCleanupInterval = 24;      // hours.   Default setting if not in config.json
+        private const int statsDBCleanupHistory = 24;     // hours.   Default setting if not in config.json
         private int _StatsUpdateInterval;
         private int _HashrateCalculationWindow;
         private int _StatsCleanupInterval;
@@ -403,25 +403,23 @@ namespace Miningcore.Mining
             await cf.Run(async con =>
             {
                 // MinerNL Stats cleanup
-                var _StatsDBCleanupHistory = clusterConfig.Statistics?.StatsDBCleanupHistory ?? statsDBCleanupHistory;
-                if(_StatsDBCleanupHistory == 0)
+                var statsDbCleanupHistory = clusterConfig.Statistics?.StatsDBCleanupHistory ?? statsDBCleanupHistory;
+                if(statsDbCleanupHistory == 0)
                 {
-                    _StatsDBCleanupHistory = statsDBCleanupHistory;
-                    logger.Info(() => $"statistics -> statsDBCleanupHistory not found in config.json. using default : {statsDBCleanupHistory} days");
+                    statsDbCleanupHistory = statsDBCleanupHistory;
+                    logger.Info(() => $"statistics -> statsDBCleanupHistory not found in config.json. using default : {statsDBCleanupHistory} hours");
                 }
 
-                logger.Info(() => $"Removing all stats older then {_StatsDBCleanupHistory} days");
+                logger.Info(() => $"Removing all stats older then {statsDbCleanupHistory} hours");
 
-                var cutOff = DateTime.UtcNow.AddDays(-_StatsDBCleanupHistory);
+                var cutOff = DateTime.UtcNow.AddHours(-statsDbCleanupHistory);
                 // MinerNL end
 
                 var rowCount = await statsRepo.DeletePoolStatsBeforeAsync(con, cutOff);
-                if(rowCount > 0)
-                    logger.Info(() => $"Deleted {rowCount} old poolstats records");
+                logger.Info(() => $"Deleted {rowCount} old poolstats records");
 
                 rowCount = await statsRepo.DeleteMinerStatsBeforeAsync(con, cutOff);
-                if(rowCount > 0)
-                    logger.Info(() => $"Deleted {rowCount} old minerstats records");
+                logger.Info(() => $"Deleted {rowCount} old minerstats records");
             });
 
             logger.Info(() => $"Stats cleanup DB complete");
