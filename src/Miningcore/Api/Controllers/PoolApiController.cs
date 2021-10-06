@@ -312,23 +312,6 @@ namespace Miningcore.Api.Controllers
             return payments;
         }
 
-        [HttpGet("{poolId}/miners/{address}/balancechanges")]
-        public async Task<Responses.BalanceChange[]> PageMinerBalanceChangesAsync(
-            string poolId, string address, [FromQuery] int page, [FromQuery] int pageSize = 15)
-        {
-            var pool = GetPool(poolId);
-
-            if(string.IsNullOrEmpty(address))
-                throw new ApiException($"Invalid or missing miner address", HttpStatusCode.NotFound);
-
-            var balanceChanges = (await cf.Run(con => paymentsRepo.PageBalanceChangesAsync(
-                    con, pool.Id, address, page, pageSize)))
-                .Select(mapper.Map<Responses.BalanceChange>)
-                .ToArray();
-
-            return balanceChanges;
-        }
-
         [HttpGet("{poolId}/miners/{address}/earnings/daily")]
         public async Task<AmountByDate[]> PageMinerEarningsByDayAsync(
             string poolId, string address, [FromQuery] int page, [FromQuery] int pageSize = 15)

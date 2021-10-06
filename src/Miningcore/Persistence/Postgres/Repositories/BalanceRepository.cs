@@ -52,23 +52,8 @@ namespace Miningcore.Persistence.Postgres.Repositories
 
             var now = DateTime.UtcNow;
 
-            // record balance change
-            var query = "INSERT INTO balance_changes(poolid, address, amount, usage, created) " +
-                "VALUES(@poolid, @address, @amount, @usage, @created)";
-
-            var balanceChange = new Entities.BalanceChange
-            {
-                PoolId = poolId,
-                Created = now,
-                Address = address,
-                Amount = amount,
-                Usage = usage,
-            };
-
-            await con.ExecuteAsync(query, balanceChange, tx);
-
             // update balance
-            query = "SELECT * FROM balances WHERE poolid = @poolId AND address = @address";
+            var query = "SELECT * FROM balances WHERE poolid = @poolId AND address = @address";
 
             var balance = (await con.QueryAsync<Entities.Balance>(query, new { poolId, address }, tx))
                 .FirstOrDefault();

@@ -1,4 +1,3 @@
-using Autofac;
 using AutoMapper;
 using Miningcore.Blockchain;
 using Miningcore.Configuration;
@@ -47,7 +46,6 @@ namespace Miningcore
             CreateMap<PoolStats, Api.Responses.AggregatedPoolStats>();
             CreateMap<Block, Api.Responses.Block>();
             CreateMap<Payment, Api.Responses.Payment>();
-            CreateMap<BalanceChange, Api.Responses.BalanceChange>();
             CreateMap<PoolPaymentProcessingConfig, Api.Responses.ApiPoolPaymentProcessingConfig>();
 
             CreateMap<MinerStats, Api.Responses.MinerStats>()
@@ -75,7 +73,6 @@ namespace Miningcore
             CreateMap<Persistence.Postgres.Entities.Block, Block>();
             CreateMap<Persistence.Postgres.Entities.Balance, Balance>();
             CreateMap<Persistence.Postgres.Entities.Payment, Payment>();
-            CreateMap<Persistence.Postgres.Entities.BalanceChange, BalanceChange>();
             CreateMap<Persistence.Postgres.Entities.PoolStats, PoolStats>();
             CreateMap<Persistence.Postgres.Entities.MinerWorkerPerformanceStats, MinerWorkerPerformanceStats>();
             CreateMap<Persistence.Postgres.Entities.MinerWorkerPerformanceStats, Api.Responses.MinerPerformanceStats>();

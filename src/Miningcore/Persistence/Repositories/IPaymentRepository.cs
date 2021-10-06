@@ -31,7 +31,6 @@ namespace Miningcore.Persistence.Repositories
         Task InsertAsync(IDbConnection con, IDbTransaction tx, Payment payment);
 
         Task<Payment[]> PagePaymentsAsync(IDbConnection con, string poolId, string address, int page, int pageSize);
-        Task<BalanceChange[]> PageBalanceChangesAsync(IDbConnection con, string poolId, string address, int page, int pageSize);
         Task<AmountByDate[]> PageMinerPaymentsByDayAsync(IDbConnection con, string poolId, string address, int page, int pageSize);
         Task<DateTime?> GetLastPaymentDateAsync(IDbConnection con, string poolId, string address);
         Task<PoolState> GetPoolState(IDbConnection con, string poolId);
