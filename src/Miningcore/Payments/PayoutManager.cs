@@ -174,7 +174,7 @@ namespace Miningcore.Payments
 
             var pendingBlocks = await TelemetryUtil.TrackDependency(() => cf.Run(con => blockRepo.GetPendingBlocksForPoolAsync(con, pool.Id)),
                 DependencyType.Sql, "getPendingBlocks", "getPendingBlocks");
-            
+
             // classify
             var updatedBlocks = await handler.ClassifyBlocksAsync(pendingBlocks);
 
@@ -222,23 +222,10 @@ namespace Miningcore.Payments
             else
             {
                 logger.Info(() => $"No updated blocks for pool {pool.Id} but still payment processed");
-
-                var success = false;
-                var startTime = DateTime.UtcNow;
-                var timer = System.Diagnostics.Stopwatch.StartNew();
-                try
+                await TelemetryUtil.TrackDependency(() => cf.RunTx(async (con, tx) =>
                 {
-                    await cf.RunTx(async (con, tx) =>
-                    {
-                        await scheme.UpdateBalancesAsync(con, tx, pool, clusterConfig, handler, null, 1m);
-                    });
-                    success = true;
-                }
-                finally
-                {
-                    timer.Stop();
-                    TelemetryUtil.TrackDependency(DependencyType.Sql, "UpdateBalancesAsync", "UpdateBalances", startTime, timer.Elapsed, success);
-                }
+                    await scheme.UpdateBalancesAsync(con, tx, pool, clusterConfig, handler, null, 1m);
+                }), DependencyType.Sql, "UpdateBalancesAsync", "UpdateBalances");
             }
         }
 

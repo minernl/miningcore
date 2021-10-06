@@ -130,14 +130,14 @@
     <Target Name="NativeLibsPublishIncludeWin" BeforeTargets="PrepareForPublish" Condition="'$(IsWindows)' == 'true'">
         <ItemGroup>
             <Libs Include="$(ProjectDir)..\..\libs\runtimes\win-x64\*.dll" />
-            <ContentWithTargetPath Include="@(Libs-&gt;'%(FullPath)')" RelativePath="%(Libs.Identity)" TargetPath="%(Libs.Filename)%(Libs.Extension)" CopyToPublishDirectory="PreserveNewest" />
+            <ContentWithTargetPath Include="@(Libs->'%(FullPath)')" RelativePath="%(Libs.Identity)" TargetPath="%(Libs.Filename)%(Libs.Extension)" CopyToPublishDirectory="PreserveNewest" />
         </ItemGroup>
     </Target>
     <!-- Include library binaries in publish on Linux -->
     <Target Name="NativeLibsPublishIncludeLinux" BeforeTargets="PrepareForPublish" Condition="'$(IsLinux)' == 'true'">
         <ItemGroup>
             <Libs Include="$(OutDir)libmultihash.so;$(OutDir)libcryptonote.so;$(OutDir)libcryptonight.so" />
-            <ContentWithTargetPath Include="@(Libs-&gt;'%(FullPath)')" RelativePath="%(Libs.Identity)" TargetPath="%(Libs.Filename)%(Libs.Extension)" CopyToPublishDirectory="PreserveNewest" />
+            <ContentWithTargetPath Include="@(Libs->'%(FullPath)')" RelativePath="%(Libs.Identity)" TargetPath="%(Libs.Filename)%(Libs.Extension)" CopyToPublishDirectory="PreserveNewest" />
         </ItemGroup>
     </Target>
 </Project>
