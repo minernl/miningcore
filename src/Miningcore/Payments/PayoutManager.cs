@@ -224,7 +224,8 @@ namespace Miningcore.Payments
                 logger.Info(() => $"No updated blocks for pool {pool.Id} but still payment processed");
                 await TelemetryUtil.TrackDependency(() => cf.RunTx(async (con, tx) =>
                 {
-                    await scheme.UpdateBalancesAsync(con, tx, pool, clusterConfig, handler, null, 1m);
+                    var blockReward = await handler.UpdateBlockRewardBalancesAsync(con, tx, null, pool);
+                    await scheme.UpdateBalancesAsync(con, tx, pool, clusterConfig, handler, null, blockReward);
                 }), DependencyType.Sql, "UpdateBalancesAsync", "UpdateBalances");
             }
         }

@@ -45,5 +45,26 @@ namespace Miningcore.DataStore.Cloud.EtherScan
             return await GetDailyUncleBlockCount(DateTime.Today.AddDays(-1), DateTime.Today);
         }
 
+        public async Task<DailyAverageBlockTime[]> GetDailyAverageBlockTime(DateTime start, DateTime end)
+        {
+            var url = $"?module=stats&action=dailyavgblocktime&startdate={start.ToString(DateFormat)}&enddate={end.ToString(DateFormat)}" +
+                      $"&sort=asc&apikey={apiKey}";
+
+            var resp = await TelemetryUtil.TrackDependency(() => GetAsync<EtherScanResponse<DailyAverageBlockTime[]>>(url, new Dictionary<string, string>()
+            {
+                {WebConstants.HeaderAccept, WebConstants.ContentTypeText}
+            }), DependencyType.EtherScan, nameof(GetDailyAverageBlockTime), $"st:{start},end:{end}");
+
+            if(resp?.Status > 0) return resp.Result;
+
+            logger.Error($"GetDailyAverageBlockTime failed. reason={resp?.Message}, status={resp?.Status}");
+            return null;
+        }
+
+        public async Task<DailyAverageBlockTime[]> GetDailyAverageBlockTimeForToday()
+        {
+            return await GetDailyAverageBlockTime(DateTime.Today.AddDays(-1), DateTime.Today);
+        }
+
     }
 }

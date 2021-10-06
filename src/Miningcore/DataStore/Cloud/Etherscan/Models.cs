@@ -19,4 +19,12 @@ namespace Miningcore.DataStore.Cloud.EtherScan
         [JsonProperty("uncleBlockRewards_Eth")]
         public decimal UncleBlockRewardsEth { get; set; }
     }
+
+    public class DailyAverageBlockTime
+    {
+        public DateTime UtcDate { get; set; }
+        public string UnixTimeStamp { get; set; }
+        [JsonProperty("blockTime_sec")]
+        public double BlockTimeSec { get; set; }
+    }
 }

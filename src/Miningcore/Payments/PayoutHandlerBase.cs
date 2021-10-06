@@ -26,7 +26,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.ApplicationInsights;
-using Miningcore.Blockchain;
+using Microsoft.Extensions.Caching.Memory;
 using Miningcore.Configuration;
 using Miningcore.Extensions;
 using Miningcore.Messaging;
@@ -86,6 +86,7 @@ namespace Miningcore.Payments
         protected readonly IMessageBus messageBus;
         protected ClusterConfig clusterConfig;
         private IAsyncPolicy faultPolicy;
+        protected static readonly IMemoryCache Cache = new MemoryCache(new MemoryCacheOptions());
 
         protected ILogger logger;
         protected PoolConfig poolConfig;
