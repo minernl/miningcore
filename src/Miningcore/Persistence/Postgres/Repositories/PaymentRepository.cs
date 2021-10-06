@@ -80,19 +80,6 @@ namespace Miningcore.Persistence.Postgres.Repositories
                 .ToArray();
         }
 
-        public async Task<BalanceChange[]> PageBalanceChangesAsync(IDbConnection con, string poolId, string address, int page, int pageSize)
-        {
-            logger.LogInvoke(new[] { poolId });
-
-            const string query = "SELECT * FROM balance_changes WHERE poolid = @poolid " +
-                "AND address = @address " +
-                "ORDER BY created DESC OFFSET @offset FETCH NEXT (@pageSize) ROWS ONLY";
-
-            return (await con.QueryAsync<Entities.BalanceChange>(query, new { poolId, address, offset = page * pageSize, pageSize }))
-                .Select(mapper.Map<BalanceChange>)
-                .ToArray();
-        }
-
         public async Task<AmountByDate[]> PageMinerPaymentsByDayAsync(IDbConnection con, string poolId, string address, int page, int pageSize)
         {
             logger.LogInvoke(new[] { poolId });
@@ -115,7 +102,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
             return await con.QuerySingleOrDefaultAsync<PoolState>(query, new { poolId });
         }
 
-        public async Task SetPoolStateHashValue(IDbConnection con, string poolId, double hashValue)
+        public async Task SetPoolStateHashValue(IDbConnection con, string poolId, Decimal hashValue)
         {
             logger.LogInvoke();
             
