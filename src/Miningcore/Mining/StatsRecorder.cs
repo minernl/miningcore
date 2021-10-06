@@ -105,7 +105,7 @@ namespace Miningcore.Mining
                 if(statsUpdateInterval == 0)
                 {
                     statsUpdateInterval = StatsUpdateInterval;
-                    Logger.Warn(() => $"statistics -> statsUpdateInterval not found in config.json. using default : {statsUpdateInterval} seconds");
+                    Logger.Warn(() => $"statistics -> statsUpdateInterval not valid in config.json. using default : {statsUpdateInterval} seconds");
                 }
 
                 // Stats calculation window
@@ -113,7 +113,7 @@ namespace Miningcore.Mining
                 if(hashrateCalculationWindow == 0)
                 {
                     hashrateCalculationWindow = HashrateCalculationWindow;
-                    Logger.Warn(() => $"statistics -> hashrateCalculationWindow not found in config.json. using default : {hashrateCalculationWindow} minutes");
+                    Logger.Warn(() => $"statistics -> hashrateCalculationWindow not valid in config.json. using default : {hashrateCalculationWindow} minutes");
                 }
 
                 // Stats DB cleanup interval
@@ -121,7 +121,7 @@ namespace Miningcore.Mining
                 if(statsCleanupInterval == 0)
                 {
                     statsCleanupInterval = StatsCleanupInterval;
-                    Logger.Warn(() => $"statistics -> statsCleanupInterval not found in config.json. using default : {statsCleanupInterval} minutes");
+                    Logger.Warn(() => $"statistics -> statsCleanupInterval not valid in config.json. using default : {statsCleanupInterval} minutes");
                 }
 
                 // Set DB Cleanup time
@@ -403,25 +403,23 @@ namespace Miningcore.Mining
             await cf.Run(async con =>
             {
                 // MinerNL Stats cleanup
-                var _StatsDBCleanupHistory = clusterConfig.Statistics?.StatsDBCleanupHistory ?? statsDBCleanupHistory;
-                if(_StatsDBCleanupHistory == 0)
+                var statsDbCleanupHistory = clusterConfig.Statistics?.StatsDBCleanupHistory ?? StatsDbCleanupHistory;
+                if(statsDbCleanupHistory == 0)
                 {
-                    _StatsDBCleanupHistory = statsDBCleanupHistory;
-                    logger.Info(() => $"statistics -> statsDBCleanupHistory not found in config.json. using default : {statsDBCleanupHistory} days");
+                    statsDbCleanupHistory = StatsDbCleanupHistory;
+                    Logger.Info(() => $"statistics -> statsDBCleanupHistory not valid in config.json. using default : {statsDbCleanupHistory} hours");
                 }
 
-                logger.Info(() => $"Removing all stats older then {_StatsDBCleanupHistory} days");
+                Logger.Info(() => $"Removing all stats older then {statsDbCleanupHistory} hours");
 
                 var cutOff = DateTime.UtcNow.AddHours(-statsDbCleanupHistory);
                 // MinerNL end
 
                 var rowCount = await statsRepo.DeletePoolStatsBeforeAsync(con, cutOff);
-                if(rowCount > 0)
-                    logger.Info(() => $"Deleted {rowCount} old poolstats records");
+                Logger.Info(() => $"Deleted {rowCount} old poolstats records");
 
                 rowCount = await statsRepo.DeleteMinerStatsBeforeAsync(con, cutOff);
-                if(rowCount > 0)
-                    logger.Info(() => $"Deleted {rowCount} old minerstats records");
+                Logger.Info(() => $"Deleted {rowCount} old minerstats records");
             });
 
             Logger.Info(() => $"Stats cleanup DB complete");
