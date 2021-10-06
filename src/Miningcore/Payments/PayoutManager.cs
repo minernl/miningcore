@@ -225,8 +225,9 @@ namespace Miningcore.Payments
 
         private async Task PayoutPoolBalancesAsync(PoolConfig pool, IPayoutHandler handler)
         {
-            var poolBalancesOverMinimum = await cf.Run(con =>
-                balanceRepo.GetPoolBalancesOverThresholdAsync(con, pool.Id, pool.PaymentProcessing.MinimumPayment));
+            var poolBalancesOverMinimum = await TelemetryUtil.TrackDependency(() => cf.Run(con =>
+                    balanceRepo.GetPoolBalancesOverThresholdAsync(con, pool.Id, pool.PaymentProcessing.MinimumPayment)),
+                    DependencyType.Sql, "GetPoolBalancesOverThresholdAsync", "GetPoolBalancesOverThresholdAsync");
 
             if(poolBalancesOverMinimum.Length > 0)
             {
@@ -241,7 +242,6 @@ namespace Miningcore.Payments
                     throw;
                 }
             }
-
             else
                 logger.Info(() => $"No balances over configured minimum payout {pool.PaymentProcessing.MinimumPayment:0.#######} for pool {pool.Id}");
         }
