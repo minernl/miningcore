@@ -42,8 +42,6 @@ using Miningcore.Util;
 using Newtonsoft.Json;
 using Contract = Miningcore.Contracts.Contract;
 using CNC = Miningcore.Blockchain.Cryptonote.CryptonoteCommands;
-using Miningcore.Notifications.Messages;
-using System.Globalization;
 using Newtonsoft.Json.Linq;
 
 namespace Miningcore.Blockchain.Cryptonote
@@ -559,7 +557,7 @@ namespace Miningcore.Blockchain.Cryptonote
             throw new NotImplementedException();
         }
 
-        public decimal getTransactionDeduction(decimal amount)
+        public decimal GetTransactionDeduction(decimal amount)
         {
             // if using CryptoNote with PPS, implement this function to estimate the transaction cost for the given amount
             throw new NotImplementedException();

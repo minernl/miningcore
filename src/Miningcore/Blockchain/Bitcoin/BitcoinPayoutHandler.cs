@@ -332,7 +332,7 @@ namespace Miningcore.Blockchain.Bitcoin
             throw new NotImplementedException();
         }
 
-        public decimal getTransactionDeduction(decimal amount)
+        public decimal GetTransactionDeduction(decimal amount)
         {
             // if using BitCoin/Equihash with PPS, implement this function to estimate the transaction cost for the given amount
             throw new NotImplementedException();
