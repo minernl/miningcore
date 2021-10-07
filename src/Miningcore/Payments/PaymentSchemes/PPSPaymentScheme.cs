@@ -102,7 +102,7 @@ namespace Miningcore.Payments.PaymentSchemes
 
             // delete discarded shares
             var deleteWindow = clusterConfig.Statistics?.HashrateCalculationWindow ?? DefaultHashRateCalculationWindow;
-            var deleteCutoffTime = DateTime.UtcNow.AddMinutes(0 - (deleteWindow + 1)); // delete any data no longer needed by the StatsRecorder, plus a one-minute buffer
+            var deleteCutoffTime = DateTime.UtcNow.AddMinutes(0 - (deleteWindow + 10)); // delete any data no longer needed by the StatsRecorder, plus a ten-minute buffer
 
             await TelemetryUtil.TrackDependency(() => shareRepo.DeleteProcessedSharesBeforeAcceptedAsync(con, tx, poolConfig.Id, deleteCutoffTime),
             DependencyType.Sql, "DeleteOldShares", $"cutoffDate:{deleteCutoffTime}");
