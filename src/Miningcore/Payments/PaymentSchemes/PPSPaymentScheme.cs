@@ -44,7 +44,6 @@ namespace Miningcore.Payments.PaymentSchemes
             Contract.RequiresNonNull(paymentRepo, nameof(paymentRepo));
             Contract.RequiresNonNull(mapper, nameof(mapper));
             
-            this.ctx = ctx;
             this.cf = cf;
             this.shareRepo = shareRepo;
             this.balanceRepo = balanceRepo;
