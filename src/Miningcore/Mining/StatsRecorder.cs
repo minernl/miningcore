@@ -228,6 +228,7 @@ namespace Miningcore.Mining
 
                     messageBus.NotifyHashrateUpdated(pool.Config.Id, poolHashrate);
                     // MinerNL end
+                    if(pool.PoolStats.PoolHashrate <= 0) Logger.Info(() => $"[{poolId}] Zero hash rate. miner:{byMiner.Length},share:{result.Length},window:{poolHashTimeFrame},from:{timeFrom},to:{currentTimeUtc}");
                 }
                 else
                 {
@@ -238,8 +239,9 @@ namespace Miningcore.Mining
 
                     messageBus.NotifyHashrateUpdated(pool.Config.Id, 0);
 
-                    Logger.Info(() => $"[{poolId}] Reset performance stats for pool");
+                    Logger.Info(() => $"[{poolId}] Reset performance stats for pool. Time from:{timeFrom},to:{currentTimeUtc}");
                 }
+                
                 Logger.Info(() => $"[{poolId}] Connected Miners : {pool.PoolStats.ConnectedMiners} miners");
                 Logger.Info(() => $"[{poolId}] Pool hashrate    : {pool.PoolStats.PoolHashrate} hashes/sec");
                 Logger.Info(() => $"[{poolId}] Pool shares      : {pool.PoolStats.SharesPerSecond} shares/sec");
