@@ -62,7 +62,7 @@
             ],
             "ipWhitelist": []
         },
-        "oidcValidateAudience":  false,
+        "oidcValidateAudience": false,
         "oidcValidAudience": "",
         "oidcValidIssuer": "https://login-int.norton.com/sso/oidc1/token",
         "oidcMetadataAddress": "https://login-int.norton.com/sso/oidc1/token/.well-known/openid-configuration"
@@ -123,7 +123,8 @@
             ],
             "etherscan": {
                 "apiUrl": "https://api.etherscan.io/api",
-                "apiKey": "api_key"
+                "apiKey": "api_key",
+                "daysToLookBack": 1
             },
             "paymentProcessing": {
                 "enabled": true,

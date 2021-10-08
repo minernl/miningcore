@@ -114,7 +114,7 @@ namespace Miningcore.Payments.PaymentSchemes
             if(totalRewards > 0)
                 Logger.Info(() => $"{FormatUtil.FormatQuantity((double) totalShareCount)} ({Math.Round(totalShareCount, 2)}) shares contributed to a total payout of {payoutHandler.FormatAmount(totalRewards)} ({totalRewards / blockReward * 100:0.00}% of block reward) to {rewards.Keys.Count} addresses");
         }
-
+        
         #endregion // IPayoutScheme
 
         private DateTime? CalculateRewards(

@@ -549,8 +549,9 @@ namespace Miningcore.Configuration
 
     public partial class EtherScan
     {
-        public String apiUrl { get; set; }
-        public String apiKey { get; set; }
+        public string ApiUrl { get; set; }
+        public string ApiKey { get; set; }
+        public int DaysToLookBack { get; set; } = 1;
     }
 
     public partial class PoolPaymentProcessingConfig
@@ -570,7 +571,7 @@ namespace Miningcore.Configuration
         /// Value of a hash in Eth, based on PPS calculation
         /// </summary>
         public decimal HashValue { get; set; }
-        
+
         public JToken PayoutSchemeConfig { get; set; }
 
         /// <summary>
