@@ -63,7 +63,7 @@ namespace Miningcore.DataStore.Cloud.EtherScan
 
         public async Task<DailyAverageBlockTime[]> GetDailyAverageBlockTime(int lookBackDays)
         {
-            return await GetDailyAverageBlockTime(DateTime.Today.AddDays(lookBackDays), DateTime.Today);
+            return await GetDailyAverageBlockTime(DateTime.Today.AddDays(-lookBackDays), DateTime.Today);
         }
 
     }
