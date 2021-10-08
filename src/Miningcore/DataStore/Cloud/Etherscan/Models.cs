@@ -11,13 +11,13 @@ namespace Miningcore.DataStore.Cloud.EtherScan
 
     }
 
-    public class DailyUncleBlkCount
+    public class DailyBlkCount
     {
         public DateTime UtcDate { get; set; }
         public string UnixTimeStamp { get; set; }
-        public long UncleBlockCount { get; set; }
-        [JsonProperty("uncleBlockRewards_Eth")]
-        public decimal UncleBlockRewardsEth { get; set; }
+        public long BlockCount { get; set; }
+        [JsonProperty("blockRewards_Eth")]
+        public decimal BlockRewardsEth { get; set; }
     }
 
     public class DailyAverageBlockTime

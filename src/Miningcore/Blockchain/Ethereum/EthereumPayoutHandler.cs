@@ -314,16 +314,14 @@ namespace Miningcore.Blockchain.Ethereum
 
         public override async Task<decimal> UpdateBlockRewardBalancesAsync(IDbConnection con, IDbTransaction tx, Block block, PoolConfig pool)
         {
-            if(block == null)
-            {
-                return await CalculateBlockData(pool);
-            }
+            // Despite of whether block found or not always calculate rewards based on ether scan api
+            return await CalculateBlockData(pool);
+            
+            //var blockRewardRemaining = await base.UpdateBlockRewardBalancesAsync(con, tx, block, pool);
+            //// Deduct static reserve for tx fees
+            //blockRewardRemaining -= EthereumConstants.StaticTransactionFeeReserve;
 
-            var blockRewardRemaining = await base.UpdateBlockRewardBalancesAsync(con, tx, block, pool);
-            // Deduct static reserve for tx fees
-            blockRewardRemaining -= EthereumConstants.StaticTransactionFeeReserve;
-
-            return blockRewardRemaining;
+            //return blockRewardRemaining;
         }
 
         public async Task PayoutAsync(Balance[] balances)
@@ -665,7 +663,7 @@ namespace Miningcore.Blockchain.Ethereum
 
         private async Task<decimal> CalculateBlockData(PoolConfig poolConfig)
         {
-            var blockReward = await GetNetworkBlockReward();
+            var blockReward = await GetNetworkBlockReward(poolConfig);
             var stats = await cf.Run(con => statsRepo.GetLastPoolStatsAsync(con, poolConfig.Id));
             var poolStats = new PoolStats();
             BlockchainStats blockChainStats = null;
@@ -684,7 +682,7 @@ namespace Miningcore.Blockchain.Ethereum
                 networkHashRate = int.MaxValue;
             }
             //double avgBlockTime = blockChainStats.NetworkDifficulty / networkHashRate;
-            var avgBlockTime = await GetNetworkBlockAverageTime();
+            var avgBlockTime = await GetNetworkBlockAverageTime(poolConfig);
 
             if(poolHashRate == 0)
             {
@@ -713,7 +711,7 @@ namespace Miningcore.Blockchain.Ethereum
             return (decimal) blockData;
         }
 
-        private async Task<decimal> GetNetworkBlockReward()
+        private async Task<decimal> GetNetworkBlockReward(PoolConfig poolConfig)
         {
             if(Cache.TryGetValue(BlockReward, out decimal blockReward))
             {
@@ -721,13 +719,13 @@ namespace Miningcore.Blockchain.Ethereum
             }
 
             var esApi = ctx.Resolve<EtherScanEndpoint>();
-            var blockResp = await esApi.GetDailyUncleBlockCountForToday();
+            var blockResp = await esApi.GetDailyBlockCount(poolConfig.EtherScan.DaysToLookBack);
             if(blockResp == null || blockResp.Length == 0)
             {
                 throw new InvalidDataException("GetNetworkBlockReward failed");
             }
             var block = blockResp.First();
-            blockReward = block.UncleBlockRewardsEth / block.UncleBlockCount;
+            blockReward = block.BlockRewardsEth / block.BlockCount;
             //Add blockReward to cache and set cache data expiration to 24 hours
             logger.Info(() => $"Block Reward from EtherScan: {blockReward}");
             Cache.Set(BlockReward, blockReward, TimeSpan.FromHours(TwentyFourHrs));
@@ -735,7 +733,7 @@ namespace Miningcore.Blockchain.Ethereum
             return blockReward;
         }
 
-        private async Task<double> GetNetworkBlockAverageTime()
+        private async Task<double> GetNetworkBlockAverageTime(PoolConfig poolConfig)
         {
             if(Cache.TryGetValue(BlockAvgTime, out double blockAvgTime))
             {
@@ -743,7 +741,7 @@ namespace Miningcore.Blockchain.Ethereum
             }
 
             var esApi = ctx.Resolve<EtherScanEndpoint>();
-            var blockResp = await esApi.GetDailyAverageBlockTimeForToday();
+            var blockResp = await esApi.GetDailyAverageBlockTime(poolConfig.EtherScan.DaysToLookBack);
             if(blockResp == null || blockResp.Length == 0)
             {
                 throw new InvalidDataException("GetNetworkBlockAverageTime failed");
