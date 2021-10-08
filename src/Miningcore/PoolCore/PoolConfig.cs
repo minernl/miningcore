@@ -68,7 +68,7 @@ namespace Miningcore.PoolCore
                 {
                     poolConfig.PaymentProcessing.Extra[CoinPassword] = remoteConfig.TryGetValue(string.Format(AppConfigConstants.CoinBasePassword, poolConfig.Id), poolConfig.PaymentProcessing.Extra[CoinPassword]?.ToString());
                     poolConfig.PaymentProcessing.Extra[PrivateKey] = remoteConfig.TryGetValue(string.Format(AppConfigConstants.PrivateKey, poolConfig.Id), poolConfig.PaymentProcessing.Extra[PrivateKey]?.ToString());
-                    poolConfig.EtherScan.apiKey = remoteConfig.TryGetValue(string.Format(AppConfigConstants.EtherscanApiKey, poolConfig.Id), poolConfig.EtherScan.apiKey);
+                    poolConfig.EtherScan.ApiKey = remoteConfig.TryGetValue(string.Format(AppConfigConstants.EtherscanApiKey, poolConfig.Id), poolConfig.EtherScan.ApiKey);
                     poolConfig.Ports.ForEach(p =>
                     {
                         try
