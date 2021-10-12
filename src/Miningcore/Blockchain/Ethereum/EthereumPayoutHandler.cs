@@ -469,29 +469,29 @@ namespace Miningcore.Blockchain.Ethereum
 
         public decimal GetTransactionDeduction(decimal amount)
         {
-            decimal deduct = 0;
-            if(extraConfig?.MinersPayTxFees == true)
+            // the gas limit of a single address->address transaction is currently fixed at 21000
+            var gasAmount = extraConfig?.Gas ?? 21000;
+
+            // if no MaxGasLimit is configured, nothing will be deducted.
+            var gasPrice = extraConfig?.MaxGasLimit ?? 0;
+            var gasFee = gasPrice / EthereumConstants.Wei;
+
+            var txCost = gasAmount * gasFee;
+
+            var payoutThreshold = poolConfig.PaymentProcessing.MinimumPayment;
+            if(0 <= payoutThreshold)
             {
-                // the gas limit of a single address->address transaction is currently fixed at 21000
-                var gasAmount = extraConfig?.Gas ?? 21000;
-
-                // if no MaxGasLimit is configured, nothing will be deducted.
-                var gasPrice = extraConfig?.MaxGasLimit ?? 0;
-                var gasFee = gasPrice / EthereumConstants.Wei;
-
-                var txCost = gasAmount * gasFee;
-
-                var payoutThreshold = poolConfig.PaymentProcessing.MinimumPayment;
-                if(0 <= payoutThreshold)
-                {
-                    throw new Exception($"Misconfiguration in payments. MinimumPayment is set to {payoutThreshold}");
-                }
-
-                var amountRatio = amount / payoutThreshold;
-
-                deduct = txCost * amountRatio;
+                throw new Exception($"Misconfiguration in payments. MinimumPayment is set to {payoutThreshold}");
             }
-            return deduct;
+
+            var amountRatio = amount / payoutThreshold;
+
+            return txCost * amountRatio;
+        }
+
+        public bool MinersPayTxFees()
+        {
+            return extraConfig?.MinersPayTxFees == true;
         }
 
         #endregion // IPayoutHandler

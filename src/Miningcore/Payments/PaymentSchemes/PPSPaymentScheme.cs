@@ -83,20 +83,43 @@ namespace Miningcore.Payments.PaymentSchemes
 
                 if(amount > 0)
                 {
-                    // Deduct the predicted transaction fee
-                    var txDeduction = payoutHandler.GetTransactionDeduction(amount);
-                    if(txDeduction < 0 || txDeduction >= amount)
+                    Balance balance = await TelemetryUtil.TrackDependency(
+                        () => cf.Run(c => balanceRepo.GetBalanceAsync(c, poolConfig.Id, address)),
+                        DependencyType.Sql,
+                        "GetBalance",
+                        $"miner:{address}");
+
+                    // Calculate how much we should deduct for this amount (only if the balance is below the payout threshold)
+                    decimal txDeduction = 0;
+                    if (balance.Amount < poolConfig.PaymentProcessing.MinimumPayment)
                     {
-                        Logger.Error(() => $"Payouts are mis-configured. Transaction Deduction was calculated to be an invalid value: {payoutHandler.FormatAmount(txDeduction)}");
+                        txDeduction = payoutHandler.GetTransactionDeduction(amount);
+                        if(txDeduction < 0 || txDeduction >= amount)
+                        {
+                            Logger.Error(() => $"Payouts are mis-configured. Transaction Deduction was calculated to be an invalid value: {payoutHandler.FormatAmount(txDeduction)}");
+                        }
                     }
-                    Logger.Info(() => $"Adding {payoutHandler.FormatAmount(amount)} to balance of {address} for {FormatUtil.FormatQuantity(shares[address])} ({shares[address]}) shares after deducting {payoutHandler.FormatAmount(txDeduction)}");
+
+                    // Check if we have deductions enabled
+                    decimal actualDeduction = 0;
+                    if(payoutHandler.MinersPayTxFees())
+                    {
+                        actualDeduction = txDeduction;
+                    }
+
+                    // Update the balance
+                    Logger.Info(() => $"Adding {payoutHandler.FormatAmount(amount)} to balance of {address} for {FormatUtil.FormatQuantity(shares[address])} ({shares[address]}) shares after deducting {payoutHandler.FormatAmount(actualDeduction)} out of {payoutHandler.FormatAmount(txDeduction)}");
+                    await TelemetryUtil.TrackDependency(
+                        () => balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, address, amount - actualDeduction, $"Reward for {FormatUtil.FormatQuantity(shares[address])} shares for block {block?.BlockHeight}"),
+                        DependencyType.Sql,
+                        "AddBalanceAmount",
+                        $"miner:{address}, amount:{payoutHandler.FormatAmount(amount)}, txDeduction:{payoutHandler.FormatAmount(txDeduction)}, actualDeduction:{payoutHandler.FormatAmount(actualDeduction)}");
 
                     await TelemetryUtil.TrackDependency(
-                            () => balanceRepo.AddAmountAsyncDeductingTxFee(con, tx, poolConfig.Id, address, amount, $"Reward for {FormatUtil.FormatQuantity(shares[address])} shares for block {block?.BlockHeight}", txDeduction, poolConfig.PaymentProcessing.MinimumPayment),
-                            DependencyType.Sql, "AddBalanceAmount", $"miner:{address}, amount:{payoutHandler.FormatAmount(amount)}, txDeduction:{payoutHandler.FormatAmount(txDeduction)}");
-
-                    await TelemetryUtil.TrackDependency(() => shareRepo.ProcessSharesForUserBeforeAcceptedAsync(con, tx, poolConfig.Id, address, shareCutOffDate.Value),
-                    DependencyType.Sql, "ProcessMinerShares", $"miner:{address},cutoffDate:{shareCutOffDate.Value}");
+                        () => shareRepo.ProcessSharesForUserBeforeAcceptedAsync(con, tx, poolConfig.Id, address, shareCutOffDate.Value),
+                        DependencyType.Sql,
+                        "ProcessMinerShares",
+                        $"miner:{address},cutoffDate:{shareCutOffDate.Value}");
                 }
             }
 

@@ -338,6 +338,11 @@ namespace Miningcore.Blockchain.Bitcoin
             throw new NotImplementedException();
         }
 
+        public bool MinersPayTxFees()
+        {
+            throw new NotImplementedException();
+        }
+
         #endregion // IPayoutHandler
     }
 }
