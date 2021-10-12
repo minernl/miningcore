@@ -400,7 +400,7 @@ namespace Miningcore.Blockchain.Ethereum
                 var log = LogManager.GetCurrentClassLogger();
                 try
                 {
-                    var txService = web3Connection.Eth.GetEtherTransferService();
+                    var txService = web3Connection.Eth?.GetEtherTransferService();
                     if(txService != null)
                     {
                         var transaction = await txService.TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount);
