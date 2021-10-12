@@ -26,6 +26,7 @@ using Miningcore.Util;
 using Nethereum.Web3;
 using Nethereum.Web3.Accounts;
 using Newtonsoft.Json;
+using NLog;
 using Block = Miningcore.Persistence.Model.Block;
 using Contract = Miningcore.Contracts.Contract;
 
@@ -316,7 +317,7 @@ namespace Miningcore.Blockchain.Ethereum
         {
             // Despite of whether block found or not always calculate rewards based on ether scan api
             return await CalculateBlockData(pool);
-            
+
             //var blockRewardRemaining = await base.UpdateBlockRewardBalancesAsync(con, tx, block, pool);
             //// Deduct static reserve for tx fees
             //blockRewardRemaining -= EthereumConstants.StaticTransactionFeeReserve;
@@ -365,7 +366,7 @@ namespace Miningcore.Blockchain.Ethereum
 
                     logInfo = $", address={balance.Address}";
                     var txHash = await PayoutAsync(balance);
-                    txHashes.Add(txHash);
+                    if(!string.IsNullOrEmpty(txHash)) txHashes.Add(txHash);
                 }
                 catch(Nethereum.JsonRpc.Client.RpcResponseException ex)
                 {
@@ -396,18 +397,38 @@ namespace Miningcore.Blockchain.Ethereum
             // If web3Connection was created, payout from self managed wallet
             if(web3Connection != null)
             {
-                var transaction = await web3Connection.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount);
-
-                if(transaction.HasErrors() != null && (bool) transaction.HasErrors())
+                var log = LogManager.GetCurrentClassLogger();
+                try
                 {
-                    throw new Exception($"Transfer failed for {balance}: {transaction}");
+                    var txService = web3Connection.Eth.GetEtherTransferService();
+                    if(txService != null)
+                    {
+                        var transaction = await txService.TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount);
+                        if(transaction.HasErrors() != null && (bool) transaction.HasErrors())
+                        {
+                            throw new Exception($"Transfer failed for {balance}: {transaction}");
+                        }
+
+                        txId = transaction.TransactionHash;
+
+                        if(string.IsNullOrEmpty(txId) || EthereumConstants.ZeroHashPattern.IsMatch(txId))
+                        {
+                            throw new Exception($"Transfer did not return a valid transaction hash for {balance}");
+                        }
+                    }
+                    else
+                    {
+                        log.Warn("Web3Tx GetEtherTransferService is null");
+                    }
                 }
-
-                txId = transaction.TransactionHash;
-
-                if(string.IsNullOrEmpty(txId) || EthereumConstants.ZeroHashPattern.IsMatch(txId))
+                catch(Exception ex)
                 {
-                    throw new Exception($"Transfer did not return a valid transaction hash for {balance}");
+                    // Log and continue whatever the error may be
+                    log.Error(ex);
+                }
+                finally
+                {
+                    log.Info($"Web3Tx call finished, addr={balance.Address}, amt={balance.Amount}");
                 }
             }
             else // else payout from daemon managed wallet
@@ -690,7 +711,7 @@ namespace Miningcore.Blockchain.Ethereum
                 poolHashRate = 1;
             }
             var blockFrequency = networkHashRate / poolHashRate * (avgBlockTime / Sixty);
-             
+
             double maxBlockFrequency = poolConfig.PaymentProcessing.MaxBlockFrequency;
             if(blockFrequency > maxBlockFrequency)
             {
