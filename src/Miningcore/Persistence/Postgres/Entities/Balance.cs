@@ -29,5 +29,6 @@ namespace Miningcore.Persistence.Postgres.Entities
         public decimal Amount { get; set; }
         public DateTime Created { get; set; }
         public DateTime Updated { get; set; }
+        public DateTime? PaidDate { get; set; }
     }
 }
