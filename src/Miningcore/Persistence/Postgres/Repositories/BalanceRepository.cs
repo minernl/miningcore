@@ -70,7 +70,9 @@ namespace Miningcore.Persistence.Postgres.Repositories
 
             const string query = "SELECT * FROM balances WHERE poolid = @poolId AND address = @address";
 
-            return mapper.Map<Balance>(await con.QuerySingleOrDefaultAsync<Entities.Balance>(query, new { poolId, address }));
+            return (await con.QueryAsync<Entities.Balance>(query, new { poolId, address }))
+                .Select(mapper.Map<Balance>)
+                .FirstOrDefault();
         }
 
         public async Task<Balance> GetBalanceWithPaidDateAsync(IDbConnection con, string poolId, string address)
