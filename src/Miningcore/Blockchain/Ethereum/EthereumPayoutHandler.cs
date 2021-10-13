@@ -308,6 +308,8 @@ namespace Miningcore.Blockchain.Ethereum
 
         public async Task PayoutAsync(Balance[] balances)
         {
+            logger.Info(() => $"[{LogCategory}] Beginning payout to {balances?.Length} miners.");
+
             // ensure we have peers
             var infoResponse = await daemon.ExecuteCmdSingleAsync<string>(logger, EthCommands.GetPeerCount);
 
@@ -344,7 +346,6 @@ namespace Miningcore.Blockchain.Ethereum
                         logger.Info(() => $"[{LogCategory}] Latest gas fee is within par limit ({latestGasFee}<={maxGasLimit}), " +
                                           $"lastPmt={lastPaymentDate}, address={balance.Address}");
                     }
-
                     logInfo = $", address={balance.Address}";
                     var txHash = await PayoutAsync(balance);
                     if(!string.IsNullOrEmpty(txHash)) txHashes.Add(txHash);
@@ -370,6 +371,8 @@ namespace Miningcore.Blockchain.Ethereum
 
             if(txHashes.Any())
                 NotifyPayoutSuccess(poolConfig.Id, balances, txHashes.ToArray(), null);
+
+            logger.Info(() => $"[{LogCategory}] Payouts complete.  Successfully processed {txHashes.Count} of {balances?.Length} payouts.");
         }
 
         public async Task<string> PayoutAsync(Balance balance)
@@ -382,6 +385,11 @@ namespace Miningcore.Blockchain.Ethereum
             }
             else // else payout from daemon managed wallet
             {
+                if(!string.IsNullOrEmpty(extraConfig.PrivateKey))
+                {
+                    logger.Error(() => $"[{LogCategory}] Web3 is configured, but web3Connection is null!");
+                    throw new Exception($"Unable to process payouts because web3 is null");
+                }
                 try
                 {
 
