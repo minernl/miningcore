@@ -80,14 +80,14 @@ namespace Miningcore.Payments.PaymentSchemes
                 if(amount > 0)
                 {
                     Balance balance = await TelemetryUtil.TrackDependency(
-                        async () => await cf.Run(c => balanceRepo.GetBalanceAsync(c, poolConfig.Id, address)),
+                        () => cf.Run( c => balanceRepo.GetBalanceAsync(c, poolConfig.Id, address)),
                         DependencyType.Sql,
                         "GetBalance",
                         $"miner:{address}");
 
                     // Calculate how much we should deduct for this amount (only if the balance is below the payout threshold)
                     decimal txDeduction = 0;
-                    if (balance.Amount < poolConfig.PaymentProcessing.MinimumPayment)
+                    if (null == balance || balance.Amount < poolConfig.PaymentProcessing.MinimumPayment)
                     {
                         txDeduction = payoutHandler.GetTransactionDeduction(amount);
                         if(txDeduction < 0 || txDeduction >= amount)
