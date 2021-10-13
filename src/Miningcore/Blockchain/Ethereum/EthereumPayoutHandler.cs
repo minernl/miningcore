@@ -385,6 +385,11 @@ namespace Miningcore.Blockchain.Ethereum
             }
             else // else payout from daemon managed wallet
             {
+                if(!string.IsNullOrEmpty(extraConfig.PrivateKey))
+                {
+                    logger.Error(() => $"[{LogCategory}] Web3 is configured, but web3Connection is null!");
+                    throw new Exception($"Unable to process payouts because web3 is null");
+                }
                 try
                 {
 
