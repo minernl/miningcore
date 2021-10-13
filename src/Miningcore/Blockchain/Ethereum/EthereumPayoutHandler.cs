@@ -741,10 +741,11 @@ namespace Miningcore.Blockchain.Ethereum
         {
             try
             {
+                logger.Info($"Web3Tx start. addr={balance.Address}, amt={balance.Amount}");
+
                 var txService = web3Connection.Eth?.GetEtherTransferService();
                 if(txService != null)
                 {
-                    logger.Info($"Web3Tx start. addr={balance.Address}, amt={balance.Amount}");
                     var transaction = await TelemetryUtil.TrackDependency(() => txService.TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount),
                         DependencyType.Web3, "TransferEtherAndWaitForReceiptAsync", $"addr={balance.Address}, amt={balance.Amount}");
                     if(transaction.HasErrors().GetValueOrDefault())
