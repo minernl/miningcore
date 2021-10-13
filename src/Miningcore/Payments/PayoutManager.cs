@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
@@ -61,36 +62,34 @@ namespace Miningcore.Payments
         private TimeSpan interval;
         private ClusterConfig clusterConfig;
         private static readonly ILogger logger = LogManager.GetCurrentClassLogger();
-
-        private static Timer timer;
+        private static Thread payoutThread;
 
         // Start Payment Services
         public void Start()
         {
             logger.Info(() => "Starting Payout Manager");
 
-            // Schedule the next payout and run the current payout
-            ScheduleNextPayout();
-        }
-
-        public void ScheduleNextPayout()
-        {
-            if (!cts.IsCancellationRequested)
-            {
-                // First schedule the next payout
-                logger.Info(() => $"Scheduled the next payout in {interval.TotalSeconds} seconds");
-                timer = new Timer((state) => ScheduleNextPayout(), null, (int)interval.TotalMilliseconds, System.Threading.Timeout.Infinite);
-
-                // Then spin up a thread to do the current payout
-                logger.Info(() => "Creating a thread to process the current payouts");
-                Task.Run(() => {
-                    ProcessPayout();
-                });
-            }
-            else
-            {
-                logger.Info(() => "cts.IsCancellationRequested is true, stopping payout manager");
-            }
+            // The observable will trigger the observer once every interval
+            Observable.Interval(interval).Subscribe(_ => {
+                if (!cts.IsCancellationRequested)
+                {
+                    if (null == payoutThread || !payoutThread.IsAlive)
+                    {
+                        // Spin up a separate thread to do the current payout
+                        logger.Info(() => "Creating a thread to process the current payouts");
+                        payoutThread = new Thread(() => ProcessPayout());
+                        payoutThread.Start();
+                    }
+                    else
+                    {
+                        logger.Info(() => "Payout thread is null or still alive");
+                    }
+                }
+                else
+                {
+                    logger.Info(() => "cts.IsCancellationRequested is true, stopping payout manager");
+                }
+            });
         }
 
         public async void ProcessPayout()
