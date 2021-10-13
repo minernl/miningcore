@@ -73,6 +73,7 @@
       "enabled": true,
       "coin": "monero",
       "address": "44riGcQcDp4EsboDJP284CFCnJ2qP7y8DAqGC4D9WtVbEqzxQ3qYXAUST57u5FkrVF7CXhsEc63QNWazJ5b9ygwBJBtB2kT",
+      "randomXFlagsOverride": "",
       "rewardRecipients": [
         {
           "address": "44riGcQcDp4EsboDJP284CFCnJ2qP7y8DAqGC4D9WtVbEqzxQ3qYXAUST57u5FkrVF7CXhsEc63QNWazJ5b9ygwBJBtB2kT",
