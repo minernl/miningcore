@@ -70,26 +70,32 @@ namespace Miningcore.Payments
             logger.Info(() => "Starting Payout Manager");
 
             // The observable will trigger the observer once every interval
-            Observable.Interval(interval).Subscribe(_ => {
-                if (!cts.IsCancellationRequested)
+            Observable.Interval(interval).Subscribe(_ => PayoutCallback());
+
+            // Run the initial payout
+            PayoutCallback();
+        }
+
+        public void PayoutCallback() 
+        {
+            if (!cts.IsCancellationRequested)
+            {
+                if (null == payoutThread || !payoutThread.IsAlive)
                 {
-                    if (null == payoutThread || !payoutThread.IsAlive)
-                    {
-                        // Spin up a separate thread to do the current payout
-                        logger.Info(() => "Creating a thread to process the current payouts");
-                        payoutThread = new Thread(() => ProcessPayout());
-                        payoutThread.Start();
-                    }
-                    else
-                    {
-                        logger.Info(() => "Payout thread is null or still alive");
-                    }
+                    // Spin up a separate thread to do the current payout
+                    logger.Info(() => "Creating a thread to process the current payouts");
+                    payoutThread = new Thread(() => ProcessPayout());
+                    payoutThread.Start();
                 }
                 else
                 {
-                    logger.Info(() => "cts.IsCancellationRequested is true, stopping payout manager");
+                    logger.Info(() => "Payout thread is null or still alive");
                 }
-            });
+            }
+            else
+            {
+                logger.Info(() => "cts.IsCancellationRequested is true, stopping payout manager");
+            }
         }
 
         public async void ProcessPayout()
