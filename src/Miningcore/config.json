@@ -46,6 +46,7 @@
         "enabled": true,
         "interval": 300,
         "balanceCalculationInterval": 600,
+        "onDemandPayout": true, 
         "shareRecoveryFile": "recovered-shares.txt"
     },
     "api": {

@@ -22,6 +22,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
 using AutoMapper;
@@ -202,7 +203,7 @@ namespace Miningcore.Blockchain.Bitcoin
             return Task.FromResult(true);
         }
 
-        public virtual async Task PayoutAsync(Balance[] balances)
+        public virtual async Task PayoutAsync(Balance[] balances, CancellationToken ct)
         {
             Contract.RequiresNonNull(balances, nameof(balances));
 
@@ -328,6 +329,11 @@ namespace Miningcore.Blockchain.Bitcoin
         }
 
         public Task<string> PayoutAsync(Balance balance)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void OnDemandPayoutAsync()
         {
             throw new NotImplementedException();
         }

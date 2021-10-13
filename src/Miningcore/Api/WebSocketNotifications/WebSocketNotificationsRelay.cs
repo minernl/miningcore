@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.WebSockets;
@@ -37,6 +37,7 @@ namespace Miningcore.Api
             Relay<BlockUnlockedNotification>(WsNotificationType.BlockUnlocked);
             Relay<BlockConfirmationProgressNotification>(WsNotificationType.BlockUnlockProgress);
             Relay<NewChainHeightNotification>(WsNotificationType.NewChainHeight);
+            Relay<NetworkBlockNotification>(WsNotificationType.NetworkBlock);
             Relay<PaymentNotification>(WsNotificationType.Payment);
             Relay<HashrateNotification>(WsNotificationType.HashrateUpdated);
         }
