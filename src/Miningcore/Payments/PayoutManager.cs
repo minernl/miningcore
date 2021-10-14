@@ -73,7 +73,8 @@ namespace Miningcore.Payments
                 while(!cts.IsCancellationRequested)
                 {
                     await ProcessPoolsAsync();
-                    
+
+                    logger.Info($"Payout Manager goes to sleep with cancel signal: {cts.IsCancellationRequested}");
                     await Task.Delay(interval, cts.Token);
                     logger.Info($"Payout Manager continues with cancel signal: {cts.IsCancellationRequested}");
                 }
