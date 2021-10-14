@@ -686,15 +686,26 @@ namespace Miningcore.Blockchain.Ethereum
             {
                 blockFrequency = maxBlockFrequency;
             }
-            var payoutConfig = clusterConfig.PaymentProcessing.Interval;
-            if(payoutConfig == 0)
+
+            double payoutInterval = clusterConfig.PaymentProcessing.Interval;
+
+            var now = DateTime.UtcNow;
+            PoolState poolState = await cf.Run(con => paymentRepo.GetPoolState(con, poolConfig.Id));
+            if (poolState.LastPayout > now.AddDays(-30))
+            {
+                var sinceLastPayout = now - poolState.LastPayout;
+                payoutInterval = sinceLastPayout.TotalSeconds;
+                logger.Info(() => $"Using payoutInteval from database. {payoutInterval}");
+            }
+
+            if(payoutInterval == 0)
             {
                 logger.Warn(() => "Payments are misconfigured. Interval should not be zero");
-                payoutConfig = 600;
+                payoutInterval = 600;
             }
 
             var recipientBlockReward = (double) (blockReward * RecipientShare);
-            var blockFrequencyPerPayout = blockFrequency / (payoutConfig / Sixty);
+            var blockFrequencyPerPayout = blockFrequency / (payoutInterval / Sixty);
             var blockData = recipientBlockReward / blockFrequencyPerPayout;
             logger.Info(() => $"BlockData : {blockData}, Network Block Time : {avgBlockTime}, Block Frequency : {blockFrequency}");
 
