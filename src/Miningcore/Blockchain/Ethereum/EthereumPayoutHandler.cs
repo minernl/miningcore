@@ -308,8 +308,6 @@ namespace Miningcore.Blockchain.Ethereum
 
         public async Task PayoutAsync(Balance[] balances)
         {
-            logger.Info(() => $"[{LogCategory}] Beginning payout of {balances?.Length}");
-
             // ensure we have peers
             var infoResponse = await daemon.ExecuteCmdSingleAsync<string>(logger, EthCommands.GetPeerCount);
 
@@ -346,6 +344,7 @@ namespace Miningcore.Blockchain.Ethereum
                         logger.Info(() => $"[{LogCategory}] Latest gas fee is within par limit ({latestGasFee}<={maxGasLimit}), " +
                                           $"lastPmt={lastPaymentDate}, address={balance.Address}");
                     }
+
                     logInfo = $", address={balance.Address}";
                     var txHash = await PayoutAsync(balance);
                     if(!string.IsNullOrEmpty(txHash)) txHashes.Add(txHash);
@@ -368,17 +367,9 @@ namespace Miningcore.Blockchain.Ethereum
                     NotifyPayoutFailure(poolConfig.Id, new[] { balance }, ex.Message, null);
                 }
             }
-                logger.Info(() => $"[{LogCategory}] Payouts complete.  Successfully processed {txHashes.Count} of {balances?.Length} payouts.");
 
             if(txHashes.Any())
-            {
-
                 NotifyPayoutSuccess(poolConfig.Id, balances, txHashes.ToArray(), null);
-            }
-            else
-            {
-                logger.Info(() => $"[{LogCategory}] Payouts complete.  No payouts were made.");
-            }
         }
 
         public async Task<string> PayoutAsync(Balance balance)
