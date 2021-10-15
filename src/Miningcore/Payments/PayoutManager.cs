@@ -150,7 +150,8 @@ namespace Miningcore.Payments
                 TelemetryUtil.GetTelemetryClient()?.GetMetric("FORCED_PAYOUT", "success", "duration").TrackValue((double)amount, success.ToString(), timer.ElapsedMilliseconds.ToString());
             }
         }
-        
+
+
         private static CoinFamily HandleFamilyOverride(CoinFamily family, PoolConfig pool)
         {
             switch(family)
@@ -244,7 +245,6 @@ namespace Miningcore.Payments
 
                 catch(Exception ex)
                 {
-                    logger.Error(ex, "Error while processing balance payout");
                     await NotifyPayoutFailureAsync(poolBalancesOverMinimum, pool, ex);
                     throw;
                 }
@@ -301,7 +301,8 @@ namespace Miningcore.Payments
 
             return handler;
         }
-        
+
+
         internal void Configure(ClusterConfig clusterConfig)
         {
             this.clusterConfig = clusterConfig;
