@@ -93,7 +93,7 @@ namespace Miningcore.Payments
                                 DependencyType.Sql, "GetTotalBalanceSum", "GetTotalBalanceSum");
 
                             var tc = TelemetryUtil.GetTelemetryClient();
-                            tc?.GetMetric("TotalBalance_" + pool.Id).TrackValue((double) poolBalance);
+                            tc?.GetMetric("TotalBalance_" + pool.Id).TrackValue((double)poolBalance);
                         }
 
                         catch(InvalidOperationException ex)
@@ -122,9 +122,7 @@ namespace Miningcore.Payments
                     }
 
                     await Task.Delay(interval, cts.Token);
-                    logger.Info($"Payout Manager continues with cancel signal: {cts.IsCancellationRequested}");
                 }
-                logger.Info("Payout Manager exited");
             });
         }
 
@@ -141,7 +139,7 @@ namespace Miningcore.Payments
                 amount = balance.Amount;
                 return await handler.PayoutAsync(balance);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 logger.Error($"Failed to payout {miner}: {ex}");
                 success = false;
@@ -149,10 +147,10 @@ namespace Miningcore.Payments
             }
             finally
             {
-                TelemetryUtil.GetTelemetryClient()?.GetMetric("FORCED_PAYOUT", "success", "duration").TrackValue((double) amount, success.ToString(), timer.ElapsedMilliseconds.ToString());
+                TelemetryUtil.GetTelemetryClient()?.GetMetric("FORCED_PAYOUT", "success", "duration").TrackValue((double)amount, success.ToString(), timer.ElapsedMilliseconds.ToString());
             }
         }
-
+        
         private static CoinFamily HandleFamilyOverride(CoinFamily family, PoolConfig pool)
         {
             switch(family)
@@ -303,7 +301,7 @@ namespace Miningcore.Payments
 
             return handler;
         }
-
+        
         internal void Configure(ClusterConfig clusterConfig)
         {
             this.clusterConfig = clusterConfig;
