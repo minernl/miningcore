@@ -93,26 +93,14 @@ namespace Miningcore.Api.Controllers
         {
             var pool = GetPool(poolId);
 
-            // load stats
-            var stats = await cf.Run(con => statsRepo.GetLastPoolStatsAsync(con, pool.Id));
-
             // get pool
             pools.TryGetValue(pool.Id, out var poolInstance);
 
+            // convert to PoolInfo
             var response = new GetPoolResponse
             {
-                Pool = pool.ToPoolInfo(mapper, stats, poolInstance)
+                Pool = pool.ToPoolInfo(mapper, null, poolInstance)
             };
-
-            // enrich
-            response.Pool.TotalPaid = await cf.Run(con => statsRepo.GetTotalPoolPaymentsAsync(con, pool.Id));
-
-            var from = clock.UtcNow.AddDays(-1);
-
-            response.Pool.TopMiners = (await cf.Run(con => statsRepo.PagePoolMinersByHashrateAsync(
-                    con, pool.Id, from, 0, 15)))
-                .Select(mapper.Map<MinerPerformanceStats>)
-                .ToArray();
 
             // overwrite the hashvalue with the one calculated by payment processing
             PoolState poolState = await cf.Run(con => paymentsRepo.GetPoolState(con, pool.Id));
