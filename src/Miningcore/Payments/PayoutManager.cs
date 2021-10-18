@@ -63,19 +63,19 @@ namespace Miningcore.Payments
         private TimeSpan balanceCalculationInterval;
         private ClusterConfig clusterConfig;
         private static readonly ILogger Logger = LogManager.GetCurrentClassLogger();
-
+        
         // Start Payment Services
         public void Start()
         {
             Logger.Info(() => "Starting Payout Manager");
 
-            // The observable will trigger the observer once every interval
-            Observable.Interval(balanceCalculationInterval).Subscribe(async _ => await UpdatePoolBalancesAsync(), cts.Token);
-            Observable.Interval(payoutInterval).Subscribe(async _ => await PayoutPoolBalancesAsync(), cts.Token);
-
             // Run the initial balance calc & payout
-            _ = UpdatePoolBalancesAsync();
-            _ = PayoutPoolBalancesAsync();
+            var paymentTasks = new[] { UpdatePoolBalancesAsync(), PayoutPoolBalancesAsync() };
+            Task.WaitAll(paymentTasks);
+
+            // The observable will trigger the observer once every interval
+            Observable.Interval(balanceCalculationInterval).Select(_ => Observable.FromAsync(UpdatePoolBalancesAsync)).Concat().Subscribe(cts.Token);
+            Observable.Interval(payoutInterval).Select(_ => Observable.FromAsync(PayoutPoolBalancesAsync)).Concat().Subscribe(cts.Token);
         }
 
         public async Task<string> PayoutSingleBalanceAsync(PoolConfig pool, string miner)
