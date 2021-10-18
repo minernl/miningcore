@@ -701,11 +701,11 @@ namespace Miningcore.Blockchain.Ethereum
 
             var now = DateTime.UtcNow;
             PoolState poolState = await cf.Run(con => paymentRepo.GetPoolState(con, poolConfig.Id));
-            if (poolState.LastPayout > now.AddDays(-30))
+            if (poolState.LastPayout > now.AddDays(-7))
             {
                 var sinceLastPayout = now - poolState.LastPayout;
                 payoutInterval = sinceLastPayout.TotalSeconds;
-                logger.Info(() => $"Using payoutInteval from database. {payoutInterval}");
+                logger.Info(() => $"Using payoutInterval from database. {payoutInterval}");
             }
 
             if(payoutInterval == 0)
