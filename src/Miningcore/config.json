@@ -45,6 +45,7 @@
     "paymentProcessing": {
         "enabled": true,
         "interval": 600,
+        "balanceCalculationInterval": 300,
         "shareRecoveryFile": "recovered-shares.txt"
     },
     "api": {
