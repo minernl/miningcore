@@ -71,6 +71,11 @@ namespace Miningcore.Util
             }
         }
 
+        public static void TrackMetric(string name, double val)
+        {
+            telemetryClient?.GetMetric(name).TrackValue(val);
+        }
+
         public static void cleanup()
         {
             if(null != telemetryClient)
