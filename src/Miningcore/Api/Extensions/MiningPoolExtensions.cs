@@ -16,8 +16,12 @@ namespace Miningcore.Api.Extensions
         {
             var poolInfo = mapper.Map<PoolInfo>(poolConfig);
 
-            poolInfo.PoolStats = mapper.Map<PoolStats>(stats);
-            poolInfo.NetworkStats = pool?.NetworkStats ?? mapper.Map<BlockchainStats>(stats);
+            // map stats if it is not null
+            if (null != stats)
+            {
+                poolInfo.PoolStats = mapper.Map<PoolStats>(stats);
+                poolInfo.NetworkStats = pool?.NetworkStats ?? mapper.Map<BlockchainStats>(stats);
+            }
 
             // pool wallet link
             var addressInfobaseUrl = poolConfig.Template.ExplorerAccountLink;
