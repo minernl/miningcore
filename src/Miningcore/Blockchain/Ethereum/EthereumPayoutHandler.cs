@@ -707,7 +707,12 @@ namespace Miningcore.Blockchain.Ethereum
             double payoutInterval = clusterConfig.PaymentProcessing.Interval;
 
             var now = DateTime.UtcNow;
-            PoolState poolState = await cf.Run(con => paymentRepo.GetPoolState(con, poolConfig.Id));
+
+            PoolState poolState = await TelemetryUtil.TrackDependency(() => cf.Run(con => paymentRepo.GetPoolState(con, poolConfig.Id)),
+                DependencyType.Sql, "GetPoolState","GetLastPayout");
+
+
+
             if (poolState.LastPayout > now.AddDays(-7))
             {
                 var sinceLastPayout = now - poolState.LastPayout;
