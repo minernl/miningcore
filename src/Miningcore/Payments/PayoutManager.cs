@@ -58,90 +58,24 @@ namespace Miningcore.Payments
         private readonly IComponentContext ctx;
         private readonly IShareRepository shareRepo;
         private readonly IMessageBus messageBus;
-        private readonly CancellationTokenSource cts = new CancellationTokenSource();
-        private TimeSpan interval;
+        private readonly CancellationTokenSource cts = new();
+        private TimeSpan payoutInterval;
+        private TimeSpan balanceCalculationInterval;
         private ClusterConfig clusterConfig;
-        private static readonly ILogger logger = LogManager.GetCurrentClassLogger();
-        private static Thread payoutThread;
-
+        private static readonly ILogger Logger = LogManager.GetCurrentClassLogger();
+        
         // Start Payment Services
         public void Start()
         {
-            logger.Info(() => "Starting Payout Manager");
+            Logger.Info(() => "Starting Payout Manager");
+
+            // Run the initial balance calc & payout
+            var paymentTasks = new[] { UpdatePoolBalancesAsync(), PayoutPoolBalancesAsync() };
+            Task.WaitAll(paymentTasks);
 
             // The observable will trigger the observer once every interval
-            Observable.Interval(interval).Subscribe(_ => PayoutCallback());
-
-            // Run the initial payout
-            PayoutCallback();
-        }
-
-        public void PayoutCallback() 
-        {
-            if (!cts.IsCancellationRequested)
-            {
-                if (null == payoutThread || !payoutThread.IsAlive)
-                {
-                    // Spin up a separate thread to do the current payout
-                    logger.Info(() => "Creating a thread to process the current payouts");
-                    payoutThread = new Thread(() => ProcessPayout());
-                    payoutThread.Start();
-                }
-                else
-                {
-                    logger.Info(() => "Payout thread is null or still alive");
-                }
-            }
-            else
-            {
-                logger.Info(() => "cts.IsCancellationRequested is true, stopping payout manager");
-            }
-        }
-
-        public async void ProcessPayout()
-        {
-            foreach(var pool in clusterConfig.Pools.Where(x => x.Enabled && x.PaymentProcessing.Enabled))
-            {
-                logger.Info(() => $"Processing payments for pool [{pool.Id}]");
-
-                try
-                {
-                    var handler = await ResolveAndConfigurePayoutHandlerAsync(pool);
-
-                    // resolve payout scheme
-                    var scheme = ctx.ResolveKeyed<IPayoutScheme>(pool.PaymentProcessing.PayoutScheme);
-
-                    if(pool.PaymentProcessing.BalanceUpdateEnabled) await UpdatePoolBalancesAsync(pool, handler, scheme);
-                    if(pool.PaymentProcessing.PayoutEnabled) await PayoutPoolBalancesAsync(pool, handler);
-
-                    var poolBalance = await TelemetryUtil.TrackDependency(() => cf.Run(con => balanceRepo.GetTotalBalanceSum(con, pool.Id)),
-                        DependencyType.Sql, "GetTotalBalanceSum", "GetTotalBalanceSum");
-
-                    var tc = TelemetryUtil.GetTelemetryClient();
-                    tc?.GetMetric("TotalBalance_" + pool.Id).TrackValue((double)poolBalance);
-                }
-                catch(InvalidOperationException ex)
-                {
-                    logger.Error(ex.InnerException ?? ex, () => $"[{pool.Id}] Payment processing failed");
-                }
-                catch(AggregateException ex)
-                {
-                    switch(ex.InnerException)
-                    {
-                        case HttpRequestException httpEx:
-                            logger.Error(() => $"[{pool.Id}] Payment processing failed: {httpEx.Message}");
-                            break;
-
-                        default:
-                            logger.Error(ex.InnerException, () => $"[{pool.Id}] Payment processing failed");
-                            break;
-                    }
-                }
-                catch(Exception ex)
-                {
-                    logger.Error(ex, () => $"[{pool.Id}] Payment processing failed");
-                }
-            }
+            Observable.Interval(balanceCalculationInterval).Select(_ => Observable.FromAsync(UpdatePoolBalancesAsync)).Concat().Subscribe(cts.Token);
+            Observable.Interval(payoutInterval).Select(_ => Observable.FromAsync(PayoutPoolBalancesAsync)).Concat().Subscribe(cts.Token);
         }
 
         public async Task<string> PayoutSingleBalanceAsync(PoolConfig pool, string miner)
@@ -157,18 +91,37 @@ namespace Miningcore.Payments
                 amount = balance.Amount;
                 return await handler.PayoutAsync(balance);
             }
-            catch (Exception ex)
+            catch(Exception ex)
             {
-                logger.Error($"Failed to payout {miner}: {ex}");
+                Logger.Error($"Failed to payout {miner}: {ex}");
                 success = false;
                 throw;
             }
             finally
             {
-                TelemetryUtil.GetTelemetryClient()?.GetMetric("FORCED_PAYOUT", "success", "duration").TrackValue((double)amount, success.ToString(), timer.ElapsedMilliseconds.ToString());
+                TelemetryUtil.GetTelemetryClient()?.GetMetric("FORCED_PAYOUT", "success", "duration").TrackValue((double) amount, success.ToString(), timer.ElapsedMilliseconds.ToString());
             }
         }
 
+        internal void Configure(ClusterConfig config)
+        {
+            clusterConfig = config;
+            payoutInterval = TimeSpan.FromSeconds(config.PaymentProcessing.Interval > 0 ? config.PaymentProcessing.Interval : 600);
+            balanceCalculationInterval = TimeSpan.FromSeconds(config.PaymentProcessing.BalanceCalculationInterval > 0
+                ? config.PaymentProcessing.BalanceCalculationInterval
+                : 300);
+        }
+
+        public void Stop()
+        {
+            Logger.Info(() => "Payments Service Stopping ..");
+
+            cts.Cancel();
+
+            Logger.Info(() => "Payment Service Stopped");
+        }
+
+        #region Private Methods
 
         private static CoinFamily HandleFamilyOverride(CoinFamily family, PoolConfig pool)
         {
@@ -186,6 +139,56 @@ namespace Miningcore.Payments
             return family;
         }
 
+        private async Task UpdatePoolBalancesAsync()
+        {
+            if(cts.IsCancellationRequested)
+            {
+                Logger.Info(() => "Cancel signal: stopping balance calculation");
+                return;
+            }
+
+            foreach(var pool in clusterConfig.Pools.Where(x => x.Enabled && x.PaymentProcessing.Enabled))
+            {
+                Logger.Info(() => $"Processing balance calculation for pool [{pool.Id}]");
+
+                try
+                {
+                    var handler = await ResolveAndConfigurePayoutHandlerAsync(pool);
+                    var scheme = ctx.ResolveKeyed<IPayoutScheme>(pool.PaymentProcessing.PayoutScheme);
+
+                    if(!pool.PaymentProcessing.BalanceUpdateEnabled) continue;
+
+                    await UpdatePoolBalancesAsync(pool, handler, scheme);
+
+                    var poolBalance = await TelemetryUtil.TrackDependency(() => cf.Run(con => balanceRepo.GetTotalBalanceSum(con, pool.Id)),
+                        DependencyType.Sql, "GetTotalBalanceSum", "GetTotalBalanceSum");
+
+                    TelemetryUtil.TrackMetric("TotalBalance_" + pool.Id, (double) poolBalance);
+                }
+                catch(InvalidOperationException ex)
+                {
+                    Logger.Error(ex.InnerException ?? ex, () => $"[{pool.Id}] Balance calculation failed");
+                }
+                catch(AggregateException ex)
+                {
+                    switch(ex.InnerException)
+                    {
+                        case HttpRequestException httpEx:
+                            Logger.Error(() => $"[{pool.Id}] Balance calculation failed: {httpEx.Message}");
+                            break;
+
+                        default:
+                            Logger.Error(ex.InnerException, () => $"[{pool.Id}] Balance calculation failed");
+                            break;
+                    }
+                }
+                catch(Exception ex)
+                {
+                    Logger.Error(ex, () => $"[{pool.Id}] Balance calculation failed");
+                }
+            }
+        }
+
         private async Task UpdatePoolBalancesAsync(PoolConfig pool, IPayoutHandler handler, IPayoutScheme scheme)
         {
             // get pending blockRepo for pool
@@ -200,7 +203,7 @@ namespace Miningcore.Payments
             {
                 foreach(var block in updatedBlocks.OrderBy(x => x.Created))
                 {
-                    logger.Info(() => $"Processing payments for pool {pool.Id}, block {block.BlockHeight}, effort {block.Effort}");
+                    Logger.Info(() => $"Processing payments for pool {pool.Id}, block {block.BlockHeight}, effort {block.Effort}");
 
 
                     await cf.RunTx(async (con, tx) =>
@@ -215,12 +218,12 @@ namespace Miningcore.Payments
                                 // must generate balance records for all reward recipients instead
                                 var blockReward = await handler.UpdateBlockRewardBalancesAsync(con, tx, block, pool);
 
-                                logger.Info(() => $" --Pool {pool}");
-                                logger.Info(() => $" --Block {block}");
-                                logger.Info(() => $" --Block reward {blockReward}");
+                                Logger.Info(() => $" --Pool {pool}");
+                                Logger.Info(() => $" --Block {block}");
+                                Logger.Info(() => $" --Block reward {blockReward}");
 
-                                logger.Info(() => $" --Con {con}");
-                                logger.Info(() => $" --tx {tx}");
+                                Logger.Info(() => $" --Con {con}");
+                                Logger.Info(() => $" --tx {tx}");
 
                                 await scheme.UpdateBalancesAsync(con, tx, pool, clusterConfig, handler, block, blockReward);
                                 await blockRepo.UpdateBlockAsync(con, tx, block);
@@ -239,12 +242,57 @@ namespace Miningcore.Payments
             }
             else
             {
-                logger.Info(() => $"No updated blocks for pool {pool.Id} but still payment processed");
+                Logger.Info(() => $"No updated blocks for pool {pool.Id} but still payment processed");
                 await TelemetryUtil.TrackDependency(() => cf.RunTx(async (con, tx) =>
                 {
                     var blockReward = await handler.UpdateBlockRewardBalancesAsync(con, tx, null, pool);
                     await scheme.UpdateBalancesAsync(con, tx, pool, clusterConfig, handler, null, blockReward);
                 }), DependencyType.Sql, "UpdateBalancesAsync", "UpdateBalances");
+            }
+        }
+
+        private async Task PayoutPoolBalancesAsync()
+        {
+            if(cts.IsCancellationRequested)
+            {
+                Logger.Info(() => "Cancel signal: stopping payout");
+                return;
+            }
+
+            foreach(var pool in clusterConfig.Pools.Where(x => x.Enabled && x.PaymentProcessing.Enabled))
+            {
+                Logger.Info(() => $"Processing payout for pool [{pool.Id}]");
+
+                try
+                {
+                    var handler = await ResolveAndConfigurePayoutHandlerAsync(pool);
+                    var scheme = ctx.ResolveKeyed<IPayoutScheme>(pool.PaymentProcessing.PayoutScheme);
+
+                    if(!pool.PaymentProcessing.PayoutEnabled) continue;
+
+                    await PayoutPoolBalancesAsync(pool, handler);
+                }
+                catch(InvalidOperationException ex)
+                {
+                    Logger.Error(ex.InnerException ?? ex, () => $"[{pool.Id}] Payout processing failed");
+                }
+                catch(AggregateException ex)
+                {
+                    switch(ex.InnerException)
+                    {
+                        case HttpRequestException httpEx:
+                            Logger.Error(() => $"[{pool.Id}] Payout processing failed: {httpEx.Message}");
+                            break;
+
+                        default:
+                            Logger.Error(ex.InnerException, () => $"[{pool.Id}] Payout processing failed");
+                            break;
+                    }
+                }
+                catch(Exception ex)
+                {
+                    Logger.Error(ex, () => $"[{pool.Id}] Payout processing failed");
+                }
             }
         }
 
@@ -268,7 +316,7 @@ namespace Miningcore.Payments
                 }
             }
             else
-                logger.Info(() => $"No balances over configured minimum payout {pool.PaymentProcessing.MinimumPayment:0.#######} for pool {pool.Id}");
+                Logger.Info(() => $"No balances over configured minimum payout {pool.PaymentProcessing.MinimumPayment:0.#######} for pool {pool.Id}");
         }
 
         private Task NotifyPayoutFailureAsync(Balance[] balances, PoolConfig pool, Exception ex)
@@ -280,7 +328,7 @@ namespace Miningcore.Payments
 
         private async Task CalculateBlockEffortAsync(PoolConfig pool, Block block, IPayoutHandler handler)
         {
-            logger.Info(() => $"Calculate Block Effort");
+            Logger.Info(() => $"Calculate Block Effort");
 
             // get share date-range
             var from = DateTime.MinValue;
@@ -320,20 +368,6 @@ namespace Miningcore.Payments
             return handler;
         }
 
-
-        internal void Configure(ClusterConfig clusterConfig)
-        {
-            this.clusterConfig = clusterConfig;
-            interval = TimeSpan.FromSeconds(clusterConfig.PaymentProcessing.Interval > 0 ? clusterConfig.PaymentProcessing.Interval : 600);
-        }
-
-        public void Stop()
-        {
-            logger.Info(() => "Payments Service Stopping ..");
-
-            cts.Cancel();
-
-            logger.Info(() => "Payment Service Stopped");
-        }
+        #endregion
     }
 }
