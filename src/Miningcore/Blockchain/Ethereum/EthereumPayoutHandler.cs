@@ -316,7 +316,7 @@ namespace Miningcore.Blockchain.Ethereum
         {
             // Despite of whether block found or not always calculate rewards based on ether scan api
             return await CalculateBlockData(pool);
-            
+
             //var blockRewardRemaining = await base.UpdateBlockRewardBalancesAsync(con, tx, block, pool);
             //// Deduct static reserve for tx fees
             //blockRewardRemaining -= EthereumConstants.StaticTransactionFeeReserve;
@@ -334,9 +334,14 @@ namespace Miningcore.Blockchain.Ethereum
                 logger.Warn(() => $"[{LogCategory}] Payout aborted. Not enough peers (4 required)");
                 return;
             }
-
             var latestBlockResp = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
             var latestGasFee = latestBlockResp.FirstOrDefault(x => x.Error == null)?.Response.BaseFeePerGas;
+            if(latestGasFee > extraConfig.MaxGasLimit)
+            {
+                logger.Warn(() => $"[{LogCategory}] All {balances.Length} payouts deferred until next time. Latest gas fee is above par limit " +
+                                  $"({latestGasFee}>{extraConfig.MaxGasLimit})");
+                return;
+            }
             var txHashes = new List<string>();
             var logInfo = string.Empty;
 
@@ -346,6 +351,8 @@ namespace Miningcore.Blockchain.Ethereum
                 {
                     if(extraConfig.EnableGasLimit)
                     {
+                        latestBlockResp = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
+                        latestGasFee = latestBlockResp.FirstOrDefault(x => x.Error == null)?.Response.BaseFeePerGas;
                         //Check if gas fee is below par range
                         //var lastPaymentDate = await cf.Run(con => paymentRepo.GetLastPaymentDateAsync(con, balance.PoolId, balance.Address));
                         var lastPaymentDate = balance.PaidDate;
@@ -690,7 +697,7 @@ namespace Miningcore.Blockchain.Ethereum
                 poolHashRate = 1;
             }
             var blockFrequency = networkHashRate / poolHashRate * (avgBlockTime / Sixty);
-             
+
             double maxBlockFrequency = poolConfig.PaymentProcessing.MaxBlockFrequency;
             if(blockFrequency > maxBlockFrequency)
             {
