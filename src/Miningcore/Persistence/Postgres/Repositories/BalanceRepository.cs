@@ -43,81 +43,39 @@ namespace Miningcore.Persistence.Postgres.Repositories
 
         public async Task<int> AddAmountAsync(IDbConnection con, IDbTransaction tx, string poolId, string address, decimal amount, string usage)
         {
-            return await AddAmountAsyncDeductingTxFee(con, tx, poolId, address, amount, usage, 0, 0);
-        }
-
-        public async Task<int> AddAmountAsyncDeductingTxFee(IDbConnection con, IDbTransaction tx, string poolId, string address, decimal amount, string usage, decimal deduction, decimal threshold)
-        {
             logger.LogInvoke();
+
+            const string query = @"INSERT INTO balances(poolid, address, amount, created, updated)
+                    VALUES(@poolId, @address, @amount, @created, @updated)
+                    ON CONFLICT (poolid, address)
+                    DO UPDATE SET amount = amount + EXCLUDED.amount, updated = EXCLUDED.updated";
 
             var now = DateTime.UtcNow;
 
-            // update balance
-            var query = "SELECT * FROM balances WHERE poolid = @poolId AND address = @address";
+            var balance = new Entities.Balance
+            {
+                PoolId = poolId,
+                Created = now,
+                Address = address,
+                Amount = amount,
+                Updated = now
+            };
 
-            var balance = (await con.QueryAsync<Entities.Balance>(query, new { poolId, address }, tx))
+            return await con.ExecuteAsync(query, balance, tx);
+        }
+
+        public async Task<Balance> GetBalanceAsync(IDbConnection con, string poolId, string address)
+        {
+            logger.LogInvoke();
+
+            const string query = "SELECT * FROM balances WHERE poolid = @poolId AND address = @address";
+
+            return (await con.QueryAsync<Entities.Balance>(query, new { poolId, address }))
+                .Select(mapper.Map<Balance>)
                 .FirstOrDefault();
-
-            if(balance == null)
-            {
-                if(deduction > 0 && deduction < amount)
-                {
-                    amount -= deduction;
-                }
-
-
-                balance = new Entities.Balance
-                {
-                    PoolId = poolId,
-                    Created = now,
-                    Address = address,
-                    Amount = amount,
-                    Updated = now
-                };
-
-                query = "INSERT INTO balances(poolid, address, amount, created, updated) " +
-                    "VALUES(@poolid, @address, @amount, @created, @updated)";
-
-                return await con.ExecuteAsync(query, balance, tx);
-            }
-            else
-            {
-                if(deduction > 0 && deduction < amount && balance.Amount < threshold)
-                {
-                    amount -= deduction;
-                }
-
-                query = "UPDATE balances SET amount = amount + @amount, updated = now() at time zone 'utc' " +
-                    "WHERE poolid = @poolId AND address = @address";
-
-                return await con.ExecuteAsync(query, new
-                {
-                    poolId,
-                    address,
-                    amount
-                }, tx);
-            }
         }
 
-        public async Task<decimal> GetBalanceAsync(IDbConnection con, IDbTransaction tx, string poolId, string address)
-        {
-            logger.LogInvoke();
-
-            const string query = "SELECT amount FROM balances WHERE poolid = @poolId AND address = @address";
-
-            return await con.QuerySingleOrDefaultAsync<decimal>(query, new { poolId, address }, tx);
-        }
-
-        public async Task<decimal> GetBalanceAsync(IDbConnection con, string poolId, string address)
-        {
-            logger.LogInvoke();
-
-            const string query = "SELECT amount FROM balances WHERE poolid = @poolId AND address = @address";
-
-            return await con.QuerySingleOrDefaultAsync<decimal>(query, new { poolId, address });
-        }
-
-        public async Task<Balance> GetMinerBalanceAsync(IDbConnection con, string poolId, string address)
+        public async Task<Balance> GetBalanceWithPaidDateAsync(IDbConnection con, string poolId, string address)
         {
             logger.LogInvoke();
 

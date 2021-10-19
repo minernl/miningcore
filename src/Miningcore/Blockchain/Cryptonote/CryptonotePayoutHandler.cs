@@ -562,6 +562,12 @@ namespace Miningcore.Blockchain.Cryptonote
             // if using CryptoNote with PPS, implement this function to estimate the transaction cost for the given amount
             throw new NotImplementedException();
         }
+
+        public bool MinersPayTxFees()
+        {
+            throw new NotImplementedException();
+        }
+        
         #endregion // IPayoutHandler
     }
 }

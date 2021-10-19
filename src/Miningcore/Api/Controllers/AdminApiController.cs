@@ -69,7 +69,14 @@ namespace Miningcore.Api.Controllers
         [HttpGet("pools/{poolId}/miners/{address}/getbalance")]
         public async Task<decimal> GetMinerBalanceAsync(string poolId, string address)
         {
-            return await cf.Run(con => balanceRepo.GetBalanceAsync(con, poolId, address));
+            var balance = await cf.Run(con => balanceRepo.GetBalanceAsync(con, poolId, address));
+            
+            if (null != balance)
+            {
+                return balance.Amount;
+            }
+            
+            return 0;
         }
 
         [HttpPost("pools/{poolId}/miners/{address}/forcePayout")]

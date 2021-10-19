@@ -37,6 +37,8 @@ namespace Miningcore.Payments
 
         string FormatAmount(decimal amount);
         decimal GetTransactionDeduction(decimal amount);
+
+        bool MinersPayTxFees();
     }
 
     public interface IPayoutScheme
