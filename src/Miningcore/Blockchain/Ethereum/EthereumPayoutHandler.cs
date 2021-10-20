@@ -711,13 +711,15 @@ namespace Miningcore.Blockchain.Ethereum
             PoolState poolState = await TelemetryUtil.TrackDependency(() => cf.Run(con => paymentRepo.GetPoolState(con, poolConfig.Id)),
                 DependencyType.Sql, "GetPoolState","GetLastPayout");
 
-
-
             if (poolState.LastPayout > now.AddDays(-7))
             {
                 var sinceLastPayout = now - poolState.LastPayout;
                 payoutInterval = sinceLastPayout.TotalSeconds;
                 logger.Info(() => $"Using payoutInterval from database. {payoutInterval}");
+            }
+            else
+            {
+                logger.Info(() => $"payoutInterval from database is invalid or too old: {poolState.LastPayout}. Using interval from config");
             }
 
             if(payoutInterval == 0)
@@ -729,7 +731,7 @@ namespace Miningcore.Blockchain.Ethereum
             var recipientBlockReward = (double) (blockReward * RecipientShare);
             var blockFrequencyPerPayout = blockFrequency / (payoutInterval / Sixty);
             var blockData = recipientBlockReward / blockFrequencyPerPayout;
-            logger.Info(() => $"BlockData : {blockData}, Network Block Time : {avgBlockTime}, Block Frequency : {blockFrequency}");
+            logger.Info(() => $"BlockData : {blockData}, Network Block Time : {avgBlockTime}, Block Frequency : {blockFrequency}, PayoutInterval : {payoutInterval}");
 
             return (decimal) blockData;
         }
