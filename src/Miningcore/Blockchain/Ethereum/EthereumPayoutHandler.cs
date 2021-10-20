@@ -69,6 +69,7 @@ namespace Miningcore.Blockchain.Ethereum
         private const int BlockSearchOffset = 50;
         private EthereumPoolConfigExtra extraPoolConfig;
         private EthereumPoolPaymentProcessingConfigExtra extraConfig;
+        private DaemonEndpointConfig daemonEndpointConfig;
         private Web3 web3Connection;
         private bool isParity = true;
         private const int TwentyFourHrs = 24;
@@ -76,6 +77,7 @@ namespace Miningcore.Blockchain.Ethereum
         private const string BlockAvgTime = "blockAvgTime";
         private const decimal RecipientShare = 0.85m;
         private const float Sixty = 60;
+        private const string TooManyTransactions = "There are too many transactions in the queue";
 
         protected override string LogCategory => "Ethereum Payout Handler";
 
@@ -93,34 +95,15 @@ namespace Miningcore.Blockchain.Ethereum
             // configure standard daemon
             var jsonSerializerSettings = ctx.Resolve<JsonSerializerSettings>();
 
-            var daemonEndpoints = poolConfig.Daemons
-                .Where(x => string.IsNullOrEmpty(x.Category))
-                .ToArray();
-
-
+            var daemonEndpoints = poolConfig.Daemons.Where(x => string.IsNullOrEmpty(x.Category)).ToArray();
             daemon = new DaemonClient(jsonSerializerSettings, messageBus, clusterConfig.ClusterName ?? poolConfig.PoolName, poolConfig.Id);
             daemon.Configure(daemonEndpoints);
+            daemonEndpointConfig = daemonEndpoints.First();
 
             await DetectChainAsync();
 
             // if pKey is configured - setup web3 connection for self managed wallet payouts
-            if(!string.IsNullOrEmpty(extraConfig.PrivateKey))
-            {
-                var txEndpoint = daemonEndpoints.First();
-                var protocol = (txEndpoint.Ssl || txEndpoint.Http2) ? "https" : "http";
-                var txEndpointUrl = $"{protocol}://{txEndpoint.Host}:{txEndpoint.Port}";
-
-                Account account;
-                if(chainId != 0)
-                {
-                    account = new Account(extraConfig.PrivateKey, chainId);
-                }
-                else
-                {
-                    account = new Account(extraConfig.PrivateKey);
-                }
-                web3Connection = new Nethereum.Web3.Web3(account, txEndpointUrl);
-            }
+            InitializeWeb3(daemonEndpointConfig);
         }
 
         public async Task<Block[]> ClassifyBlocksAsync(Block[] blocks)
@@ -326,6 +309,8 @@ namespace Miningcore.Blockchain.Ethereum
 
         public async Task PayoutAsync(Balance[] balances)
         {
+            logger.Info(() => $"[{LogCategory}] Beginning payout to {balances?.Length} miners.");
+
             // ensure we have peers
             var infoResponse = await daemon.ExecuteCmdSingleAsync<string>(logger, EthCommands.GetPeerCount);
 
@@ -369,10 +354,9 @@ namespace Miningcore.Blockchain.Ethereum
                         logger.Info(() => $"[{LogCategory}] Latest gas fee is within par limit ({latestGasFee}<={maxGasLimit}), " +
                                           $"lastPmt={lastPaymentDate}, address={balance.Address}");
                     }
-
                     logInfo = $", address={balance.Address}";
                     var txHash = await PayoutAsync(balance);
-                    txHashes.Add(txHash);
+                    if(!string.IsNullOrEmpty(txHash)) txHashes.Add(txHash);
                 }
                 catch(Nethereum.JsonRpc.Client.RpcResponseException ex)
                 {
@@ -395,30 +379,25 @@ namespace Miningcore.Blockchain.Ethereum
 
             if(txHashes.Any())
                 NotifyPayoutSuccess(poolConfig.Id, balances, txHashes.ToArray(), null);
+
+            logger.Info(() => $"[{LogCategory}] Payouts complete.  Successfully processed {txHashes.Count} of {balances?.Length} payouts.");
         }
 
         public async Task<string> PayoutAsync(Balance balance)
         {
-            string txId = null;
+            string txId;
             // If web3Connection was created, payout from self managed wallet
             if(web3Connection != null)
             {
-                var transaction = await web3Connection.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount);
-
-                if(transaction.HasErrors() != null && (bool) transaction.HasErrors())
-                {
-                    throw new Exception($"Transfer failed for {balance}: {transaction}");
-                }
-
-                txId = transaction.TransactionHash;
-
-                if(string.IsNullOrEmpty(txId) || EthereumConstants.ZeroHashPattern.IsMatch(txId))
-                {
-                    throw new Exception($"Transfer did not return a valid transaction hash for {balance}");
-                }
+                txId = await PayoutWebAsync(balance);
             }
             else // else payout from daemon managed wallet
             {
+                if(!string.IsNullOrEmpty(extraConfig.PrivateKey))
+                {
+                    logger.Error(() => $"[{LogCategory}] Web3 is configured, but web3Connection is null!");
+                    throw new Exception($"Unable to process payouts because web3 is null");
+                }
                 try
                 {
 
@@ -502,6 +481,18 @@ namespace Miningcore.Blockchain.Ethereum
         }
 
         #endregion // IPayoutHandler
+
+        private void InitializeWeb3(DaemonEndpointConfig daemonConfig)
+        {
+            if(string.IsNullOrEmpty(extraConfig.PrivateKey)) return;
+
+            var txEndpoint = daemonConfig;
+            var protocol = (txEndpoint.Ssl || txEndpoint.Http2) ? "https" : "http";
+            var txEndpointUrl = $"{protocol}://{txEndpoint.Host}:{txEndpoint.Port}";
+
+            var account = chainId != 0 ? new Account(extraConfig.PrivateKey, chainId) : new Account(extraConfig.PrivateKey);
+            web3Connection = new Web3(account, txEndpointUrl);
+        }
 
         private async Task<DaemonResponses.Block[]> FetchBlocks(Dictionary<long, DaemonResponses.Block> blockCache, params long[] blockHeights)
         {
@@ -709,11 +700,11 @@ namespace Miningcore.Blockchain.Ethereum
             var now = DateTime.UtcNow;
 
             PoolState poolState = await TelemetryUtil.TrackDependency(() => cf.Run(con => paymentRepo.GetPoolState(con, poolConfig.Id)),
-                DependencyType.Sql, "GetPoolState","GetLastPayout");
+                DependencyType.Sql, "GetPoolState", "GetLastPayout");
 
 
 
-            if (poolState.LastPayout > now.AddDays(-7))
+            if(poolState.LastPayout > now.AddDays(-7))
             {
                 var sinceLastPayout = now - poolState.LastPayout;
                 payoutInterval = sinceLastPayout.TotalSeconds;
@@ -776,6 +767,54 @@ namespace Miningcore.Blockchain.Ethereum
             Cache.Set(BlockAvgTime, blockAvgTime, TimeSpan.FromHours(TwentyFourHrs));
 
             return blockAvgTime;
+        }
+
+        private async Task<string> PayoutWebAsync(Balance balance)
+        {
+            try
+            {
+                logger.Info($"Web3Tx start. addr={balance.Address}, amt={balance.Amount}");
+
+                var txService = web3Connection.Eth?.GetEtherTransferService();
+                if(txService != null)
+                {
+                    var transaction = await TelemetryUtil.TrackDependency(() => txService.TransferEtherAndWaitForReceiptAsync(balance.Address, balance.Amount),
+                        DependencyType.Web3, "TransferEtherAndWaitForReceiptAsync", $"addr={balance.Address}, amt={balance.Amount}");
+                    if(transaction.HasErrors().GetValueOrDefault())
+                    {
+                        logger.Error($"Web3Tx failed. status={transaction.Status}, addr={balance.Address}, amt={balance.Amount}");
+                        return null;
+                    }
+
+                    var txId = transaction.TransactionHash;
+
+                    if(string.IsNullOrEmpty(txId) || EthereumConstants.ZeroHashPattern.IsMatch(txId))
+                    {
+                        logger.Error($"Web3Tx failed without a valid transaction hash. txId={txId}, addr={balance.Address}, amt={balance.Amount}");
+                        return null;
+                    }
+
+                    return txId;
+                }
+                else
+                {
+                    logger.Warn($"Web3Tx GetEtherTransferService is null. addr={ balance.Address}, amt={ balance.Amount}");
+                }
+            }
+            catch(Nethereum.JsonRpc.Client.RpcResponseException ex)
+            {
+                // Log and continue for any rpc errors
+                logger.Error(ex, $"Web3Tx failed. {ex.Message}");
+
+                // Reinitialize web3 when queue error occurs
+                if(ex.Message.Contains(TooManyTransactions, StringComparison.OrdinalIgnoreCase))
+                {
+                    InitializeWeb3(daemonEndpointConfig);
+                    logger.Info(ex, $"Web3Tx reinitialized because of '{ex.Message}'");
+                }
+            }
+
+            return null;
         }
     }
 }
