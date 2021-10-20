@@ -316,6 +316,7 @@ namespace Miningcore.Payments
 
                 catch(Exception ex)
                 {
+                    Logger.Error(ex, "Error while processing balance payout");
                     await NotifyPayoutFailureAsync(poolBalancesOverMinimum, pool, ex);
                     throw;
                 }
