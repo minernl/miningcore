@@ -48,7 +48,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
             const string query = @"INSERT INTO balances(poolid, address, amount, created, updated)
                     VALUES(@poolId, @address, @amount, @created, @updated)
                     ON CONFLICT (poolid, address)
-                    DO UPDATE SET amount = amount + EXCLUDED.amount, updated = EXCLUDED.updated";
+                    DO UPDATE SET amount = balances.amount + EXCLUDED.amount, updated = EXCLUDED.updated";
 
             var now = DateTime.UtcNow;
 
