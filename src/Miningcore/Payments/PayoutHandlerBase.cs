@@ -197,7 +197,7 @@ namespace Miningcore.Payments
             {
                 foreach(var balance in balances)
                 {
-                    tc.TrackEvent("Payout_"+coin.CanonicalName, new Dictionary<string, string> {
+                    tc.TrackEvent("Payout_" + poolConfig.Id, new Dictionary<string, string> {
                         {"wallet", balance.Address}, 
                         {"amount", balance.Amount.ToString()}
                     });
