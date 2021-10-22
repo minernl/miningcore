@@ -66,7 +66,7 @@ namespace Miningcore.DataStore.Postgres
             logger.Info(() => $"Connecting to Postgres Server {pgConfig.Host}:{pgConfig.Port} Database={pgConfig.Database} User={pgConfig.User}");
 
             // build connection string
-            var connectionString = $"Server={pgConfig.Host};Port={pgConfig.Port};Database={pgConfig.Database};User Id={pgConfig.User};Password={pgConfig.Password};CommandTimeout=900;";
+            var connectionString = $"Server={pgConfig.Host};Port={pgConfig.Port};Database={pgConfig.Database};User Id={pgConfig.User};Password={pgConfig.Password};CommandTimeout=900;Keepalive=60;";
 
             // Add pool configuration
             if(pgConfig.Pooling != null)
