@@ -340,6 +340,8 @@ namespace Miningcore.Blockchain.Ethereum
             var txHashes = new List<string>();
             var logInfo = string.Empty;
 
+            var paidBalances = new List<Balance>();
+
             foreach(var balance in balances)
             {
                 if(ct.IsCancellationRequested)
@@ -371,7 +373,11 @@ namespace Miningcore.Blockchain.Ethereum
                     }
                     logInfo = $", address={balance.Address}";
                     var txHash = await PayoutAsync(balance);
-                    if(!string.IsNullOrEmpty(txHash)) txHashes.Add(txHash);
+                    if(!string.IsNullOrEmpty(txHash))
+                    {
+                         txHashes.Add(txHash);
+                         paidBalances.Add(balance);
+                    }
                 }
                 catch(Nethereum.JsonRpc.Client.RpcResponseException ex)
                 {
@@ -393,7 +399,7 @@ namespace Miningcore.Blockchain.Ethereum
             }
 
             if(txHashes.Any())
-                NotifyPayoutSuccess(poolConfig.Id, balances, txHashes.ToArray(), null);
+                NotifyPayoutSuccess(poolConfig.Id, paidBalances.ToArray(), txHashes.ToArray(), null);
 
             logger.Info(() => $"[{LogCategory}] Payouts complete.  Successfully processed {txHashes.Count} of {balances?.Length} payouts.");
         }
@@ -749,13 +755,15 @@ namespace Miningcore.Blockchain.Ethereum
             PoolState poolState = await TelemetryUtil.TrackDependency(() => cf.Run(con => paymentRepo.GetPoolState(con, poolConfig.Id)),
                 DependencyType.Sql, "GetPoolState", "GetLastPayout");
 
-
-
-            if(poolState.LastPayout > now.AddDays(-7))
+            if (poolState.LastPayout > now.AddDays(-7))
             {
                 var sinceLastPayout = now - poolState.LastPayout;
                 payoutInterval = sinceLastPayout.TotalSeconds;
                 logger.Info(() => $"Using payoutInterval from database. {payoutInterval}");
+            }
+            else
+            {
+                logger.Warn(() => $"payoutInterval from database is invalid or too old: {poolState.LastPayout}. Using interval from config");
             }
 
             if(payoutInterval == 0)
@@ -767,7 +775,7 @@ namespace Miningcore.Blockchain.Ethereum
             var recipientBlockReward = (double) (blockReward * RecipientShare);
             var blockFrequencyPerPayout = blockFrequency / (payoutInterval / Sixty);
             var blockData = recipientBlockReward / blockFrequencyPerPayout;
-            logger.Info(() => $"BlockData : {blockData}, Network Block Time : {avgBlockTime}, Block Frequency : {blockFrequency}");
+            logger.Info(() => $"BlockData : {blockData}, Network Block Time : {avgBlockTime}, Block Frequency : {blockFrequency}, PayoutInterval : {payoutInterval}");
 
             return (decimal) blockData;
         }
