@@ -716,7 +716,7 @@ namespace Miningcore.Blockchain.Ethereum
             }
             else
             {
-                logger.Info(() => $"payoutInterval from database is invalid or too old: {poolState.LastPayout}. Using interval from config");
+                logger.Warn(() => $"payoutInterval from database is invalid or too old: {poolState.LastPayout}. Using interval from config");
             }
 
             if(payoutInterval == 0)
