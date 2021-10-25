@@ -101,7 +101,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
 
             const string query = @"INSERT INTO poolstate as ps(poolid, hashvalue, lastpayout) VALUES (@poolId, @hashValue, @lastpayout)
                 ON CONFLICT (poolid)
-                DO UPDATE SET hashvalue = COALESCE(EXCLUDED.hashvalue, ps.hashvalue), lastpayout = COALESCE(EXCLUDED.lastpayout, ps.lastpayout)";
+                DO UPDATE SET hashvalue = (CASE WHEN EXCLUDED.hashvalue ISNULL OR EXCLUDED.hashvalue=0 THEN ps.hashvalue ELSE EXCLUDED.hashvalue END), lastpayout = COALESCE(EXCLUDED.lastpayout, ps.lastpayout)";
 
             await con.ExecuteAsync(query, mapped);
         }
