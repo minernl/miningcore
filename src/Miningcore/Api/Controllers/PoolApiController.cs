@@ -76,9 +76,9 @@ namespace Miningcore.Api.Controllers
 
                     // overwrite the hashvalue with the one calculated by payment processing
                     var poolState = await cf.Run(con => paymentsRepo.GetPoolState(con, pool.Config.Id));
-                    if(poolState.HashValue.HasValue && poolState.HashValue.Value > 0)
+                    if(poolState.HashValue > 0)
                     {
-                        result.PaymentProcessing.HashValue = poolState.HashValue.Value;
+                        result.PaymentProcessing.HashValue = poolState.HashValue;
                     }
 
                     return result;
@@ -104,9 +104,9 @@ namespace Miningcore.Api.Controllers
 
             // overwrite the hashvalue with the one calculated by payment processing
             var poolState = await cf.Run(con => paymentsRepo.GetPoolState(con, pool.Id));
-            if(poolState.HashValue.HasValue && poolState.HashValue.Value > 0)
+            if(poolState.HashValue > 0)
             {
-                response.Pool.PaymentProcessing.HashValue = poolState.HashValue.Value;
+                response.Pool.PaymentProcessing.HashValue = poolState.HashValue;
             }
 
             return response;

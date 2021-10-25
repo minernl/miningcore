@@ -54,16 +54,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
 
             await con.ExecuteAsync(query, mapped, tx);
         }
-
-        public async Task<DateTime?> GetLastPaymentDateAsync(IDbConnection con, string poolId, string address)
-        {
-            logger.LogInvoke();
-
-            const string query = "SELECT max(created) FROM payments WHERE poolid = @poolId AND address = @address";
-
-            return await con.QuerySingleOrDefaultAsync<DateTime?>(query, new { poolId, address });
-        }
-
+        
         public async Task<Payment[]> PagePaymentsAsync(IDbConnection con, string poolId, string address, int page, int pageSize)
         {
             logger.LogInvoke(new[] { poolId });
