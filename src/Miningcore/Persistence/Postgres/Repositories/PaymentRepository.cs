@@ -54,16 +54,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
 
             await con.ExecuteAsync(query, mapped, tx);
         }
-
-        public async Task<DateTime?> GetLastPaymentDateAsync(IDbConnection con, string poolId, string address)
-        {
-            logger.LogInvoke();
-
-            const string query = "SELECT max(created) FROM payments WHERE poolid = @poolId AND address = @address";
-
-            return await con.QuerySingleOrDefaultAsync<DateTime?>(query, new { poolId, address });
-        }
-
+        
         public async Task<Payment[]> PagePaymentsAsync(IDbConnection con, string poolId, string address, int page, int pageSize)
         {
             logger.LogInvoke(new[] { poolId });
@@ -102,26 +93,17 @@ namespace Miningcore.Persistence.Postgres.Repositories
             return await con.QuerySingleOrDefaultAsync<PoolState>(query, new { poolId });
         }
 
-        public async Task SetPoolStateHashValue(IDbConnection con, string poolId, Decimal hashValue)
-        {
-            logger.LogInvoke();
-            
-            const string query = @"INSERT INTO poolstate (poolid, hashvalue) VALUES (@poolId, @hashValue)
-                ON CONFLICT (poolid)
-                DO UPDATE SET hashvalue = EXCLUDED.hashvalue";
-
-            await con.ExecuteAsync(query, new { poolId, hashValue });
-        }
-
-        public async Task SetPoolStateLastPayout(IDbConnection con, string poolId, DateTime lastPayout)
+        public async Task SetPoolState(IDbConnection con, PoolState state)
         {
             logger.LogInvoke();
 
-            const string query = @"INSERT INTO poolstate (poolid, lastpayout) VALUES (@poolId, @lastPayout)
-                ON CONFLICT (poolid)
-                DO UPDATE SET lastpayout = EXCLUDED.lastpayout";
+            var mapped = mapper.Map<Entities.PoolState>(state);
 
-            await con.ExecuteAsync(query, new { poolId, lastPayout });
+            const string query = @"INSERT INTO poolstate as ps(poolid, hashvalue, lastpayout) VALUES (@poolId, @hashValue, @lastpayout)
+                ON CONFLICT (poolid)
+                DO UPDATE SET hashvalue = (CASE WHEN EXCLUDED.hashvalue ISNULL OR EXCLUDED.hashvalue=0 THEN ps.hashvalue ELSE EXCLUDED.hashvalue END), lastpayout = COALESCE(EXCLUDED.lastpayout, ps.lastpayout)";
+
+            await con.ExecuteAsync(query, mapped);
         }
     }
 }

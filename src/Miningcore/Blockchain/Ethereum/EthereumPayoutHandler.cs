@@ -130,7 +130,7 @@ namespace Miningcore.Blockchain.Ethereum
                     .ToArray();
 
                 // get latest block
-                var latestBlockResponses = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
+                var latestBlockResponses = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] {(object) "latest", true});
                 var latestBlockHeight = latestBlockResponses.First(x => x.Error == null && x.Response?.Height != null).Response.Height.Value;
 
                 // execute batch
@@ -179,6 +179,7 @@ namespace Miningcore.Blockchain.Ethereum
                                 logger.Debug(() => $"** Geth nonce   : {blockInfo.Nonce} =?= {nonce}");
                                 logger.Debug(() => $"** (MIXHASH_NONCE) Is the Block mined by us? {match}");
                             }
+
                             if(blockInfo.Miner == poolConfig.Address)
                             {
                                 //match = true;
@@ -228,13 +229,15 @@ namespace Miningcore.Blockchain.Ethereum
                         if(blockInfo2.Uncles.Length > 0)
                         {
                             // fetch all uncles in a single RPC batch request
-                            var uncleBatch = blockInfo2.Uncles.Select((x, index) => new DaemonCmd(EthCommands.GetUncleByBlockNumberAndIndex, new[] { blockInfo2.Height.Value.ToStringHexWithPrefix(), index.ToStringHexWithPrefix() })).ToArray();
+                            var uncleBatch = blockInfo2.Uncles.Select((x, index) => new DaemonCmd(EthCommands.GetUncleByBlockNumberAndIndex,
+                                new[] {blockInfo2.Height.Value.ToStringHexWithPrefix(), index.ToStringHexWithPrefix()})).ToArray();
 
                             logger.Info(() => $"[{LogCategory}] Fetching {blockInfo2.Uncles.Length} uncles for block {blockInfo2.Height}");
 
                             var uncleResponses = await daemon.ExecuteBatchAnyAsync(logger, uncleBatch);
 
-                            logger.Info(() => $"[{LogCategory}] Fetched {uncleResponses.Count(x => x.Error == null && x.Response != null)} uncles for block {blockInfo2.Height}");
+                            logger.Info(() =>
+                                $"[{LogCategory}] Fetched {uncleResponses.Count(x => x.Error == null && x.Response != null)} uncles for block {blockInfo2.Height}");
 
                             var uncle = uncleResponses.Where(x => x.Error == null && x.Response != null)
                                 .Select(x => x.Response.ToObject<DaemonResponses.Block>())
@@ -251,7 +254,8 @@ namespace Miningcore.Blockchain.Ethereum
                                     block.BlockHeight = uncle.Height.Value;
                                     block.Type = EthereumConstants.BlockTypeUncle;
 
-                                    logger.Info(() => $"[{LogCategory}] Unlocked uncle for block {blockInfo2.Height.Value} at height {uncle.Height.Value} worth {FormatAmount(block.Reward)}");
+                                    logger.Info(() =>
+                                        $"[{LogCategory}] Unlocked uncle for block {blockInfo2.Height.Value} at height {uncle.Height.Value} worth {FormatAmount(block.Reward)}");
 
                                     messageBus.NotifyBlockUnlocked(poolConfig.Id, block, coin);
                                 }
@@ -275,19 +279,15 @@ namespace Miningcore.Blockchain.Ethereum
                 }
             }
 
-            TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
-            if(null != tc)
+            foreach(var block in result)
             {
-                foreach(var block in result)
+                TelemetryUtil.TrackEvent("BlockFound_" + poolConfig.Id, new Dictionary<string, string>
                 {
-                    tc.TrackEvent("BlockFound_" + poolConfig.Id, new Dictionary<string, string>
-                    {
-                        {"miner", block.Miner},
-                        {"height", block.BlockHeight.ToString()},
-                        {"type", block.Type},
-                        {"reward", FormatAmount(block.Reward)}
-                    });
-                }
+                    {"miner", block.Miner},
+                    {"height", block.BlockHeight.ToString()},
+                    {"type", block.Type},
+                    {"reward", FormatAmount(block.Reward)}
+                });
             }
 
             return result.ToArray();
@@ -752,12 +752,12 @@ namespace Miningcore.Blockchain.Ethereum
 
             var now = DateTime.UtcNow;
 
-            PoolState poolState = await TelemetryUtil.TrackDependency(() => cf.Run(con => paymentRepo.GetPoolState(con, poolConfig.Id)),
+            var poolState = await TelemetryUtil.TrackDependency(() => cf.Run(con => paymentRepo.GetPoolState(con, poolConfig.Id)),
                 DependencyType.Sql, "GetPoolState", "GetLastPayout");
 
-            if (poolState.LastPayout > now.AddDays(-7))
+            if(poolState.LastPayout.HasValue && poolState.LastPayout.Value > now.AddDays(-7))
             {
-                var sinceLastPayout = now - poolState.LastPayout;
+                var sinceLastPayout = now - poolState.LastPayout.Value;
                 payoutInterval = sinceLastPayout.TotalSeconds;
                 logger.Info(() => $"Using payoutInterval from database. {payoutInterval}");
             }

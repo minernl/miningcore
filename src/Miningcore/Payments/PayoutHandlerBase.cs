@@ -184,24 +184,19 @@ namespace Miningcore.Payments
 
         protected virtual void NotifyPayoutSuccess(string poolId, Balance[] balances, string[] txHashes, decimal? txFee)
         {
-            TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
-
             var coin = poolConfig.Template.As<CoinTemplate>();
 
             // admin notifications
-            var explorerLinks = !string.IsNullOrEmpty(coin.ExplorerTxLink) ?
-                txHashes.Select(x => string.Format(coin.ExplorerTxLink, x)).ToArray() :
-                new string[0];
+            var explorerLinks = !string.IsNullOrEmpty(coin.ExplorerTxLink)
+                ? txHashes.Select(x => string.Format(coin.ExplorerTxLink, x)).ToArray()
+                : new string[0];
 
-            if(null != tc)
+            foreach(var balance in balances)
             {
-                foreach(var balance in balances)
-                {
-                    tc.TrackEvent("Payout_" + poolConfig.Id, new Dictionary<string, string> {
-                        {"wallet", balance.Address}, 
+                TelemetryUtil.TrackEvent("Payout_" + poolConfig.Id, new Dictionary<string, string> {
+                        {"wallet", balance.Address},
                         {"amount", balance.Amount.ToString()}
                     });
-                }
             }
 
             messageBus.SendMessage(new PaymentNotification(poolId, null, balances.Sum(x => x.Amount), coin.Symbol, balances.Length, txHashes, explorerLinks, txFee));
@@ -209,18 +204,14 @@ namespace Miningcore.Payments
 
         protected virtual void NotifyPayoutFailure(string poolId, Balance[] balances, string error, Exception ex)
         {
-            TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
-
             var coin = poolConfig.Template.As<CoinTemplate>();
-            if(null != tc)
+
+            foreach(var balance in balances)
             {
-                foreach(var balance in balances)
-                {
-                    tc.TrackEvent("PayoutFailure_"+coin.CanonicalName, new Dictionary<string, string> {
-                        {"wallet", balance.Address}, 
+                TelemetryUtil.TrackEvent("PayoutFailure_" + coin.CanonicalName, new Dictionary<string, string> {
+                        {"wallet", balance.Address},
                         {"amount", balance.Amount.ToString()}
                     });
-                }
             }
 
             messageBus.SendMessage(new PaymentNotification(poolId, error ?? ex?.Message, balances.Sum(x => x.Amount), coin.Symbol));
