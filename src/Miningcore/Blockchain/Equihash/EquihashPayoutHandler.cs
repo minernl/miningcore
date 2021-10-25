@@ -20,6 +20,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
 using AutoMapper;
@@ -87,7 +88,7 @@ namespace Miningcore.Blockchain.Equihash
             supportsNativeShielding = response.Error.Code != (int) BitcoinRPCErrorCode.RPC_METHOD_NOT_FOUND;
         }
 
-        public override async Task PayoutAsync(Balance[] balances)
+        public override async Task PayoutAsync(Balance[] balances, CancellationToken ct)
         {
             Contract.RequiresNonNull(balances, nameof(balances));
 

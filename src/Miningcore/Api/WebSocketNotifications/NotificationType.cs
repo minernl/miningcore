@@ -9,6 +9,7 @@ namespace Miningcore.Api.WebSocketNotifications
         Greeting,
         BlockFound,
         NewChainHeight,
+        NetworkBlock,
         Payment,
         BlockUnlocked,
         BlockUnlockProgress,

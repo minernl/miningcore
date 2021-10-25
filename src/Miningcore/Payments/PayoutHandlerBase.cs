@@ -193,7 +193,7 @@ namespace Miningcore.Payments
 
             foreach(var balance in balances)
             {
-                TelemetryUtil.TrackEvent("Payout_" + coin.CanonicalName, new Dictionary<string, string> {
+                TelemetryUtil.TrackEvent("Payout_" + poolConfig.Id, new Dictionary<string, string> {
                         {"wallet", balance.Address},
                         {"amount", balance.Amount.ToString()}
                     });

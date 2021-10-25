@@ -10,6 +10,7 @@ namespace Miningcore.Notifications.Messages
         public ulong BlockHeight { get; set; }
         public string Symbol { get; set; }
         public string Name { get; set; }
+        public ulong BaseFeePerGas { get; set; }
     }
 
     public class BlockFoundNotification : BlockNotification
@@ -20,6 +21,10 @@ namespace Miningcore.Notifications.Messages
     }
 
     public class NewChainHeightNotification : BlockNotification
+    {
+    }
+
+    public class NetworkBlockNotification : BlockNotification
     {
     }
 

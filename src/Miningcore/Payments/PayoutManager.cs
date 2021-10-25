@@ -67,19 +67,23 @@ namespace Miningcore.Payments
         // Start Payment Services
         public void Start()
         {
-            Task.Run(() =>
+            Task.Run(async () =>
             {
                 Logger.Info(() => "Starting Payout Manager");
 
-                // Delay 30s before starting payout
-                Task.Delay(30000);
                 // Run the initial balance calc & payout
-                var paymentTasks = new[] { UpdatePoolBalancesAsync(), PayoutPoolBalancesAsync() };
-                Task.WaitAll(paymentTasks);
-
+                await UpdatePoolBalancesAsync();
                 // The observable will trigger the observer once every interval
                 Observable.Interval(balanceCalculationInterval).Select(_ => Observable.FromAsync(UpdatePoolBalancesAsync)).Concat().Subscribe(cts.Token);
-                Observable.Interval(payoutInterval).Select(_ => Observable.FromAsync(PayoutPoolBalancesAsync)).Concat().Subscribe(cts.Token);
+                if(clusterConfig.PaymentProcessing.OnDemandPayout)
+                {
+                    await OnDemandPayoutPoolBalancesAsync();
+                }
+                else
+                {
+                    await PayoutPoolBalancesAsync();
+                    Observable.Interval(payoutInterval).Select(_ => Observable.FromAsync(PayoutPoolBalancesAsync)).Concat().Subscribe(cts.Token);
+                }
             });
         }
 
@@ -193,7 +197,7 @@ namespace Miningcore.Payments
                 }
             }
         }
-        
+
         private async Task UpdatePoolBalancesAsync(PoolConfig pool, IPayoutHandler handler, IPayoutScheme scheme)
         {
             // get pending blockRepo for pool
@@ -271,8 +275,6 @@ namespace Miningcore.Payments
                 try
                 {
                     var handler = await ResolveAndConfigurePayoutHandlerAsync(pool);
-                    var scheme = ctx.ResolveKeyed<IPayoutScheme>(pool.PaymentProcessing.PayoutScheme);
-
                     if(!pool.PaymentProcessing.PayoutEnabled) continue;
 
                     await PayoutPoolBalancesAsync(pool, handler);
@@ -301,6 +303,32 @@ namespace Miningcore.Payments
             }
         }
 
+        private async Task OnDemandPayoutPoolBalancesAsync()
+        {
+            if(cts.IsCancellationRequested)
+            {
+                Logger.Info(() => "Cancel signal: stopping payout");
+                return;
+            }
+
+            foreach(var pool in clusterConfig.Pools.Where(x => x.Enabled && x.PaymentProcessing.Enabled))
+            {
+                Logger.Info(() => $"Starting on-demand payout for pool [{pool.Id}]");
+
+                try
+                {
+                    var handler = await ResolveAndConfigurePayoutHandlerAsync(pool);
+                    if(!pool.PaymentProcessing.PayoutEnabled) continue;
+
+                    handler.OnDemandPayoutAsync();
+                }
+                catch(Exception ex)
+                {
+                    Logger.Error(ex, () => $"[{pool.Id}] On-demand payout failed");
+                }
+            }
+        }
+
         private async Task PayoutPoolBalancesAsync(PoolConfig pool, IPayoutHandler handler)
         {
             var poolBalancesOverMinimum = await TelemetryUtil.TrackDependency(() => cf.Run(con =>
@@ -311,7 +339,8 @@ namespace Miningcore.Payments
             {
                 try
                 {
-                    await handler.PayoutAsync(poolBalancesOverMinimum);
+                    await TelemetryUtil.TrackDependency(() => handler.PayoutAsync(poolBalancesOverMinimum, cts.Token), DependencyType.Sql, "PayoutPoolBalancesAsync",
+                        $"miners:{poolBalancesOverMinimum.Length}");
                 }
 
                 catch(Exception ex)

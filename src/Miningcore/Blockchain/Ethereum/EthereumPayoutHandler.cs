@@ -4,11 +4,13 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
 using AutoMapper;
 using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using Miningcore.Blockchain.Ethereum.Configuration;
 using Miningcore.Blockchain.Ethereum.DaemonRequests;
 using Miningcore.Blockchain.Ethereum.DaemonResponses;
@@ -17,6 +19,7 @@ using Miningcore.DaemonInterface;
 using Miningcore.DataStore.Cloud.EtherScan;
 using Miningcore.Extensions;
 using Miningcore.Messaging;
+using Miningcore.Notifications.Messages;
 using Miningcore.Payments;
 using Miningcore.Persistence;
 using Miningcore.Persistence.Model;
@@ -70,6 +73,8 @@ namespace Miningcore.Blockchain.Ethereum
         private EthereumPoolConfigExtra extraPoolConfig;
         private EthereumPoolPaymentProcessingConfigExtra extraConfig;
         private DaemonEndpointConfig daemonEndpointConfig;
+        private CancellationTokenSource ondemandPayCts;
+        private Task ondemandPayTask;
         private Web3 web3Connection;
         private bool isParity = true;
         private const int TwentyFourHrs = 24;
@@ -307,7 +312,7 @@ namespace Miningcore.Blockchain.Ethereum
             //return blockRewardRemaining;
         }
 
-        public async Task PayoutAsync(Balance[] balances)
+        public async Task PayoutAsync(Balance[] balances, CancellationToken ct)
         {
             logger.Info(() => $"[{LogCategory}] Beginning payout to {balances?.Length} miners.");
 
@@ -319,27 +324,39 @@ namespace Miningcore.Blockchain.Ethereum
                 logger.Warn(() => $"[{LogCategory}] Payout aborted. Not enough peers (4 required)");
                 return;
             }
-            var latestBlockResp = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
-            var latestGasFee = latestBlockResp.FirstOrDefault(x => x.Error == null)?.Response.BaseFeePerGas;
-            if(latestGasFee > extraConfig.MaxGasLimit)
+
+            // Check gas fee in the beginning once for scheduled payout
+            if(extraConfig.EnableGasLimit && !clusterConfig.PaymentProcessing.OnDemandPayout)
             {
-                logger.Warn(() => $"[{LogCategory}] All {balances.Length} payouts deferred until next time. Latest gas fee is above par limit " +
-                                  $"({latestGasFee}>{extraConfig.MaxGasLimit})");
-                return;
+                var latestGasFee = await GetLatestGasFee();
+                if(latestGasFee > extraConfig.MaxGasLimit)
+                {
+                    logger.Warn(() => $"[{LogCategory}] All {balances.Length} payouts deferred until next time. Latest gas fee is above par limit " +
+                                      $"({latestGasFee}>{extraConfig.MaxGasLimit})");
+                    return;
+                }
             }
+
             var txHashes = new List<string>();
             var logInfo = string.Empty;
 
+            var paidBalances = new List<Balance>();
+
             foreach(var balance in balances)
             {
+                if(ct.IsCancellationRequested)
+                {
+                    logger.Info($"[{LogCategory}] Payouts canceled after paying user{logInfo}");
+                    break;
+                }
+
                 try
                 {
-                    if(extraConfig.EnableGasLimit)
+                    // On-demand payout is based on gas fee so no need to check again
+                    if(extraConfig.EnableGasLimit && !clusterConfig.PaymentProcessing.OnDemandPayout)
                     {
-                        latestBlockResp = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
-                        latestGasFee = latestBlockResp.FirstOrDefault(x => x.Error == null)?.Response.BaseFeePerGas;
                         //Check if gas fee is below par range
-                        //var lastPaymentDate = await cf.Run(con => paymentRepo.GetLastPaymentDateAsync(con, balance.PoolId, balance.Address));
+                        var latestGasFee = await GetLatestGasFee();
                         var lastPaymentDate = balance.PaidDate;
                         var maxGasLimit = lastPaymentDate.HasValue && (clock.UtcNow - lastPaymentDate.Value).TotalHours <= extraConfig.GasLimitToleranceHrs
                             ? extraConfig.GasLimit
@@ -356,7 +373,11 @@ namespace Miningcore.Blockchain.Ethereum
                     }
                     logInfo = $", address={balance.Address}";
                     var txHash = await PayoutAsync(balance);
-                    if(!string.IsNullOrEmpty(txHash)) txHashes.Add(txHash);
+                    if(!string.IsNullOrEmpty(txHash))
+                    {
+                         txHashes.Add(txHash);
+                         paidBalances.Add(balance);
+                    }
                 }
                 catch(Nethereum.JsonRpc.Client.RpcResponseException ex)
                 {
@@ -378,7 +399,7 @@ namespace Miningcore.Blockchain.Ethereum
             }
 
             if(txHashes.Any())
-                NotifyPayoutSuccess(poolConfig.Id, balances, txHashes.ToArray(), null);
+                NotifyPayoutSuccess(poolConfig.Id, paidBalances.ToArray(), txHashes.ToArray(), null);
 
             logger.Info(() => $"[{LogCategory}] Payouts complete.  Successfully processed {txHashes.Count} of {balances?.Length} payouts.");
         }
@@ -478,6 +499,38 @@ namespace Miningcore.Blockchain.Ethereum
         public bool MinersPayTxFees()
         {
             return extraConfig?.MinersPayTxFees == true;
+        }
+
+        public void OnDemandPayoutAsync()
+        {
+            messageBus.Listen<NetworkBlockNotification>().Subscribe(b =>
+            {
+                logger.Info($"[{LogCategory}] NetworkBlockNotification height={b.BlockHeight}, gasfee={b.BaseFeePerGas}");
+
+                if(b.BaseFeePerGas <= 0) return;
+
+                if(b.BaseFeePerGas <= extraConfig.MaxGasLimit)
+                {
+                    if(ondemandPayTask == null || ondemandPayTask.IsCompleted)
+                    {
+                        ondemandPayCts?.Dispose();
+                        ondemandPayCts = new CancellationTokenSource();
+
+                        logger.Info($"[{LogCategory}] Triggering a new on-demand payouts since gas is low. gasfee={b.BaseFeePerGas}");
+                        ondemandPayTask = PayoutBalancesOverThresholdAsync(ondemandPayCts.Token);
+                    }
+                    else
+                    {
+                        logger.Info($"[{LogCategory}] Existing on-demand payouts is still processing. gasfee={b.BaseFeePerGas}");
+                    }
+                }
+                else
+                {
+                    if(ondemandPayTask == null || ondemandPayTask.IsCompleted) return;
+                    logger.Info($"[{LogCategory}] Canceling on-demand payouts since gas is high. gasfee={b.BaseFeePerGas}");
+                    ondemandPayCts.Cancel();
+                }
+            });
         }
 
         #endregion // IPayoutHandler
@@ -708,6 +761,10 @@ namespace Miningcore.Blockchain.Ethereum
                 payoutInterval = sinceLastPayout.TotalSeconds;
                 logger.Info(() => $"Using payoutInterval from database. {payoutInterval}");
             }
+            else
+            {
+                logger.Warn(() => $"payoutInterval from database is invalid or too old: {poolState.LastPayout}. Using interval from config");
+            }
 
             if(payoutInterval == 0)
             {
@@ -718,7 +775,7 @@ namespace Miningcore.Blockchain.Ethereum
             var recipientBlockReward = (double) (blockReward * RecipientShare);
             var blockFrequencyPerPayout = blockFrequency / (payoutInterval / Sixty);
             var blockData = recipientBlockReward / blockFrequencyPerPayout;
-            logger.Info(() => $"BlockData : {blockData}, Network Block Time : {avgBlockTime}, Block Frequency : {blockFrequency}");
+            logger.Info(() => $"BlockData : {blockData}, Network Block Time : {avgBlockTime}, Block Frequency : {blockFrequency}, PayoutInterval : {payoutInterval}");
 
             return (decimal) blockData;
         }
@@ -813,6 +870,40 @@ namespace Miningcore.Blockchain.Ethereum
             }
 
             return null;
+        }
+
+        private async Task PayoutBalancesOverThresholdAsync(CancellationToken ct)
+        {
+            logger.Info(() => $"[{LogCategory}] Processing payout for pool [{poolConfig.Id}]");
+
+            var poolBalancesOverMinimum = await TelemetryUtil.TrackDependency(() => cf.Run(con =>
+                    balanceRepo.GetPoolBalancesOverThresholdAsync(con, poolConfig.Id, poolConfig.PaymentProcessing.MinimumPayment)),
+                DependencyType.Sql, "GetPoolBalancesOverThresholdAsync", "GetPoolBalancesOverThresholdAsync");
+
+            if(poolBalancesOverMinimum.Length > 0)
+            {
+                try
+                {
+                    await TelemetryUtil.TrackDependency(() => PayoutAsync(poolBalancesOverMinimum, ct), DependencyType.Sql, "PayoutBalancesOverThresholdAsync",
+                        $"miners:{poolBalancesOverMinimum.Length}");
+                }
+
+                catch(Exception ex)
+                {
+                    logger.Error(ex, $"[{LogCategory}] Error while processing payout balances over threshold");
+                }
+            }
+            else
+                logger.Info(() => $"[{LogCategory}] No balances over configured minimum payout {poolConfig.PaymentProcessing.MinimumPayment:0.#######} for pool {poolConfig.Id}");
+        }
+
+        private async Task<ulong?> GetLatestGasFee()
+        {
+            var latestBlockResp = await TelemetryUtil.TrackDependency(() => daemon.ExecuteCmdAnyAsync<DaemonResponses.Block>(
+                logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true }), DependencyType.Daemon, "GetLatestGasFee", "GetLatestGasFee");
+            logger.Info(() => $"Fetched latest gas fee from network: {latestBlockResp?.Response.BaseFeePerGas}");
+
+            return latestBlockResp?.Response.BaseFeePerGas;
         }
     }
 }

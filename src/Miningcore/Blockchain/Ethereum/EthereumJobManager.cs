@@ -86,6 +86,7 @@ namespace Miningcore.Blockchain.Ethereum
         protected readonly Dictionary<string, EthereumJob> validJobs = new Dictionary<string, EthereumJob>();
         private EthereumPoolConfigExtra extraPoolConfig;
         private readonly JsonSerializer serializer;
+        private Task refreshBlockTask;
 
         protected async Task<bool> UpdateJobAsync()
         {
@@ -127,7 +128,11 @@ namespace Miningcore.Blockchain.Ethereum
                 if(isNew)
                 {
                     messageBus.NotifyChainHeight(poolConfig.Id, blockTemplate.Height, poolConfig.Template);
-
+                    // Get latest block asynchronously when new block reported
+                    if(refreshBlockTask == null || refreshBlockTask.IsCompleted)
+                    {
+                        refreshBlockTask = GetLatestBlockAsync();
+                    }
                     var jobId = NextJobId("x8");
 
                     // update template
@@ -165,6 +170,27 @@ namespace Miningcore.Blockchain.Ethereum
             }
 
             return false;
+        }
+
+        private async Task GetLatestBlockAsync()
+        {
+            var response = await daemon.ExecuteCmdAnyAsync<Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
+
+            if(response?.Error != null)
+            {
+                logger.Warn(() => $"Error(s) refreshing latest block: {response.Error.Message}");
+                return;
+            }
+
+            if(response?.Response == null)
+            {
+                logger.Warn(() => $"Error(s) refreshing latest block: {EthCommands.GetBlockByNumber} returned null response");
+                return;
+            }
+
+            var block = response.Response;
+            logger.Info($"Latest block received. height={block.Height}, gasfee={block.BaseFeePerGas}");
+            messageBus.NotifyNetworkBlock(poolConfig.Id, block.BaseFeePerGas, block.Height.GetValueOrDefault(), poolConfig.Template);
         }
 
         private Task<EthereumBlockTemplate> GetBlockTemplateAsync()
@@ -252,7 +278,7 @@ namespace Miningcore.Blockchain.Ethereum
                 Seed = work[1],
                 Target = targetString,
                 Difficulty = (ulong) BigInteger.Divide(EthereumConstants.BigMaxValue, target),
-                Height = height,
+                Height = height
             };
 
             return result;
@@ -308,7 +334,7 @@ namespace Miningcore.Blockchain.Ethereum
             try
             {
                 // get the latest info
-                var results = await daemon.ExecuteBatchAnyAsync(logger, 
+                var results = await daemon.ExecuteBatchAnyAsync(logger,
                     new DaemonCmd(EthCommands.GetPeerCount),
                     new DaemonCmd(EthCommands.GetBlockByNumber, new[] { (object) "latest", true })
                 );
@@ -327,7 +353,7 @@ namespace Miningcore.Blockchain.Ethereum
 
                 var latestBlockHeight = latestBlockInfo.Height.Value;
                 var latestBlockTimestamp = latestBlockInfo.Timestamp;
-                var latestBlockDifficulty = latestBlockInfo.Difficulty.IntegralFromHex<ulong>() ;
+                var latestBlockDifficulty = latestBlockInfo.Difficulty.IntegralFromHex<ulong>();
 
                 // get sample block info (latestBlock-50)
                 ulong sampleBlockCount = 50;
@@ -335,14 +361,14 @@ namespace Miningcore.Blockchain.Ethereum
                 var sampleBlockResults = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) sampleBlockNumber.ToStringHexWithPrefix(), true });
                 var sampleBlockHeight = sampleBlockResults.First(x => x.Error == null && x.Response?.Height != null).Response.Height.Value;
                 var sampleBlockTimestamp = sampleBlockResults.First(x => x.Error == null && x.Response?.Height != null).Response.Timestamp;
-                
+
                 // Calculate avg block time                    
                 ulong BlockTimeFrame = latestBlockTimestamp - sampleBlockTimestamp;
                 ulong blockAvgTime = BlockTimeFrame / sampleBlockCount;
 
                 // Publish network info
                 BlockchainStats.NetworkDifficulty = (double) latestBlockDifficulty;
-                BlockchainStats.NetworkHashrate = blockAvgTime > 0 ? (double) latestBlockDifficulty / blockAvgTime : 0 ;
+                BlockchainStats.NetworkHashrate = blockAvgTime > 0 ? (double) latestBlockDifficulty / blockAvgTime : 0;
                 BlockchainStats.ConnectedPeers = (int) peerCount;
             }
 
@@ -522,9 +548,6 @@ namespace Miningcore.Blockchain.Ethereum
 
         public BlockchainStats BlockchainStats { get; } = new BlockchainStats();
 
-   
-
-   
         protected override void ConfigureDaemons()
         {
             var jsonSerializerSettings = ctx.Resolve<JsonSerializerSettings>();
@@ -834,7 +857,5 @@ namespace Miningcore.Blockchain.Ethereum
                     .RefCount();
             }
         }
-
-
     }
 }

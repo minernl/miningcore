@@ -586,6 +586,7 @@ namespace Miningcore.Configuration
         public bool Enabled { get; set; }
         public int Interval { get; set; }
         public int BalanceCalculationInterval { get; set; }
+        public bool OnDemandPayout { get; set; }
         public string ShareRecoveryFile { get; set; }
     }
 
