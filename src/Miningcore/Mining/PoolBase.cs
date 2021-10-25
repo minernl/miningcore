@@ -404,7 +404,7 @@ Pool Fee:               {(poolConfig.RewardRecipients?.Any() == true ? poolConfi
         public void Stop()
         {
             StopListeners();
-            TelemetryUtil.cleanup();
+            TelemetryUtil.Cleanup();
         }
 
         #endregion // API-Surface

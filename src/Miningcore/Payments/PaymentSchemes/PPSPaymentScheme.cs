@@ -39,7 +39,7 @@ namespace Miningcore.Payments.PaymentSchemes
             Contract.RequiresNonNull(statsRepo, nameof(statsRepo));
             Contract.RequiresNonNull(paymentRepo, nameof(paymentRepo));
             Contract.RequiresNonNull(mapper, nameof(mapper));
-            
+
             this.cf = cf;
             this.shareRepo = shareRepo;
             this.balanceRepo = balanceRepo;
@@ -70,7 +70,7 @@ namespace Miningcore.Payments.PaymentSchemes
             var shares = new Dictionary<string, double>();
             var rewards = new Dictionary<string, decimal>();
             var paidUntil = DateTime.UtcNow;
-            var shareCutOffDate = CalculateRewards(poolConfig, shares, rewards, blockReward, paidUntil);
+            var shareCutOffDate = await CalculateRewards(poolConfig, shares, rewards, blockReward, paidUntil);
 
             // update balances
             foreach(var address in rewards.Keys)
@@ -80,14 +80,14 @@ namespace Miningcore.Payments.PaymentSchemes
                 if(amount > 0)
                 {
                     Balance balance = await TelemetryUtil.TrackDependency(
-                        () => cf.Run( c => balanceRepo.GetBalanceAsync(c, poolConfig.Id, address)),
+                        () => cf.Run(c => balanceRepo.GetBalanceAsync(c, poolConfig.Id, address)),
                         DependencyType.Sql,
                         "GetBalance",
                         $"miner:{address}");
 
                     // Calculate how much we should deduct for this amount (only if the balance is below the payout threshold)
                     decimal txDeduction = 0;
-                    if (null == balance || balance.Amount < poolConfig.PaymentProcessing.MinimumPayment)
+                    if(null == balance || balance.Amount < poolConfig.PaymentProcessing.MinimumPayment)
                     {
                         txDeduction = payoutHandler.GetTransactionDeduction(amount);
                         if(txDeduction < 0 || txDeduction >= amount)
@@ -134,17 +134,17 @@ namespace Miningcore.Payments.PaymentSchemes
                 Logger.Info(() => $"{FormatUtil.FormatQuantity((double) totalShareCount)} ({Math.Round(totalShareCount, 2)}) shares contributed to a total payout of {payoutHandler.FormatAmount(totalRewards)} ({totalRewards / blockReward * 100:0.00}% of block reward) to {rewards.Keys.Count} addresses");
 
 
-            await TelemetryUtil.TrackDependency(() => paymentRepo.SetPoolStateLastPayout(con, poolConfig.Id, paidUntil),
+            await TelemetryUtil.TrackDependency(() => paymentRepo.SetPoolState(con, new PoolState { PoolId = poolConfig.Id, LastPayout = paidUntil }),
             DependencyType.Sql, "SetLastPayoutDate", $"PayoutDate:{paidUntil}");
         }
-        
+
         #endregion // IPayoutScheme
 
-        private DateTime? CalculateRewards(
+        private async Task<DateTime?> CalculateRewards(
             PoolConfig poolConfig,
-            Dictionary<string, double> shares, 
-            Dictionary<string, decimal> rewards, 
-            decimal blockData, 
+            Dictionary<string, double> shares,
+            Dictionary<string, decimal> rewards,
+            decimal blockData,
             DateTime paidUntil)
         {
             var done = false;
@@ -162,12 +162,10 @@ namespace Miningcore.Payments.PaymentSchemes
             {
                 Logger.Info(() => $"Fetching page {currentPage} of shares for pool {poolConfig.Id}");
 
-                var pageTask = TelemetryUtil.TrackDependency(() => shareReadFaultPolicy.Execute(() =>
+                var page = await TelemetryUtil.TrackDependency(() => shareReadFaultPolicy.Execute(() =>
                     cf.Run(con => shareRepo.ReadUnprocessedSharesBeforeAcceptedAsync(con, poolConfig.Id, before, inclusive, pageSize))),
                     DependencyType.Sql, "ReadAllSharesMined", "ReadAllSharesMined");
 
-                Task.WaitAll(pageTask);
-                var page = pageTask.Result;
                 inclusive = false;
                 currentPage++;
 
@@ -242,18 +240,14 @@ namespace Miningcore.Payments.PaymentSchemes
             poolConfig.PaymentProcessing.HashValue = valPerMHash;
 
             // Update the hashvalue in the database
-            Task.WaitAll(cf.Run(con => paymentRepo.SetPoolStateHashValue(con, poolConfig.Id, valPerMHash)));
-            
-            TelemetryClient tc = TelemetryUtil.GetTelemetryClient();
-            if(null != tc)
+            await cf.Run(con => paymentRepo.SetPoolState(con, new PoolState { PoolId = poolConfig.Id, HashValue = valPerMHash }));
+
+            TelemetryUtil.TrackEvent("HashValue_" + poolConfig.Id, new Dictionary<string, string>
             {
-                tc.TrackEvent("HashValue_" + poolConfig.Id, new Dictionary<string, string>
-                {
-                    {"BlockPayout", blockData.ToString()},
-                    {"TotalHashes", sumDifficulty.ToString()},
-                    {"HashValue", valPerMHash.ToString()}
-                });
-            }
+                {"BlockPayout", blockData.ToString()},
+                {"TotalHashes", sumDifficulty.ToString()},
+                {"HashValue", valPerMHash.ToString()}
+            });
 
             // this should never happen
             if(!done)

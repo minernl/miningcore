@@ -204,8 +204,7 @@ namespace Miningcore.Blockchain.Ethereum
                 context.Stats.ValidShares++;
                 await UpdateVarDiffAsync(client);
 
-                var tc = TelemetryUtil.GetTelemetryClient();
-                tc?.GetMetric("ACCEPT_SHARES").TrackValue(difficulty);
+                TelemetryUtil.TrackMetric("ACCEPT_SHARES", difficulty);
             }
 
             catch(StratumException ex)
@@ -213,8 +212,7 @@ namespace Miningcore.Blockchain.Ethereum
                 // telemetry
                 PublishTelemetry(TelemetryCategory.Share, clock.UtcNow - tsRequest.Timestamp.UtcDateTime, false);
 
-                var tc = TelemetryUtil.GetTelemetryClient();
-                tc?.GetMetric("REJECT_SHARES", "Cause").TrackValue(difficulty, ex.Message);
+                TelemetryUtil.TrackMetric("REJECT_SHARES", "Cause", difficulty, ex.Message);
 
                 // update client stats
                 context.Stats.InvalidShares++;

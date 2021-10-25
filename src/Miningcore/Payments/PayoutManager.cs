@@ -104,7 +104,7 @@ namespace Miningcore.Payments
             }
             finally
             {
-                TelemetryUtil.GetTelemetryClient()?.GetMetric("FORCED_PAYOUT", "success", "duration").TrackValue((double) amount, success.ToString(), timer.ElapsedMilliseconds.ToString());
+                TelemetryUtil.TrackMetric("FORCED_PAYOUT", "success", "duration", (double) amount, success.ToString(), timer.ElapsedMilliseconds.ToString());
             }
         }
 

@@ -241,17 +241,13 @@ namespace Miningcore.Mining
 
                     Logger.Info(() => $"[{poolId}] Reset performance stats for pool. Time from:{timeFrom},to:{currentTimeUtc}");
                 }
-                
+
                 Logger.Info(() => $"[{poolId}] Connected Miners : {pool.PoolStats.ConnectedMiners} miners");
                 Logger.Info(() => $"[{poolId}] Pool hashrate    : {pool.PoolStats.PoolHashrate} hashes/sec");
                 Logger.Info(() => $"[{poolId}] Pool shares      : {pool.PoolStats.SharesPerSecond} shares/sec");
 
-                var tc = TelemetryUtil.GetTelemetryClient();
-                if(null != tc)
-                {
-                    tc.GetMetric("PoolHashRate_" + poolId).TrackValue(pool.PoolStats.PoolHashrate);
-                    tc.GetMetric("PoolMinerCount_" + poolId).TrackValue(pool.PoolStats.ConnectedMiners);
-                }
+                TelemetryUtil.TrackMetric("PoolHashRate_" + poolId, pool.PoolStats.PoolHashrate);
+                TelemetryUtil.TrackMetric("PoolMinerCount_" + poolId, pool.PoolStats.ConnectedMiners);
 
                 // persist. Save pool stats in DB.
                 await cf.RunTx(async (con, tx) =>

@@ -75,12 +75,12 @@ namespace Miningcore.Api.Controllers
                         .ToArray();
 
                     // overwrite the hashvalue with the one calculated by payment processing
-                    PoolState poolState = await cf.Run(con => paymentsRepo.GetPoolState(con, pool.Config.Id));
-                    if (poolState.HashValue > 0)
+                    var poolState = await cf.Run(con => paymentsRepo.GetPoolState(con, pool.Config.Id));
+                    if(poolState.HashValue.HasValue && poolState.HashValue.Value > 0)
                     {
-                        result.PaymentProcessing.HashValue = poolState.HashValue;
+                        result.PaymentProcessing.HashValue = poolState.HashValue.Value;
                     }
-                    
+
                     return result;
                 }).ToArray())
             };
@@ -103,12 +103,12 @@ namespace Miningcore.Api.Controllers
             };
 
             // overwrite the hashvalue with the one calculated by payment processing
-            PoolState poolState = await cf.Run(con => paymentsRepo.GetPoolState(con, pool.Id));
-            if (poolState.HashValue > 0)
+            var poolState = await cf.Run(con => paymentsRepo.GetPoolState(con, pool.Id));
+            if(poolState.HashValue.HasValue && poolState.HashValue.Value > 0)
             {
-                response.Pool.PaymentProcessing.HashValue = poolState.HashValue;
+                response.Pool.PaymentProcessing.HashValue = poolState.HashValue.Value;
             }
-            
+
             return response;
         }
 
@@ -361,7 +361,7 @@ namespace Miningcore.Api.Controllers
 
                     end = end.AddMinutes(-end.Minute);
                     end = end.AddSeconds(-end.Second);
-					
+
                     start = end.AddDays(-1);
 
                     stats = await cf.Run(con => statsRepo.GetMinerPerformanceBetweenHourlyAsync(
@@ -373,7 +373,7 @@ namespace Miningcore.Api.Controllers
                         end = end.AddDays(-1);
 
                     end = end.Date;
-					
+
                     // set range
                     start = end.AddMonths(-1);
 

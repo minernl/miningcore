@@ -1,6 +1,7 @@
 
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DependencyCollector;
@@ -76,10 +77,24 @@ namespace Miningcore.Util
             telemetryClient?.GetMetric(name).TrackValue(val);
         }
 
-        public static void cleanup()
+        public static void TrackMetric(string name, string dimension, double val, string dimensionVal)
         {
-            if(null != telemetryClient)
-                telemetryClient.Flush();
+            telemetryClient?.GetMetric(name, dimension).TrackValue(val, dimensionVal);
+        }
+
+        public static void TrackMetric(string name, string dimension, string dimension2, double val, string dimensionVal, string dimensionVal2)
+        {
+            telemetryClient?.GetMetric(name, dimension, dimension2).TrackValue(val, dimensionVal, dimensionVal2);
+        }
+
+        public static void TrackEvent(string name, IDictionary<string, string> props)
+        {
+            telemetryClient?.TrackEvent(name, props);
+        }
+
+        public static void Cleanup()
+        {
+            telemetryClient?.Flush();
         }
     }
 
