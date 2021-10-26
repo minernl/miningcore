@@ -130,7 +130,7 @@ namespace Miningcore.Blockchain.Ethereum
                     .ToArray();
 
                 // get latest block
-                var latestBlockResponses = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] {(object) "latest", true});
+                var latestBlockResponses = await daemon.ExecuteCmdAllAsync<DaemonResponses.Block>(logger, EthCommands.GetBlockByNumber, new[] { (object) "latest", true });
                 var latestBlockHeight = latestBlockResponses.First(x => x.Error == null && x.Response?.Height != null).Response.Height.Value;
 
                 // execute batch
@@ -230,7 +230,7 @@ namespace Miningcore.Blockchain.Ethereum
                         {
                             // fetch all uncles in a single RPC batch request
                             var uncleBatch = blockInfo2.Uncles.Select((x, index) => new DaemonCmd(EthCommands.GetUncleByBlockNumberAndIndex,
-                                new[] {blockInfo2.Height.Value.ToStringHexWithPrefix(), index.ToStringHexWithPrefix()})).ToArray();
+                                new[] { blockInfo2.Height.Value.ToStringHexWithPrefix(), index.ToStringHexWithPrefix() })).ToArray();
 
                             logger.Info(() => $"[{LogCategory}] Fetching {blockInfo2.Uncles.Length} uncles for block {blockInfo2.Height}");
 
@@ -375,8 +375,8 @@ namespace Miningcore.Blockchain.Ethereum
                     var txHash = await PayoutAsync(balance);
                     if(!string.IsNullOrEmpty(txHash))
                     {
-                         txHashes.Add(txHash);
-                         paidBalances.Add(balance);
+                        txHashes.Add(txHash);
+                        paidBalances.Add(balance);
                     }
                 }
                 catch(Nethereum.JsonRpc.Client.RpcResponseException ex)
@@ -499,6 +499,14 @@ namespace Miningcore.Blockchain.Ethereum
         public bool MinersPayTxFees()
         {
             return extraConfig?.MinersPayTxFees == true;
+        }
+
+        public async Task<decimal> GetWalletBalance()
+        {
+            if(web3Connection == null) return 0;
+
+            var balance = await web3Connection.Eth.GetBalance.SendRequestAsync(poolConfig.Address);
+            return Web3.Convert.FromWei(balance.Value);
         }
 
         public void OnDemandPayoutAsync()
@@ -853,7 +861,7 @@ namespace Miningcore.Blockchain.Ethereum
                 }
                 else
                 {
-                    logger.Warn($"Web3Tx GetEtherTransferService is null. addr={ balance.Address}, amt={ balance.Amount}");
+                    logger.Warn($"Web3Tx GetEtherTransferService is null. addr={balance.Address}, amt={balance.Amount}");
                 }
             }
             catch(Nethereum.JsonRpc.Client.RpcResponseException ex)

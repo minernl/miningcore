@@ -573,7 +573,12 @@ namespace Miningcore.Blockchain.Cryptonote
         {
             throw new NotImplementedException();
         }
-        
+
+        public Task<decimal> GetWalletBalance()
+        {
+            throw new NotImplementedException();
+        }
+
         #endregion // IPayoutHandler
     }
 }

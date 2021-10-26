@@ -102,13 +102,16 @@ namespace Miningcore.Persistence.Postgres.Repositories
                 .ToArray();
         }
 
-        public async Task<decimal> GetTotalBalanceSum(IDbConnection con, string poolId)
+        public async Task<BalanceSummary> GetTotalBalanceSum(IDbConnection con, string poolId, decimal minimum)
         {
             logger.LogInvoke();
 
-            const string query = "SELECT sum(amount) FROM balances WHERE poolid = @poolId";
+            const string query = "SELECT SUM(amount) as TotalAmount, SUM(CASE WHEN amount >= @minimum THEN amount ELSE 0 END) as TotalAmountOverThreshold " +
+                                 "FROM balances WHERE poolid = @poolId";
 
-            return await con.QuerySingleOrDefaultAsync<decimal>(query, new { poolId });
+            return (await con.QueryAsync<Entities.BalanceSummary>(query, new { poolId, minimum }))
+                .Select(mapper.Map<BalanceSummary>)
+                .FirstOrDefault();
         }
     }
 }
