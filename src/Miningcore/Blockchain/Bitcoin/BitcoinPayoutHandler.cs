@@ -349,6 +349,11 @@ namespace Miningcore.Blockchain.Bitcoin
             throw new NotImplementedException();
         }
 
+        public Task<decimal> GetWalletBalance()
+        {
+            throw new NotImplementedException();
+        }
+
         #endregion // IPayoutHandler
     }
 }

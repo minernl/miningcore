@@ -169,10 +169,13 @@ namespace Miningcore.Payments
 
                     await UpdatePoolBalancesAsync(pool, handler, scheme);
 
-                    var poolBalance = await TelemetryUtil.TrackDependency(() => cf.Run(con => balanceRepo.GetTotalBalanceSum(con, pool.Id)),
+                    var poolBalance = TelemetryUtil.TrackDependency(() => cf.Run(con => balanceRepo.GetTotalBalanceSum(con, pool.Id, pool.PaymentProcessing.MinimumPayment)),
                         DependencyType.Sql, "GetTotalBalanceSum", "GetTotalBalanceSum");
+                    var walletBalance = handler.GetWalletBalance();
+                    await Task.WhenAll(poolBalance, walletBalance);
 
-                    TelemetryUtil.TrackMetric("TotalBalance_" + pool.Id, (double) poolBalance);
+                    TelemetryUtil.TrackMetric($"TotalBalance_{pool.Id}", $"TotalOverThreshold_{pool.Id}", $"WalletBalance_{pool.Id}", (double) poolBalance.Result.TotalAmount,
+                        poolBalance.Result.TotalAmountOverThreshold.ToString("0.#######"), walletBalance.Result.ToString("0.#######"));
                 }
                 catch(InvalidOperationException ex)
                 {
