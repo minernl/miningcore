@@ -1,33 +1,26 @@
-# Docker
-# Build a Docker image
-# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+# ASP.NET Core
+# Build and test ASP.NET Core projects targeting .NET Core.
+# Add steps that run tests, create a NuGet package, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
 
 trigger:
 - develop
 
-resources:
-- repo: self
+pool:
+  vmImage: ubuntu-latest
 
 variables:
-  tag: '$(Build.BuildId)'
+  buildConfiguration: 'Release'
 
-stages:
-- stage: Build
-  displayName: Build image
-  jobs:
-  - job: Build
-    displayName: Build
-    pool:
-      vmImage: ubuntu-latest
-    steps:
-    - task: Docker@2
-      displayName: Build an image
-      inputs:
-        containerRegistry: 'beta-repo'
-        repository: 'miningcore'
-        command: 'buildAndPush'
-        Dockerfile: '**/Dockerfile'
-        buildContext: '$(Build.Repository.LocalPath)'
-        tags: |
-          latest
-          $(tag)
+steps:
+- script: sudo apt-get update -y && sudo apt-get install -y --no-install-recommends cmake build-essential libssl-dev libsodium-dev pkg-config libboost-all-dev libzmq5
+  displayName: 'Install dependencies'
+- script: cd $(System.DefaultWorkingDirectory)/src/Native/libmultihash && make clean && make && yes| cp -rf libmultihash.so $(Build.ArtifactStagingDirectory) && cd $(System.DefaultWorkingDirectory)/src/Native/libcryptonight && make clean && make && yes| cp -rf libcryptonight.so $(Build.ArtifactStagingDirectory) && cd $(System.DefaultWorkingDirectory)/src/Native/libcryptonote && make clean && make && yes| cp -rf libcryptonote.so $(Build.ArtifactStagingDirectory)
+  workingDirectory: '$(System.DefaultWorkingDirectory)'
+  displayName: 'Build c++ libs'
+- script: dotnet build --configuration $(buildConfiguration) --framework net5.0  --output $(Build.ArtifactStagingDirectory)
+  workingDirectory: '$(System.DefaultWorkingDirectory)/src'
+  displayName: 'Build $(buildConfiguration)'
+- upload: $(Build.ArtifactStagingDirectory)
+  displayName: 'Publish package'
+  artifact: drop
