@@ -189,7 +189,7 @@ namespace Miningcore.Blockchain.Ethereum
             }
 
             var block = response.Response;
-            logger.Info($"Latest block received. height={block.Height}, gasfee={block.BaseFeePerGas}");
+            logger.Debug($"Latest block received. height={block.Height}, gasfee={block.BaseFeePerGas}");
             messageBus.NotifyNetworkBlock(poolConfig.Id, block.BaseFeePerGas, block.Height.GetValueOrDefault(), poolConfig.Template);
         }
 

@@ -505,8 +505,16 @@ namespace Miningcore.Blockchain.Ethereum
         {
             if(web3Connection == null) return 0;
 
-            var balance = await web3Connection.Eth.GetBalance.SendRequestAsync(poolConfig.Address);
-            return Web3.Convert.FromWei(balance.Value);
+            try
+            {
+                var balance = await web3Connection.Eth.GetBalance.SendRequestAsync(poolConfig.Address);
+                return Web3.Convert.FromWei(balance.Value);
+            }
+            catch(Exception ex)
+            {
+                logger.Error(ex, "Error while fetching wallet balance");
+                return 0;
+            }
         }
 
         public void OnDemandPayoutAsync()
