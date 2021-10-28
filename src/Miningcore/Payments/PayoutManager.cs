@@ -171,7 +171,7 @@ namespace Miningcore.Payments
 
                     var poolBalance = TelemetryUtil.TrackDependency(() => cf.Run(con => balanceRepo.GetTotalBalanceSum(con, pool.Id, pool.PaymentProcessing.MinimumPayment)),
                         DependencyType.Sql, "GetTotalBalanceSum", "GetTotalBalanceSum");
-                    var walletBalance = handler.GetWalletBalance();
+                    var walletBalance = TelemetryUtil.TrackDependency(() => handler.GetWalletBalance(), DependencyType.Web3, "GetWalletBalance", "GetWalletBalance");
                     await Task.WhenAll(poolBalance, walletBalance);
 
                     TelemetryUtil.TrackMetric($"TotalBalance_{pool.Id}", $"TotalOverThreshold_{pool.Id}", $"WalletBalance_{pool.Id}", (double) poolBalance.Result.TotalAmount,
