@@ -1,33 +1,23 @@
-# Docker
-# Build a Docker image
-# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+# ASP.NET Core
+# Build and test ASP.NET Core projects targeting .NET Core.
+# Add steps that run tests, create a NuGet package, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
 
 trigger:
 - develop
 
-resources:
-- repo: self
+pool:
+  vmImage: ubuntu-latest
 
 variables:
-  tag: '$(Build.BuildId)'
+  buildConfiguration: 'Release'
 
-stages:
-- stage: Build
-  displayName: Build image
-  jobs:
-  - job: Build
-    displayName: Build
-    pool:
-      vmImage: ubuntu-latest
-    steps:
-    - task: Docker@2
-      displayName: Build an image
-      inputs:
-        containerRegistry: 'beta-repo'
-        repository: 'miningcore'
-        command: 'buildAndPush'
-        Dockerfile: '**/Dockerfile'
-        buildContext: '$(Build.Repository.LocalPath)'
-        tags: |
-          latest
-          $(tag)
+steps:
+- task: Bash@3
+  inputs:
+    filePath: './scripts/build_pipeline.sh'
+    arguments: '$(System.DefaultWorkingDirectory) $(Build.ArtifactStagingDirectory) $(buildConfiguration)'
+    workingDirectory: '$(System.DefaultWorkingDirectory)'
+- upload: $(Build.ArtifactStagingDirectory)
+  displayName: 'Publish package'
+  artifact: drop
