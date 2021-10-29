@@ -13,14 +13,11 @@ variables:
   buildConfiguration: 'Release'
 
 steps:
-- script: sudo apt-get update -y && sudo apt-get install -y --no-install-recommends cmake build-essential libssl-dev libsodium-dev pkg-config libboost-all-dev libzmq5
-  displayName: 'Install dependencies'
-- script: cd $(System.DefaultWorkingDirectory)/src/Native/libmultihash && make clean && make && yes| cp -rf libmultihash.so $(Build.ArtifactStagingDirectory) && cd $(System.DefaultWorkingDirectory)/src/Native/libcryptonight && make clean && make && yes| cp -rf libcryptonight.so $(Build.ArtifactStagingDirectory) && cd $(System.DefaultWorkingDirectory)/src/Native/libcryptonote && make clean && make && yes| cp -rf libcryptonote.so $(Build.ArtifactStagingDirectory)
-  workingDirectory: '$(System.DefaultWorkingDirectory)'
-  displayName: 'Build c++ libs'
-- script: dotnet build --configuration $(buildConfiguration) --framework net5.0  --output $(Build.ArtifactStagingDirectory)
-  workingDirectory: '$(System.DefaultWorkingDirectory)/src'
-  displayName: 'Build $(buildConfiguration)'
+- task: Bash@3
+  inputs:
+    filePath: './scripts/build_pipeline.sh'
+    arguments: '$(System.DefaultWorkingDirectory) $(Build.ArtifactStagingDirectory) $(buildConfiguration)'
+    workingDirectory: '$(System.DefaultWorkingDirectory)'
 - upload: $(Build.ArtifactStagingDirectory)
   displayName: 'Publish package'
   artifact: drop
