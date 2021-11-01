@@ -174,8 +174,12 @@ namespace Miningcore.Payments
                     var walletBalance = TelemetryUtil.TrackDependency(() => handler.GetWalletBalance(), DependencyType.Web3, "GetWalletBalance", "GetWalletBalance");
                     await Task.WhenAll(poolBalance, walletBalance);
 
-                    TelemetryUtil.TrackMetric($"TotalBalance_{pool.Id}", $"TotalOverThreshold_{pool.Id}", $"WalletBalance_{pool.Id}", (double) poolBalance.Result.TotalAmount,
-                        poolBalance.Result.TotalAmountOverThreshold.ToString("0.#######"), walletBalance.Result.ToString("0.#######"));
+                    TelemetryUtil.TrackEvent($"Balance_{pool.Id}", new Dictionary<string, string>
+                    {
+                        {"TotalBalance", poolBalance.Result.TotalAmount.ToString("0.#######")},
+                        {"TotalOverThreshold", poolBalance.Result.TotalAmountOverThreshold.ToString("0.#######")},
+                        {"WalletBalance", walletBalance.Result.ToString("0.#######")}
+                    });
                 }
                 catch(InvalidOperationException ex)
                 {
