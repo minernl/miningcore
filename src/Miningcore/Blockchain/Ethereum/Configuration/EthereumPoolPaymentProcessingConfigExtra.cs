@@ -67,12 +67,7 @@ namespace Miningcore.Blockchain.Ethereum.Configuration
         /// Gas price factor used to pay top miners
         /// </summary>
         public float TopMinersGasLimitFactor { get; set; }
-
-        /// <summary>
-        /// Gas price allowed to pay top miners i.e. 3X means 3*TopMinersGasLimitFactor*MaxGasLimit 
-        /// </summary>
-        public float TopMinersGasLimit { get; set; }
-
+        
         /// <summary>
         /// if True, miners pay payment tx fees
         /// </summary>

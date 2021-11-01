@@ -83,6 +83,7 @@ namespace Miningcore.Blockchain.Ethereum
         private const decimal RecipientShare = 0.85m;
         private const float Sixty = 60;
         private const string TooManyTransactions = "There are too many transactions in the queue";
+        private ulong currentGasFee = 0;
 
         protected override string LogCategory => "Ethereum Payout Handler";
 
@@ -371,6 +372,16 @@ namespace Miningcore.Blockchain.Ethereum
                         logger.Info(() => $"[{LogCategory}] Latest gas fee is within par limit ({latestGasFee}<={maxGasLimit}), " +
                                           $"lastPmt={lastPaymentDate}, address={balance.Address}");
                     }
+                    else
+                    {
+                        var gasFeeFactor = poolConfig.PaymentProcessing.MinimumPayment / balance.Amount;
+                        if(currentGasFee > extraConfig.MaxGasLimit * gasFeeFactor)
+                        {
+                            logger.Info(() => $"[{LogCategory}] Latest gas fee is above par limit ({currentGasFee}>{extraConfig.MaxGasLimit * gasFeeFactor}), " +
+                                              $"feeFact={gasFeeFactor}, address={balance.Address}");
+                            continue;
+                        }
+                    }
                     logInfo = $", address={balance.Address}";
                     var txHash = await PayoutAsync(balance);
                     if(!string.IsNullOrEmpty(txHash))
@@ -525,22 +536,16 @@ namespace Miningcore.Blockchain.Ethereum
 
                 if(b.BaseFeePerGas <= 0) return;
 
-                if(b.BaseFeePerGas <= (extraConfig.MaxGasLimit * extraConfig.TopMinersGasLimit))
+                currentGasFee = b.BaseFeePerGas;
+                if(b.BaseFeePerGas <= (extraConfig.MaxGasLimit * extraConfig.TopMinersGasLimitFactor))
                 {
                     if(ondemandPayTask == null || ondemandPayTask.IsCompleted)
                     {
-                        for(float x = 1; x <= extraConfig.TopMinersGasLimit; x += extraConfig.TopMinersGasLimitFactor)
-                        {
-                            if(b.BaseFeePerGas > (extraConfig.MaxGasLimit * x)) continue;
+                        ondemandPayCts?.Dispose();
+                        ondemandPayCts = new CancellationTokenSource();
 
-                            ondemandPayCts?.Dispose();
-                            ondemandPayCts = new CancellationTokenSource();
-
-                            var minAmt = poolConfig.PaymentProcessing.MinimumPayment * (decimal) x;
-                            logger.Info($"[{LogCategory}] Triggering a new on-demand payouts since gas is low. gasfee={b.BaseFeePerGas}, gaslimit={extraConfig.MaxGasLimit * x}, min={minAmt:0.#######}");
-                            ondemandPayTask = PayoutBalancesOverThresholdAsync(ondemandPayCts.Token, minAmt);
-                            break;
-                        }
+                        logger.Info($"[{LogCategory}] Triggering a new on-demand payouts since gas is low. gasfee={b.BaseFeePerGas}");
+                        ondemandPayTask = PayoutBalancesOverThresholdAsync(ondemandPayCts.Token);
                     }
                     else
                     {
@@ -895,11 +900,12 @@ namespace Miningcore.Blockchain.Ethereum
             return null;
         }
 
-        private async Task PayoutBalancesOverThresholdAsync(CancellationToken ct, decimal amount)
+        private async Task PayoutBalancesOverThresholdAsync(CancellationToken ct)
         {
-            logger.Info(() => $"[{LogCategory}] Processing payout for pool [{poolConfig.Id}] with min > {amount}");
+            logger.Info(() => $"[{LogCategory}] Processing payout for pool [{poolConfig.Id}]");
 
-            var poolBalancesOverMinimum = await TelemetryUtil.TrackDependency(() => cf.Run(con => balanceRepo.GetPoolBalancesOverThresholdAsync(con, poolConfig.Id, amount)),
+            var poolBalancesOverMinimum = await TelemetryUtil.TrackDependency(() => cf.Run(con =>
+                    balanceRepo.GetPoolBalancesOverThresholdAsync(con, poolConfig.Id, poolConfig.PaymentProcessing.MinimumPayment)),
                 DependencyType.Sql, "GetPoolBalancesOverThresholdAsync", "GetPoolBalancesOverThresholdAsync");
 
             if(poolBalancesOverMinimum.Length > 0)
@@ -916,7 +922,7 @@ namespace Miningcore.Blockchain.Ethereum
                 }
             }
             else
-                logger.Info(() => $"[{LogCategory}] No balances over configured minimum payout {amount:0.#######} for pool {poolConfig.Id}");
+                logger.Info(() => $"[{LogCategory}] No balances over configured minimum payout {poolConfig.PaymentProcessing.MinimumPayment:0.#######} for pool {poolConfig.Id}");
         }
 
         private async Task<ulong?> GetLatestGasFee()
