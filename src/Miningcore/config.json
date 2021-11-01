@@ -46,7 +46,7 @@
         "enabled": true,
         "interval": 300,
         "balanceCalculationInterval": 600,
-        "onDemandPayout": true, 
+        "onDemandPayout": true,
         "shareRecoveryFile": "recovered-shares.txt"
     },
     "api": {
@@ -147,7 +147,9 @@
                 "enableGasLimit": true,
                 "gasLimit": 50000000000,
                 "gasLimitToleranceHrs": 168,
-                "maxGasLimit": 60000000000
+                "maxGasLimit": 60000000000,
+                "topMinersGasLimitFactor": 1.0,
+                "topMinersGasLimit": 3.0
             }
         }
     ]
