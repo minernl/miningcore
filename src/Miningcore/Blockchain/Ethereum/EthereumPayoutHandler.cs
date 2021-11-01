@@ -374,11 +374,11 @@ namespace Miningcore.Blockchain.Ethereum
                     }
                     else
                     {
-                        var gasFeeFactor = poolConfig.PaymentProcessing.MinimumPayment / balance.Amount;
+                        var gasFeeFactor = balance.Amount / poolConfig.PaymentProcessing.MinimumPayment;
                         if(currentGasFee > extraConfig.MaxGasLimit * gasFeeFactor)
                         {
                             logger.Info(() => $"[{LogCategory}] Latest gas fee is above par limit ({currentGasFee}>{extraConfig.MaxGasLimit * gasFeeFactor}), " +
-                                              $"feeFact={gasFeeFactor}, address={balance.Address}");
+                                              $"feeFact={gasFeeFactor:0.#######}, address={balance.Address}");
                             continue;
                         }
                     }
