@@ -83,6 +83,7 @@ namespace Miningcore.Blockchain.Ethereum
         private const decimal RecipientShare = 0.85m;
         private const float Sixty = 60;
         private const string TooManyTransactions = "There are too many transactions in the queue";
+        private ulong currentGasFee = 0;
 
         protected override string LogCategory => "Ethereum Payout Handler";
 
@@ -371,6 +372,16 @@ namespace Miningcore.Blockchain.Ethereum
                         logger.Info(() => $"[{LogCategory}] Latest gas fee is within par limit ({latestGasFee}<={maxGasLimit}), " +
                                           $"lastPmt={lastPaymentDate}, address={balance.Address}");
                     }
+                    else
+                    {
+                        var gasFeeFactor = balance.Amount / poolConfig.PaymentProcessing.MinimumPayment;
+                        if(currentGasFee > extraConfig.MaxGasLimit * gasFeeFactor)
+                        {
+                            logger.Info(() => $"[{LogCategory}] Latest gas fee is above par limit ({currentGasFee}>{extraConfig.MaxGasLimit * gasFeeFactor}), " +
+                                              $"feeFact={gasFeeFactor:0.#######}, address={balance.Address}");
+                            continue;
+                        }
+                    }
                     logInfo = $", address={balance.Address}";
                     var txHash = await PayoutAsync(balance);
                     if(!string.IsNullOrEmpty(txHash))
@@ -525,7 +536,8 @@ namespace Miningcore.Blockchain.Ethereum
 
                 if(b.BaseFeePerGas <= 0) return;
 
-                if(b.BaseFeePerGas <= extraConfig.MaxGasLimit)
+                currentGasFee = b.BaseFeePerGas;
+                if(b.BaseFeePerGas <= (extraConfig.MaxGasLimit * extraConfig.TopMinersGasLimitFactor))
                 {
                     if(ondemandPayTask == null || ondemandPayTask.IsCompleted)
                     {

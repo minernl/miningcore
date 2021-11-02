@@ -1,30 +1,28 @@
-
-
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DependencyCollector;
 using Microsoft.ApplicationInsights.Extensibility;
-
+using NLog;
 
 namespace Miningcore.Util
 {
     public static class TelemetryUtil
     {
-        private static TelemetryClient telemetryClient = null;
-        private static DependencyTrackingTelemetryModule depModule = null;
+        private static TelemetryClient telemetryClient;
+        private static DependencyTrackingTelemetryModule depModule;
+        private static readonly ILogger Logger = LogManager.GetCurrentClassLogger();
 
-        public static void init(string applicationInsightsKey)
+        public static void Init(string applicationInsightsKey)
         {
-            if(!string.IsNullOrEmpty(applicationInsightsKey))
-            {
-                TelemetryConfiguration configuration = TelemetryConfiguration.CreateDefault();
-                configuration.InstrumentationKey = applicationInsightsKey;
-                telemetryClient = new TelemetryClient(configuration);
-                depModule = new DependencyTrackingTelemetryModule();
-                depModule.Initialize(configuration);
-            }
+            if(string.IsNullOrEmpty(applicationInsightsKey)) return;
+
+            var configuration = TelemetryConfiguration.CreateDefault();
+            configuration.InstrumentationKey = applicationInsightsKey;
+            telemetryClient = new TelemetryClient(configuration);
+            depModule = new DependencyTrackingTelemetryModule();
+            depModule.Initialize(configuration);
         }
 
         public static TelemetryClient GetTelemetryClient()
@@ -79,12 +77,18 @@ namespace Miningcore.Util
 
         public static void TrackMetric(string name, string dimension, double val, string dimensionVal)
         {
-            telemetryClient?.GetMetric(name, dimension).TrackValue(val, dimensionVal);
+            if(telemetryClient?.GetMetric(name, dimension).TrackValue(val, dimensionVal) == false)
+            {
+                Logger.Warn($"AI metrics limit reached for {name}-{dimension}");
+            }
         }
 
         public static void TrackMetric(string name, string dimension, string dimension2, double val, string dimensionVal, string dimensionVal2)
         {
-            telemetryClient?.GetMetric(name, dimension, dimension2).TrackValue(val, dimensionVal, dimensionVal2);
+            if(telemetryClient?.GetMetric(name, dimension, dimension2).TrackValue(val, dimensionVal, dimensionVal2) == false)
+            {
+                Logger.Warn($"AI metrics limit reached for {name}-{dimension}-{dimension2}");
+            }
         }
 
         public static void TrackEvent(string name, IDictionary<string, string> props)

@@ -352,7 +352,7 @@ Pool Fee:               {(poolConfig.RewardRecipients?.Any() == true ? poolConfi
             this.poolConfig = poolConfig;
             this.clusterConfig = clusterConfig;
 
-            TelemetryUtil.init(clusterConfig.Logging.AzureLogKey);
+            TelemetryUtil.Init(clusterConfig.Logging.AzureLogKey);
         }
 
         public abstract double HashrateFromShares(double shares, double interval);
