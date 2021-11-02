@@ -16,4 +16,4 @@ cd $SRC_DIR/src/Native/libcryptonight && make clean && make && yes| cp -rf libcr
 cd $SRC_DIR/src/Native/libcryptonote && make clean && make && yes| cp -rf libcryptonote.so $OUT_DIR
 
 #Build
-cd $SRC_DIR/src && dotnet build --configuration $BUILD_CONFIG --framework net5.0  --output $OUT_DIR
+cd $SRC_DIR/src && dotnet build --configuration $BUILD_CONFIG --output $OUT_DIR
