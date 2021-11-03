@@ -257,11 +257,11 @@ namespace Miningcore.PoolCore
                 Logger.Warn("API is disabled");
             }
 
-            // start payment processor
+            // configure and start payment processor
+            payoutManager = container.Resolve<PayoutManager>();
+            payoutManager.Configure(clusterConfig);
             if(clusterConfig.PaymentProcessing?.Enabled == true && clusterConfig.Pools.Any(x => x.PaymentProcessing?.Enabled == true))
             {
-                payoutManager = container.Resolve<PayoutManager>();
-                payoutManager.Configure(clusterConfig);
                 payoutManager.Start();
             }
             else
