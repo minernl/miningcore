@@ -253,7 +253,7 @@ namespace Miningcore.Payments.PaymentSchemes
             if(!done)
                 throw new OverflowException("Did not go through all shares");
 
-            Logger.Info(() => $"Balance-calculation for pool {poolConfig.Id} completed with accumulated score {accumulatedScore:0.#######} ({accumulatedScore * 100:0.#####}%)");
+            Logger.Info(() => $"Balance-calculation for pool {poolConfig.Id} completed with accumulated score {accumulatedScore.ToStr()} ({accumulatedScore * 100:0.#####}%)");
 
             return shareCutOffDate;
         }

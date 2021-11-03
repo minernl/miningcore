@@ -553,7 +553,7 @@ namespace Miningcore.Blockchain.Cryptonote
             await walletDaemon.ExecuteCmdSingleAsync<JToken>(logger, CryptonoteWalletCommands.Store);
         }
 
-        public Task<string> PayoutAsync(Balance balance)
+        public Task<TransactionReceipt> PayoutAsync(Balance balance)
         {
             throw new NotImplementedException();
         }

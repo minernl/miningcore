@@ -91,14 +91,13 @@ namespace Miningcore.Payments
         {
             var success = true;
             var timer = System.Diagnostics.Stopwatch.StartNew();
-            Decimal amount = 0;
-            IPayoutHandler handler = null;
+            decimal amount = 0;
             try
             {
-                handler = await ResolveAndConfigurePayoutHandlerAsync(pool);
+                var handler = await ResolveAndConfigurePayoutHandlerAsync(pool);
                 var balance = await cf.Run(con => balanceRepo.GetBalanceWithPaidDateAsync(con, pool.Id, miner));
                 amount = balance.Amount;
-                return await handler.PayoutAsync(balance);
+                return (await handler.PayoutAsync(balance))?.TransactionHash;
             }
             catch(Exception ex)
             {
@@ -176,9 +175,9 @@ namespace Miningcore.Payments
 
                     TelemetryUtil.TrackEvent($"Balance_{pool.Id}", new Dictionary<string, string>
                     {
-                        {"TotalBalance", poolBalance.Result.TotalAmount.ToString("0.#######")},
-                        {"TotalOverThreshold", poolBalance.Result.TotalAmountOverThreshold.ToString("0.#######")},
-                        {"WalletBalance", walletBalance.Result.ToString("0.#######")}
+                        {"TotalBalance", poolBalance.Result.TotalAmount.ToStr()},
+                        {"TotalOverThreshold", poolBalance.Result.TotalAmountOverThreshold.ToStr()},
+                        {"WalletBalance", walletBalance.Result.ToStr()}
                     });
                 }
                 catch(InvalidOperationException ex)
@@ -358,7 +357,7 @@ namespace Miningcore.Payments
                 }
             }
             else
-                Logger.Info(() => $"No balances over configured minimum payout {pool.PaymentProcessing.MinimumPayment:0.#######} for pool {pool.Id}");
+                Logger.Info(() => $"No balances over configured minimum payout {pool.PaymentProcessing.MinimumPayment.ToStr()} for pool {pool.Id}");
         }
 
         private Task NotifyPayoutFailureAsync(Balance[] balances, PoolConfig pool, Exception ex)
