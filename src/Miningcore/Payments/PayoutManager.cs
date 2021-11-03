@@ -97,7 +97,7 @@ namespace Miningcore.Payments
                 var handler = await ResolveAndConfigurePayoutHandlerAsync(pool);
                 var balance = await cf.Run(con => balanceRepo.GetBalanceWithPaidDateAsync(con, pool.Id, miner));
                 amount = balance.Amount;
-                return (await handler.PayoutAsync(balance))?.TransactionHash;
+                return (await handler.PayoutAsync(balance))?.Id;
             }
             catch(Exception ex)
             {

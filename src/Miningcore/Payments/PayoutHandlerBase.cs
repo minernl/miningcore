@@ -90,7 +90,7 @@ namespace Miningcore.Payments
         protected ILogger logger;
         protected PoolConfig poolConfig;
         private const int RetryCount = 8;
-        
+
         protected abstract string LogCategory { get; }
 
         protected void BuildFaultHandlingPolicy()
@@ -187,7 +187,7 @@ namespace Miningcore.Payments
 
             // admin notifications
             var explorerLinks = !string.IsNullOrEmpty(coin.ExplorerTxLink)
-                ? txHashes.Select(x => string.Format(coin.ExplorerTxLink, x.Key.TransactionHash)).ToArray()
+                ? txHashes.Select(x => string.Format(coin.ExplorerTxLink, x.Key.Id)).ToArray()
                 : Array.Empty<string>();
 
             foreach(var (receipt, balance) in txHashes)
@@ -195,13 +195,13 @@ namespace Miningcore.Payments
                 TelemetryUtil.TrackEvent("Payout_" + poolConfig.Id, new Dictionary<string, string> {
                         {"wallet", balance.Address},
                         {"amount", balance.Amount.ToStr()},
-                        {"gas", receipt.GasUsed.ToStr()},
-                        {"gasFee", receipt.EffectiveGasPrice.ToStr()}
+                        {"fees", receipt.Fees.ToStr()},
+                        {"fees2", receipt.Fees2.ToStr()}
                     });
             }
 
             messageBus.SendMessage(new PaymentNotification(poolId, null, txHashes.Values.Sum(x => x.Amount), coin.Symbol, txHashes.Count,
-                txHashes.Keys.Select(h => h.TransactionHash).ToArray(), explorerLinks, txFee));
+                txHashes.Keys.Select(h => h.Id).ToArray(), explorerLinks, txFee));
         }
 
         protected virtual void NotifyPayoutSuccess(string poolId, Balance[] balances, string[] txHashes, decimal? txFee)
@@ -213,8 +213,8 @@ namespace Miningcore.Payments
                 ? txHashes.Select(x => string.Format(coin.ExplorerTxLink, x)).ToArray()
                 : Array.Empty<string>();
 
-           messageBus.SendMessage(new PaymentNotification(poolId, null, balances.Sum(x => x.Amount), coin.Symbol, balances.Length,
-                txHashes, explorerLinks, txFee));
+            messageBus.SendMessage(new PaymentNotification(poolId, null, balances.Sum(x => x.Amount), coin.Symbol, balances.Length,
+                 txHashes, explorerLinks, txFee));
         }
 
         protected virtual void NotifyPayoutFailure(string poolId, Balance[] balances, string error, Exception ex)

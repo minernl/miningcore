@@ -28,7 +28,6 @@ using Nethereum.Web3.Accounts;
 using Newtonsoft.Json;
 using Block = Miningcore.Persistence.Model.Block;
 using Contract = Miningcore.Contracts.Contract;
-using TransactionReceipt = Miningcore.Persistence.Model.TransactionReceipt;
 
 namespace Miningcore.Blockchain.Ethereum
 {
@@ -455,13 +454,13 @@ namespace Miningcore.Blockchain.Ethereum
                 if(string.IsNullOrEmpty(response.Response) || EthereumConstants.ZeroHashPattern.IsMatch(response.Response))
                     throw new Exception($"{EthCommands.SendTx} did not return a valid transaction hash");
 
-                receipt = new TransactionReceipt(response.Response);
+                receipt = new TransactionReceipt { Id = response.Response };
             }
 
-            logger.Info(() => $"[{LogCategory}] Payout transaction id: {receipt.TransactionHash}");
+            logger.Info(() => $"[{LogCategory}] Payout transaction id: {receipt.Id}");
 
             // update db
-            await PersistPaymentsAsync(new[] { balance }, receipt.TransactionHash);
+            await PersistPaymentsAsync(new[] { balance }, receipt.Id);
 
             // done
             return receipt;
@@ -626,7 +625,7 @@ namespace Miningcore.Blockchain.Ethereum
                 throw new Exception($"Error fetching tx receipts: {string.Join(", ", results.Where(x => x.Error != null).Select(y => y.Error.Message))}");
 
             // create lookup table
-            var gasUsed = results.Select(x => x.Response.ToObject<TransactionReceipt>())
+            var gasUsed = results.Select(x => x.Response.ToObject<DaemonResponses.TransactionReceipt>())
                 .ToDictionary(x => x.TransactionHash, x => x.GasUsed);
 
             // accumulate
@@ -842,7 +841,12 @@ namespace Miningcore.Blockchain.Ethereum
                         return null;
                     }
 
-                    return new TransactionReceipt(transaction);
+                    return new TransactionReceipt
+                    {
+                        Id = transaction.TransactionHash,
+                        Fees = Web3.Convert.FromWei(transaction.EffectiveGasPrice),
+                        Fees2 = Web3.Convert.FromWei(transaction.GasUsed)
+                    };
                 }
 
                 logger.Warn($"Web3Tx GetEtherTransferService is null. addr={balance.Address}, amt={balance.Amount}");
