@@ -148,7 +148,8 @@
                 "gasLimit": 50000000000,
                 "gasLimitToleranceHrs": 168,
                 "maxGasLimit": 60000000000,
-                "topMinersGasLimitFactor": 3.0
+                "topMinersGasLimitFactor": 3.0,
+                "payoutBatchSize": 5
             }
         }
     ]

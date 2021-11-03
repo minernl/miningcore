@@ -328,7 +328,7 @@ namespace Miningcore.Blockchain.Bitcoin
             }
         }
 
-        public Task<string> PayoutAsync(Balance balance)
+        public Task<TransactionReceipt> PayoutAsync(Balance balance)
         {
             throw new NotImplementedException();
         }
