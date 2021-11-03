@@ -70,7 +70,7 @@ namespace Miningcore.Payments.PaymentSchemes
             var shares = new Dictionary<string, double>();
             var rewards = new Dictionary<string, decimal>();
             var paidUntil = DateTime.UtcNow;
-            var shareCutOffDate = await CalculateRewards(poolConfig, shares, rewards, blockReward, paidUntil);
+            var shareCutOffDate = await CalculateRewards(poolConfig, payoutHandler, shares, rewards, blockReward, paidUntil);
 
             // update balances
             foreach(var address in rewards.Keys)
@@ -142,6 +142,7 @@ namespace Miningcore.Payments.PaymentSchemes
 
         private async Task<DateTime?> CalculateRewards(
             PoolConfig poolConfig,
+            IPayoutHandler payoutHandler,
             Dictionary<string, double> shares,
             Dictionary<string, decimal> rewards,
             decimal blockData,
@@ -237,6 +238,12 @@ namespace Miningcore.Payments.PaymentSchemes
             {
                 valPerMHash = (blockData / (Decimal) sumDifficulty) * 1000000;  // count MegaHashes instead of hashes.
             }
+
+            if(payoutHandler.MinersPayTxFees())
+            {
+                valPerMHash -= (payoutHandler.GetTransactionDeduction(valPerMHash));
+            }
+
             poolConfig.PaymentProcessing.HashValue = valPerMHash;
 
             // Update the hashvalue in the database
