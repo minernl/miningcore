@@ -98,7 +98,7 @@ namespace Miningcore.Blockchain.Ethereum
             var jsonSerializerSettings = ctx.Resolve<JsonSerializerSettings>();
 
             var daemonEndpoints = poolConfig.Daemons.Where(x => string.IsNullOrEmpty(x.Category)).ToArray();
-            daemon = new DaemonClient(jsonSerializerSettings, messageBus, clusterConfig.ClusterName ?? poolConfig.PoolName, poolConfig.Id);
+            daemon = new DaemonClient(jsonSerializerSettings, messageBus, clusterConfig?.ClusterName ?? poolConfig.PoolName, poolConfig.Id);
             daemon.Configure(daemonEndpoints);
             daemonEndpointConfig = daemonEndpoints.First();
 
