@@ -259,7 +259,7 @@ namespace Miningcore.PoolCore
 
             // configure and start payment processor
             payoutManager = container.Resolve<PayoutManager>();
-            payoutManager.Conpafigure(clusterConfig);
+            payoutManager.Configure(clusterConfig);
             if(clusterConfig.PaymentProcessing?.Enabled == true && clusterConfig.Pools.Any(x => x.PaymentProcessing?.Enabled == true))
             {
                 payoutManager.Start();
