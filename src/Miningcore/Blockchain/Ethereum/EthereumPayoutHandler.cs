@@ -8,12 +8,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
 using AutoMapper;
-using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using Miningcore.Blockchain.Ethereum.Configuration;
 using Miningcore.Blockchain.Ethereum.DaemonRequests;
-using Miningcore.Blockchain.Ethereum.DaemonResponses;
 using Miningcore.Configuration;
 using Miningcore.DaemonInterface;
 using Miningcore.DataStore.Cloud.EtherScan;
@@ -73,7 +70,6 @@ namespace Miningcore.Blockchain.Ethereum
         private EthereumPoolConfigExtra extraPoolConfig;
         private EthereumPoolPaymentProcessingConfigExtra extraConfig;
         private DaemonEndpointConfig daemonEndpointConfig;
-        private CancellationTokenSource ondemandPayCts;
         private Task ondemandPayTask;
         private Web3 web3Connection;
         private bool isParity = true;
@@ -102,7 +98,7 @@ namespace Miningcore.Blockchain.Ethereum
             var jsonSerializerSettings = ctx.Resolve<JsonSerializerSettings>();
 
             var daemonEndpoints = poolConfig.Daemons.Where(x => string.IsNullOrEmpty(x.Category)).ToArray();
-            daemon = new DaemonClient(jsonSerializerSettings, messageBus, clusterConfig.ClusterName ?? poolConfig.PoolName, poolConfig.Id);
+            daemon = new DaemonClient(jsonSerializerSettings, messageBus, clusterConfig?.ClusterName ?? poolConfig.PoolName, poolConfig.Id);
             daemon.Configure(daemonEndpoints);
             daemonEndpointConfig = daemonEndpoints.First();
 
@@ -327,7 +323,7 @@ namespace Miningcore.Blockchain.Ethereum
             }
 
             // Check gas fee in the beginning once for scheduled payout
-            if(extraConfig.EnableGasLimit && !clusterConfig.PaymentProcessing.OnDemandPayout)
+            if(extraConfig.EnableGasLimit)
             {
                 var latestGasFee = await GetLatestGasFee();
                 if(latestGasFee > extraConfig.MaxGasLimit)
@@ -338,10 +334,8 @@ namespace Miningcore.Blockchain.Ethereum
                 }
             }
 
-            var txHashes = new List<string>();
+            var txHashes = new Dictionary<TransactionReceipt, Balance>();
             var logInfo = string.Empty;
-
-            var paidBalances = new List<Balance>();
 
             foreach(var balance in balances)
             {
@@ -354,7 +348,7 @@ namespace Miningcore.Blockchain.Ethereum
                 try
                 {
                     // On-demand payout is based on gas fee so no need to check again
-                    if(extraConfig.EnableGasLimit && !clusterConfig.PaymentProcessing.OnDemandPayout)
+                    if(extraConfig.EnableGasLimit)
                     {
                         //Check if gas fee is below par range
                         var latestGasFee = await GetLatestGasFee();
@@ -372,23 +366,10 @@ namespace Miningcore.Blockchain.Ethereum
                         logger.Info(() => $"[{LogCategory}] Latest gas fee is within par limit ({latestGasFee}<={maxGasLimit}), " +
                                           $"lastPmt={lastPaymentDate}, address={balance.Address}");
                     }
-                    else
-                    {
-                        var gasFeeFactor = balance.Amount / poolConfig.PaymentProcessing.MinimumPayment;
-                        if(currentGasFee > extraConfig.MaxGasLimit * gasFeeFactor)
-                        {
-                            logger.Info(() => $"[{LogCategory}] Latest gas fee is above par limit ({currentGasFee}>{extraConfig.MaxGasLimit * gasFeeFactor}), " +
-                                              $"feeFact={gasFeeFactor:0.#######}, address={balance.Address}");
-                            continue;
-                        }
-                    }
+
                     logInfo = $", address={balance.Address}";
-                    var txHash = await PayoutAsync(balance);
-                    if(!string.IsNullOrEmpty(txHash))
-                    {
-                        txHashes.Add(txHash);
-                        paidBalances.Add(balance);
-                    }
+                    var receipt = await PayoutAsync(balance);
+                    if(receipt != null) txHashes.Add(receipt, balance);
                 }
                 catch(Nethereum.JsonRpc.Client.RpcResponseException ex)
                 {
@@ -410,18 +391,18 @@ namespace Miningcore.Blockchain.Ethereum
             }
 
             if(txHashes.Any())
-                NotifyPayoutSuccess(poolConfig.Id, paidBalances.ToArray(), txHashes.ToArray(), null);
+                NotifyPayoutSuccess(poolConfig.Id, txHashes, null);
 
-            logger.Info(() => $"[{LogCategory}] Payouts complete.  Successfully processed {txHashes.Count} of {balances?.Length} payouts.");
+            logger.Info(() => $"[{LogCategory}] Payouts complete.  Successfully processed {txHashes.Count} of {balances.Length} payouts.");
         }
 
-        public async Task<string> PayoutAsync(Balance balance)
+        public async Task<TransactionReceipt> PayoutAsync(Balance balance)
         {
-            string txId;
+            TransactionReceipt receipt;
             // If web3Connection was created, payout from self managed wallet
             if(web3Connection != null)
             {
-                txId = await PayoutWebAsync(balance);
+                receipt = await PayoutWebAsync(balance);
             }
             else // else payout from daemon managed wallet
             {
@@ -430,15 +411,15 @@ namespace Miningcore.Blockchain.Ethereum
                     logger.Error(() => $"[{LogCategory}] Web3 is configured, but web3Connection is null!");
                     throw new Exception($"Unable to process payouts because web3 is null");
                 }
+
                 try
                 {
-
                     var unlockResponse = await daemon.ExecuteCmdSingleAsync<object>(logger, EthCommands.UnlockAccount, new[]
                     {
-                    poolConfig.Address,
-                    extraConfig.CoinbasePassword,
-                    null
-                });
+                        poolConfig.Address,
+                        extraConfig.CoinbasePassword,
+                        null
+                    });
 
                     if(unlockResponse.Error != null || unlockResponse.Response == null || (bool) unlockResponse.Response == false)
                     {
@@ -473,16 +454,16 @@ namespace Miningcore.Blockchain.Ethereum
                 if(string.IsNullOrEmpty(response.Response) || EthereumConstants.ZeroHashPattern.IsMatch(response.Response))
                     throw new Exception($"{EthCommands.SendTx} did not return a valid transaction hash");
 
-                txId = response.Response;
+                receipt = new TransactionReceipt { Id = response.Response };
             }
 
-            logger.Info(() => $"[{LogCategory}] Payout transaction id: {txId}");
+            logger.Info(() => $"[{LogCategory}] Payout transaction id: {receipt.Id}");
 
             // update db
-            await PersistPaymentsAsync(new[] { balance }, txId);
+            await PersistPaymentsAsync(new[] { balance }, receipt.Id);
 
             // done
-            return txId;
+            return receipt;
         }
 
         public decimal GetTransactionDeduction(decimal amount)
@@ -537,26 +518,16 @@ namespace Miningcore.Blockchain.Ethereum
                 if(b.BaseFeePerGas <= 0) return;
 
                 currentGasFee = b.BaseFeePerGas;
-                if(b.BaseFeePerGas <= (extraConfig.MaxGasLimit * extraConfig.TopMinersGasLimitFactor))
-                {
-                    if(ondemandPayTask == null || ondemandPayTask.IsCompleted)
-                    {
-                        ondemandPayCts?.Dispose();
-                        ondemandPayCts = new CancellationTokenSource();
+                if(b.BaseFeePerGas > (extraConfig.MaxGasLimit * extraConfig.TopMinersGasLimitFactor)) return;
 
-                        logger.Info($"[{LogCategory}] Triggering a new on-demand payouts since gas is low. gasfee={b.BaseFeePerGas}");
-                        ondemandPayTask = PayoutBalancesOverThresholdAsync(ondemandPayCts.Token);
-                    }
-                    else
-                    {
-                        logger.Info($"[{LogCategory}] Existing on-demand payouts is still processing. gasfee={b.BaseFeePerGas}");
-                    }
+                if(ondemandPayTask == null || ondemandPayTask.IsCompleted)
+                {
+                    logger.Info($"[{LogCategory}] Triggering a new on-demand payouts since gas is low. gasfee={b.BaseFeePerGas}");
+                    ondemandPayTask = PayoutBalancesOverThresholdAsync();
                 }
                 else
                 {
-                    if(ondemandPayTask == null || ondemandPayTask.IsCompleted) return;
-                    logger.Info($"[{LogCategory}] Canceling on-demand payouts since gas is high. gasfee={b.BaseFeePerGas}");
-                    ondemandPayCts.Cancel();
+                    logger.Info($"[{LogCategory}] Existing on-demand payouts is still processing. gasfee={b.BaseFeePerGas}");
                 }
             });
         }
@@ -654,7 +625,7 @@ namespace Miningcore.Blockchain.Ethereum
                 throw new Exception($"Error fetching tx receipts: {string.Join(", ", results.Where(x => x.Error != null).Select(y => y.Error.Message))}");
 
             // create lookup table
-            var gasUsed = results.Select(x => x.Response.ToObject<TransactionReceipt>())
+            var gasUsed = results.Select(x => x.Response.ToObject<DaemonResponses.TransactionReceipt>())
                 .ToDictionary(x => x.TransactionHash, x => x.GasUsed);
 
             // accumulate
@@ -733,11 +704,6 @@ namespace Miningcore.Blockchain.Ethereum
             {
                 logger.Warn(() => $"Unable to determine Ethereum Chain ID: " + chainIdResult);
             }
-        }
-
-        private static string writeHex(BigInteger value)
-        {
-            return (value.ToString("x").TrimStart('0'));
         }
 
         private async Task<decimal> CalculateBlockData(PoolConfig poolConfig)
@@ -852,7 +818,7 @@ namespace Miningcore.Blockchain.Ethereum
             return blockAvgTime;
         }
 
-        private async Task<string> PayoutWebAsync(Balance balance)
+        private async Task<TransactionReceipt> PayoutWebAsync(Balance balance)
         {
             try
             {
@@ -869,20 +835,21 @@ namespace Miningcore.Blockchain.Ethereum
                         return null;
                     }
 
-                    var txId = transaction.TransactionHash;
-
-                    if(string.IsNullOrEmpty(txId) || EthereumConstants.ZeroHashPattern.IsMatch(txId))
+                    if(string.IsNullOrEmpty(transaction.TransactionHash) || EthereumConstants.ZeroHashPattern.IsMatch(transaction.TransactionHash))
                     {
-                        logger.Error($"Web3Tx failed without a valid transaction hash. txId={txId}, addr={balance.Address}, amt={balance.Amount}");
+                        logger.Error($"Web3Tx failed without a valid transaction hash. txId={transaction.TransactionHash}, addr={balance.Address}, amt={balance.Amount}");
                         return null;
                     }
 
-                    return txId;
+                    return new TransactionReceipt
+                    {
+                        Id = transaction.TransactionHash,
+                        Fees = Web3.Convert.FromWei(transaction.EffectiveGasPrice),
+                        Fees2 = Web3.Convert.FromWei(transaction.GasUsed)
+                    };
                 }
-                else
-                {
-                    logger.Warn($"Web3Tx GetEtherTransferService is null. addr={balance.Address}, amt={balance.Amount}");
-                }
+
+                logger.Warn($"Web3Tx GetEtherTransferService is null. addr={balance.Address}, amt={balance.Amount}");
             }
             catch(Nethereum.JsonRpc.Client.RpcResponseException ex)
             {
@@ -900,7 +867,7 @@ namespace Miningcore.Blockchain.Ethereum
             return null;
         }
 
-        private async Task PayoutBalancesOverThresholdAsync(CancellationToken ct)
+        private async Task PayoutBalancesOverThresholdAsync()
         {
             logger.Info(() => $"[{LogCategory}] Processing payout for pool [{poolConfig.Id}]");
 
@@ -912,17 +879,85 @@ namespace Miningcore.Blockchain.Ethereum
             {
                 try
                 {
-                    await TelemetryUtil.TrackDependency(() => PayoutAsync(poolBalancesOverMinimum, ct), DependencyType.Sql, "PayoutBalancesOverThresholdAsync",
+                    await TelemetryUtil.TrackDependency(() => PayoutBatchAsync(poolBalancesOverMinimum), DependencyType.Sql, "PayoutBalancesOverThresholdAsync",
                         $"miners:{poolBalancesOverMinimum.Length}");
                 }
-
                 catch(Exception ex)
                 {
                     logger.Error(ex, $"[{LogCategory}] Error while processing payout balances over threshold");
                 }
             }
             else
-                logger.Info(() => $"[{LogCategory}] No balances over configured minimum payout {poolConfig.PaymentProcessing.MinimumPayment:0.#######} for pool {poolConfig.Id}");
+                logger.Info(() => $"[{LogCategory}] No balances over configured minimum payout {poolConfig.PaymentProcessing.MinimumPayment.ToStr()} for pool {poolConfig.Id}");
+        }
+
+        private async Task PayoutBatchAsync(Balance[] balances)
+        {
+            var batch = balances.Take(extraConfig.PayoutBatchSize).ToList();
+            logger.Info(() => $"[{LogCategory}] Beginning payout to top {batch.Count} miners.");
+
+            // ensure we have peers
+            var infoResponse = await daemon.ExecuteCmdSingleAsync<string>(logger, EthCommands.GetPeerCount);
+            if(networkType == EthereumNetworkType.Main && (infoResponse.Error != null || string.IsNullOrEmpty(infoResponse.Response) || infoResponse.Response.IntegralFromHex<int>() < EthereumConstants.MinPayoutPeerCount))
+            {
+                logger.Warn(() => $"[{LogCategory}] Payout aborted. Not enough peers (4 required)");
+                return;
+            }
+
+            var txHashes = new Dictionary<TransactionReceipt, Balance>();
+            var logInfo = string.Empty;
+            var payTasks = new List<Task>(batch.Count);
+
+            foreach(var balance in batch)
+            {
+                var gasFeeFactor = balance.Amount / poolConfig.PaymentProcessing.MinimumPayment;
+                if(currentGasFee > extraConfig.MaxGasLimit * gasFeeFactor)
+                {
+                    logger.Info(() => $"[{LogCategory}] Latest gas fee is above par limit ({currentGasFee}>{extraConfig.MaxGasLimit * gasFeeFactor}), " +
+                                      $"feeFact={gasFeeFactor.ToStr()}, address={balance.Address}");
+                    continue;
+                }
+
+                payTasks.Add(Task.Run(async () =>
+                {
+                    logInfo = $", address={balance.Address}";
+                    try
+                    {
+                        var receipt = await PayoutAsync(balance);
+                        if(receipt != null)
+                        {
+                            lock(txHashes)
+                            {
+                                txHashes.Add(receipt, balance);
+                            }
+                        }
+                    }
+                    catch(Nethereum.JsonRpc.Client.RpcResponseException ex)
+                    {
+                        if(ex.Message.Contains("Insufficient funds", StringComparison.OrdinalIgnoreCase))
+                        {
+                            logger.Warn($"[{LogCategory}] {ex.Message}{logInfo}");
+                        }
+                        else
+                        {
+                            logger.Error(ex, $"[{LogCategory}] {ex.Message}{logInfo}");
+                        }
+
+                        NotifyPayoutFailure(poolConfig.Id, new[] { balance }, ex.Message, null);
+                    }
+                    catch(Exception ex)
+                    {
+                        logger.Error(ex, $"[{LogCategory}] {ex.Message}{logInfo}");
+                        NotifyPayoutFailure(poolConfig.Id, new[] { balance }, ex.Message, null);
+                    }
+                }));
+            }
+            // Wait for all payment to finish
+            await Task.WhenAll(payTasks);
+
+            if(txHashes.Any()) NotifyPayoutSuccess(poolConfig.Id, txHashes, null);
+
+            logger.Info(() => $"[{LogCategory}] Payouts complete.  Successfully processed top {txHashes.Count} of {balances.Length} payouts.");
         }
 
         private async Task<ulong?> GetLatestGasFee()
