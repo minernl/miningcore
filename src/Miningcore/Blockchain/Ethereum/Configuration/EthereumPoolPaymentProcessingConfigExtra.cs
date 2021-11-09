@@ -68,11 +68,6 @@ namespace Miningcore.Blockchain.Ethereum.Configuration
         public ulong MaxGasLimit { get; set; }
 
         /// <summary>
-        /// Gas price factor used to pay top miners
-        /// </summary>
-        public float TopMinersGasLimitFactor { get; set; }
-
-        /// <summary>
         /// No of transactions to spawn on each on-demand payout cycle
         /// </summary>
         public int PayoutBatchSize { get; set; }
