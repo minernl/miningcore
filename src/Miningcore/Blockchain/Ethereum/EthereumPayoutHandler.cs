@@ -80,6 +80,8 @@ namespace Miningcore.Blockchain.Ethereum
         private const float Sixty = 60;
         private const string TooManyTransactions = "There are too many transactions in the queue";
         private ulong currentGasFee = 0;
+        private const decimal maxPayout = 0.1m; // ethereum
+        private const double maxBlockReward = 0.1d; //ethereum
 
         protected override string LogCategory => "Ethereum Payout Handler";
 
@@ -343,6 +345,12 @@ namespace Miningcore.Blockchain.Ethereum
                 {
                     logger.Info($"[{LogCategory}] Payouts canceled after paying user{logInfo}");
                     break;
+                }
+
+                if(balance.Amount.CompareTo(maxPayout) > 0)
+                {
+                    logger.Error(() => $"[{LogCategory}] Attempting to payout more than maximum in a single transaction. amount: {balance.Amount} wallet {balance.Address}");
+                    continue;
                 }
 
                 try
@@ -770,6 +778,12 @@ namespace Miningcore.Blockchain.Ethereum
             var blockFrequencyPerPayout = blockFrequency / (payoutInterval / Sixty);
             var blockData = recipientBlockReward / blockFrequencyPerPayout;
             logger.Info(() => $"BlockData : {blockData}, Network Block Time : {avgBlockTime}, Block Frequency : {blockFrequency}, PayoutInterval : {payoutInterval}");
+
+            if(blockData > maxBlockReward)
+            {
+                logger.Error(() => "Rewards calculation data is invalid. BlockData is above max threshold.");
+                throw new Exception("Invalid data for calculating mining rewards.  Aboriting updateBalances");
+            }
 
             return (decimal) blockData;
         }
