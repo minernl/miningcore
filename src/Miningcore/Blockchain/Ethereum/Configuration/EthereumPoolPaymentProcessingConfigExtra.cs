@@ -60,7 +60,7 @@ namespace Miningcore.Blockchain.Ethereum.Configuration
         /// <summary>
         /// Percentage as a decimal value between 0 and 100
         /// </summary>
-        public float GasDeductionPercentage { get; set; }
+        public decimal GasDeductionPercentage { get; set; }
 
         /// <summary>
         /// Maximum gas price allowed for the transaction outside the specified time frame since last payout for the miner

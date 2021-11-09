@@ -85,15 +85,11 @@ namespace Miningcore.Payments.PaymentSchemes
                         "GetBalance",
                         $"miner:{address}");
 
-                    // Calculate how much we should deduct for this amount (only if the balance is below the payout threshold)
-                    decimal txDeduction = 0;
-                    if(null == balance || balance.Amount < poolConfig.PaymentProcessing.MinimumPayment)
+                    // Calculate how much we should deduct for this amount
+                    decimal txDeduction = payoutHandler.GetTransactionDeduction(amount);
+                    if(txDeduction < 0 || txDeduction >= amount)
                     {
-                        txDeduction = payoutHandler.GetTransactionDeduction(amount);
-                        if(txDeduction < 0 || txDeduction >= amount)
-                        {
-                            Logger.Error(() => $"Payouts are mis-configured. Transaction Deduction was calculated to be an invalid value: {payoutHandler.FormatAmount(txDeduction)}");
-                        }
+                        Logger.Error(() => $"Payouts are mis-configured. Transaction Deduction was calculated to be an invalid value: {payoutHandler.FormatAmount(txDeduction)}");
                     }
 
                     // Check if we have deductions enabled
