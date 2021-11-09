@@ -723,17 +723,22 @@ namespace Miningcore.Blockchain.Ethereum
 
             if(networkHashRate == 0)
             {
-                logger.Warn(() => "NetworkHashRate from daemon is zero!");
-                networkHashRate = int.MaxValue;
+                throw new Exception($"Invalid state in CalculateBlockData - NetworkHashRate is 0");
             }
-            //double avgBlockTime = blockChainStats.NetworkDifficulty / networkHashRate;
-            var avgBlockTime = await GetNetworkBlockAverageTime(poolConfig);
 
             if(poolHashRate == 0)
             {
-                logger.Info(() => "Pool hashrate is currently zero.  Payouts will also be zero.");
-                poolHashRate = 1;
+                throw new Exception($"Invalid state in CalculateBlockData - PoolHashRate is 0");
             }
+
+            //double avgBlockTime = blockChainStats.NetworkDifficulty / networkHashRate;
+            var avgBlockTime = await GetNetworkBlockAverageTime(poolConfig);
+
+            if (avgBlockTime == 0)
+            {
+                throw new Exception($"Invalid state in CalculateBlockData - AvgBlockTime is 0");
+            }
+
             var blockFrequency = networkHashRate / poolHashRate * (avgBlockTime / Sixty);
 
             double maxBlockFrequency = poolConfig.PaymentProcessing.MaxBlockFrequency;
