@@ -90,6 +90,7 @@ namespace Miningcore.Payments.PaymentSchemes
                     if(txDeduction < 0 || txDeduction >= amount)
                     {
                         Logger.Error(() => $"Payouts are mis-configured. Transaction Deduction was calculated to be an invalid value: {payoutHandler.FormatAmount(txDeduction)}");
+                        continue;
                     }
 
                     // Check if we have deductions enabled
