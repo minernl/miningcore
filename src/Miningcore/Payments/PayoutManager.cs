@@ -73,6 +73,7 @@ namespace Miningcore.Payments
 
                 // Run the initial balance calc & payout
                 await UpdatePoolBalancesAsync();
+                
                 // The observable will trigger the observer once every interval
                 Observable.Interval(balanceCalculationInterval).Select(_ => Observable.FromAsync(UpdatePoolBalancesAsync)).Concat().Subscribe(cts.Token);
                 if(clusterConfig.PaymentProcessing.OnDemandPayout)
