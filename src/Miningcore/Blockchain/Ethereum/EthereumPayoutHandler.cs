@@ -349,7 +349,7 @@ namespace Miningcore.Blockchain.Ethereum
 
                 if(balance.Amount.CompareTo(maxPayout) > 0)
                 {
-                    logger.Error(() => $"[{LogCategory}] Attempting to payout more than maximum in a single transaction. amount: {balance.Amount} wallet {balance.Address}");
+                    logger.Error(() => $"[{LogCategory}] Aborting payout of more than maximum in a single transaction. amount: {balance.Amount} wallet {balance.Address}");
                     continue;
                 }
 
