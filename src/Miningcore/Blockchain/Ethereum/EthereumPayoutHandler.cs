@@ -734,6 +734,11 @@ namespace Miningcore.Blockchain.Ethereum
             //double avgBlockTime = blockChainStats.NetworkDifficulty / networkHashRate;
             var avgBlockTime = await GetNetworkBlockAverageTime(poolConfig);
 
+            if (avgBlockTime == 0)
+            {
+                throw new Exception($"Invalid state in CalculateBlockData - AvgBlockTime is 0");
+            }
+
             var blockFrequency = networkHashRate / poolHashRate * (avgBlockTime / Sixty);
 
             double maxBlockFrequency = poolConfig.PaymentProcessing.MaxBlockFrequency;
