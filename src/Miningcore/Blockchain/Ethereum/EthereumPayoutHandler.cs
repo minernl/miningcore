@@ -347,12 +347,6 @@ namespace Miningcore.Blockchain.Ethereum
                     break;
                 }
 
-                if(balance.Amount.CompareTo(maxPayout) > 0)
-                {
-                    logger.Error(() => $"[{LogCategory}] Aborting payout of more than maximum in a single transaction. amount: {balance.Amount} wallet {balance.Address}");
-                    continue;
-                }
-
                 try
                 {
                     // On-demand payout is based on gas fee so no need to check again
@@ -406,6 +400,12 @@ namespace Miningcore.Blockchain.Ethereum
 
         public async Task<TransactionReceipt> PayoutAsync(Balance balance)
         {
+            if(balance.Amount.CompareTo(maxPayout) > 0)
+            {
+                logger.Error(() => $"[{LogCategory}] Aborting payout of more than maximum in a single transaction. amount: {balance.Amount} wallet {balance.Address}");
+                throw new Exception("Aborting payout over maximum amount");
+            }
+
             TransactionReceipt receipt;
             // If web3Connection was created, payout from self managed wallet
             if(web3Connection != null)
