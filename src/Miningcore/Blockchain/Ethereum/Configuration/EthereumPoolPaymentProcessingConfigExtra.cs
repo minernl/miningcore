@@ -47,7 +47,6 @@ namespace Miningcore.Blockchain.Ethereum.Configuration
         /// </summary>
         public bool EnableGasLimit { get; set; }
 
-
         /// <summary>
         /// Gas price allowed for the transaction within specified time frame since last payout for the miner
         /// </summary>
@@ -57,6 +56,11 @@ namespace Miningcore.Blockchain.Ethereum.Configuration
         /// Time frame to use above gas limit since last payout for the miner
         /// </summary>
         public int GasLimitToleranceHrs { get; set; }
+
+        /// <summary>
+        /// Percentage as a decimal value between 0 and 100
+        /// </summary>
+        public float GasDeductionPercentage { get; set; }
 
         /// <summary>
         /// Maximum gas price allowed for the transaction outside the specified time frame since last payout for the miner

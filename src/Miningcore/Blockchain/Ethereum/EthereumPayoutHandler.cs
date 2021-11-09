@@ -511,23 +511,36 @@ namespace Miningcore.Blockchain.Ethereum
 
         public void OnDemandPayoutAsync()
         {
-            messageBus.Listen<NetworkBlockNotification>().Subscribe(b =>
+            messageBus.Listen<NetworkBlockNotification>().Subscribe(block =>
             {
-                logger.Info($"[{LogCategory}] NetworkBlockNotification height={b.BlockHeight}, gasfee={b.BaseFeePerGas}");
+                logger.Info($"[{LogCategory}] NetworkBlockNotification height={block.BlockHeight}, gasfee={block.BaseFeePerGas}");
 
-                if(b.BaseFeePerGas <= 0) return;
-
-                currentGasFee = b.BaseFeePerGas;
-                if(b.BaseFeePerGas > (extraConfig.MaxGasLimit * extraConfig.TopMinersGasLimitFactor)) return;
-
-                if(ondemandPayTask == null || ondemandPayTask.IsCompleted)
+                // Handle an invalid gas fee
+                if (block.BaseFeePerGas <= 0)
                 {
-                    logger.Info($"[{LogCategory}] Triggering a new on-demand payouts since gas is low. gasfee={b.BaseFeePerGas}");
+                    logger.Warn($"[{LogCategory}] NetworkBlockNotification invalid gas fee value, gasfee={block.BaseFeePerGas}");
+                    return;
+                }
+
+                // Capture the current gas fee
+                currentGasFee = block.BaseFeePerGas;
+
+                // Check if we are over our hard limit
+                if (block.BaseFeePerGas > extraConfig.MaxGasLimit)
+                {
+                    logger.Info($"[{LogCategory}] Gas exceeds the MaxGasLimit={extraConfig.MaxGasLimit}, skipping payouts");
+                    return;
+                }
+
+                // Trigger payouts
+                if (ondemandPayTask == null || ondemandPayTask.IsCompleted)
+                {
+                    logger.Info($"[{LogCategory}] Triggering a new on-demand payouts since gas is low. gasfee={block.BaseFeePerGas}");
                     ondemandPayTask = PayoutBalancesOverThresholdAsync();
                 }
                 else
                 {
-                    logger.Info($"[{LogCategory}] Existing on-demand payouts is still processing. gasfee={b.BaseFeePerGas}");
+                    logger.Info($"[{LogCategory}] Existing on-demand payouts is still processing. gasfee={block.BaseFeePerGas}");
                 }
             });
         }
