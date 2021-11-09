@@ -787,7 +787,7 @@ namespace Miningcore.Blockchain.Ethereum
             if(blockData > maxBlockReward)
             {
                 logger.Error(() => "Rewards calculation data is invalid. BlockData is above max threshold.");
-                throw new Exception("Invalid data for calculating mining rewards.  Aboriting updateBalances");
+                throw new Exception("Invalid data for calculating mining rewards.  Aborting updateBalances");
             }
 
             return (decimal) blockData;
