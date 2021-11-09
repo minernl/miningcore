@@ -902,7 +902,7 @@ namespace Miningcore.Blockchain.Ethereum
                 }
                 else
                 {
-                    logger.Info(() => $"[{LogCategory}] No balances over configured minimum payout {poolConfig.PaymentProcessing.MinimumPayment.ToStr()} for pool {poolConfig.Id}");
+                    logger.Info(() => $"[{LogCategory}] No balances over calculated minimum payout {minimumPayout.ToStr()} for pool {poolConfig.Id}");
                 }
             }
             catch (Exception ex)
