@@ -464,10 +464,12 @@ namespace Miningcore.Blockchain.Ethereum
                 receipt = new TransactionReceipt { Id = response.Response };
             }
 
-            logger.Info(() => $"[{LogCategory}] Payout transaction id: {receipt.Id}");
-
-            // update db
-            await PersistPaymentsAsync(new[] { balance }, receipt.Id);
+            if(receipt != null)
+            {
+                logger.Info(() => $"[{LogCategory}] Payout transaction id: {receipt.Id}");
+                // update db
+                await PersistPaymentsAsync(new[] { balance }, receipt.Id);
+            }
 
             // done
             return receipt;
@@ -740,7 +742,7 @@ namespace Miningcore.Blockchain.Ethereum
             //double avgBlockTime = blockChainStats.NetworkDifficulty / networkHashRate;
             var avgBlockTime = await GetNetworkBlockAverageTime(poolConfig);
 
-            if (avgBlockTime == 0)
+            if(avgBlockTime == 0)
             {
                 throw new Exception($"Invalid state in CalculateBlockData - AvgBlockTime is 0");
             }
