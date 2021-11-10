@@ -31,6 +31,7 @@ namespace Miningcore.Persistence.Repositories
         Task<Balance> GetBalanceAsync(IDbConnection con, string poolId, string address);
         Task<Balance> GetBalanceWithPaidDateAsync(IDbConnection con, string poolId, string address);
         Task<Balance[]> GetPoolBalancesOverThresholdAsync(IDbConnection con, string poolId, decimal minimum);
+        Task<Balance[]> GetPoolBalancesOverThresholdAsync(IDbConnection con, string poolId, decimal minimum, ulong maxTransactionFee, ulong currentTransactionFee, int recordLimit);
         Task<BalanceSummary> GetTotalBalanceSum(IDbConnection connection, string poolId, decimal minimum);
     }
 }
