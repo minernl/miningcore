@@ -113,7 +113,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
                                  "GROUP BY b.poolid, b.address, b.amount, b.created, b.updated " +
                                  "ORDER BY b.amount DESC LIMIT @recordLimit;";
 
-            return (await con.QueryAsync<Entities.Balance>(query, new { poolId, minimum }))
+            return (await con.QueryAsync<Entities.Balance>(query, new { poolId, minimum, maxTransactionFee, currentTransactionFee, recordLimit }))
                 .Select(mapper.Map<Balance>)
                 .ToArray();
         }
