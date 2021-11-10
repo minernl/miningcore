@@ -79,9 +79,8 @@ namespace Miningcore.Blockchain.Ethereum
         private const decimal RecipientShare = 0.85m;
         private const float Sixty = 60;
         private const string TooManyTransactions = "There are too many transactions in the queue";
-        private ulong currentGasFee = 0;
-        private const decimal maxPayout = 0.1m; // ethereum
-        private const double maxBlockReward = 0.1d; //ethereum
+        private const decimal MaxPayout = 0.1m; // ethereum
+        private const double MaxBlockReward = 0.1d; //ethereum
 
         protected override string LogCategory => "Ethereum Payout Handler";
 
@@ -394,7 +393,7 @@ namespace Miningcore.Blockchain.Ethereum
 
         public async Task<TransactionReceipt> PayoutAsync(Balance balance)
         {
-            if(balance.Amount.CompareTo(maxPayout) > 0)
+            if(balance.Amount.CompareTo(MaxPayout) > 0)
             {
                 logger.Error(() => $"[{LogCategory}] Aborting payout of more than maximum in a single transaction. amount: {balance.Amount} wallet {balance.Address}");
                 throw new Exception("Aborting payout over maximum amount");
@@ -512,9 +511,6 @@ namespace Miningcore.Blockchain.Ethereum
                     return;
                 }
 
-                // Capture the current gas fee
-                currentGasFee = block.BaseFeePerGas;
-
                 // Check if we are over our hard limit
                 if (block.BaseFeePerGas > extraConfig.MaxGasLimit)
                 {
@@ -522,15 +518,30 @@ namespace Miningcore.Blockchain.Ethereum
                     return;
                 }
 
+                // The default minimum payout is based on the configuration
+                var minimumPayout = poolConfig.PaymentProcessing.MinimumPayment;
+
+                // If the GasDeductionPercentage is set, use a ratio instead
+                if (extraConfig.GasDeductionPercentage > 0)
+                {
+                    var latestGasFee = block.BaseFeePerGas / EthereumConstants.Wei;
+                    if (latestGasFee <= 0)
+                    {
+                        throw new Exception($"LatestGasFee is invalid: {latestGasFee}");
+                    }
+                    var transactionCost = (21000 * latestGasFee);
+                    minimumPayout = (decimal) transactionCost / extraConfig.GasDeductionPercentage;
+                }
+
                 // Trigger payouts
                 if (ondemandPayTask == null || ondemandPayTask.IsCompleted)
                 {
-                    logger.Info($"[{LogCategory}] Triggering a new on-demand payouts since gas is low. gasfee={block.BaseFeePerGas}");
-                    ondemandPayTask = PayoutBalancesOverThresholdAsync();
+                    logger.Info($"[{LogCategory}] Triggering a new on-demand payouts since gas is below {extraConfig.MaxGasLimit}, gasfee={block.BaseFeePerGas}, minimumPayout={minimumPayout}");
+                    ondemandPayTask = PayoutBalancesOverThresholdAsync(minimumPayout);
                 }
                 else
                 {
-                    logger.Info($"[{LogCategory}] Existing on-demand payouts is still processing. gasfee={block.BaseFeePerGas}");
+                    logger.Info($"[{LogCategory}] Existing on-demand payouts is still processing, gasfee={block.BaseFeePerGas}");
                 }
             });
         }
@@ -779,7 +790,7 @@ namespace Miningcore.Blockchain.Ethereum
             var blockData = recipientBlockReward / blockFrequencyPerPayout;
             logger.Info(() => $"BlockData : {blockData}, Network Block Time : {avgBlockTime}, Block Frequency : {blockFrequency}, PayoutInterval : {payoutInterval}");
 
-            if(blockData > maxBlockReward)
+            if(blockData > MaxBlockReward)
             {
                 logger.Error(() => "Rewards calculation data is invalid. BlockData is above max threshold.");
                 throw new Exception("Invalid data for calculating mining rewards.  Aborting updateBalances");
@@ -881,23 +892,26 @@ namespace Miningcore.Blockchain.Ethereum
             return null;
         }
 
-        private async Task PayoutBalancesOverThresholdAsync()
+        private async Task PayoutBalancesOverThresholdAsync(decimal minimumPayout)
         {
             logger.Info(() => $"[{LogCategory}] Processing payout for pool [{poolConfig.Id}]");
 
             try
             {
-                var minimumPayout = await GetMinimumPayout();
-
                 // Get the balances over the dynamically calculated threshold
-                var poolBalancesOverMinimum = await TelemetryUtil.TrackDependency(() => cf.Run(con =>
-                        balanceRepo.GetPoolBalancesOverThresholdAsync(con, poolConfig.Id, minimumPayout)),
-                    DependencyType.Sql, "GetPoolBalancesOverThresholdAsync", "GetPoolBalancesOverThresholdAsync");
+                var poolBalancesOverMinimum = await TelemetryUtil.TrackDependency(
+                    () => cf.Run(con => balanceRepo.GetPoolBalancesOverThresholdAsync(con, poolConfig.Id, minimumPayout, extraConfig.PayoutBatchSize)),
+                    DependencyType.Sql, 
+                    "GetPoolBalancesOverThresholdAsync", 
+                    "GetPoolBalancesOverThresholdAsync");
 
-                // Payout any balances over the threshold
+                // Payout the balances above the threshold
                 if(poolBalancesOverMinimum.Length > 0)
                 {
-                    await TelemetryUtil.TrackDependency(() => PayoutBatchAsync(poolBalancesOverMinimum), DependencyType.Sql, "PayoutBalancesOverThresholdAsync",
+                    await TelemetryUtil.TrackDependency(
+                        () => PayoutBatchAsync(poolBalancesOverMinimum), 
+                        DependencyType.Sql, 
+                        "PayoutBalancesOverThresholdAsync",
                         $"miners:{poolBalancesOverMinimum.Length}");
                 }
                 else
@@ -913,8 +927,7 @@ namespace Miningcore.Blockchain.Ethereum
 
         private async Task PayoutBatchAsync(Balance[] balances)
         {
-            var batch = balances.Take(extraConfig.PayoutBatchSize).ToList();
-            logger.Info(() => $"[{LogCategory}] Beginning payout to top {batch.Count} miners.");
+            logger.Info(() => $"[{LogCategory}] Beginning payout to top {extraConfig.PayoutBatchSize} miners.");
 
             // ensure we have peers
             var infoResponse = await daemon.ExecuteCmdSingleAsync<string>(logger, EthCommands.GetPeerCount);
@@ -926,17 +939,10 @@ namespace Miningcore.Blockchain.Ethereum
 
             var txHashes = new Dictionary<TransactionReceipt, Balance>();
             var logInfo = string.Empty;
-            var payTasks = new List<Task>(batch.Count);
+            var payTasks = new List<Task>(balances.Length);
 
-            foreach(var balance in batch)
+            foreach(var balance in balances)
             {
-                var minimumPayout = await GetMinimumPayout();
-                if (balance.Amount < minimumPayout)
-                {
-                    logger.Info(() => $"[{LogCategory}] user balance of {balance.Amount} is less than the minimum payout of {minimumPayout}, skipping balance");
-                    continue;
-                }
-
                 payTasks.Add(Task.Run(async () =>
                 {
                     logInfo = $", address={balance.Address}";
@@ -977,26 +983,6 @@ namespace Miningcore.Blockchain.Ethereum
             if(txHashes.Any()) NotifyPayoutSuccess(poolConfig.Id, txHashes, null);
 
             logger.Info(() => $"[{LogCategory}] Payouts complete.  Successfully processed top {txHashes.Count} of {balances.Length} payouts.");
-        }
-
-        private async Task<decimal> GetMinimumPayout()
-        {
-            // The default minimum payout is based on the configuration
-            var minimumPayout = poolConfig.PaymentProcessing.MinimumPayment;
-
-            // If the GasDeductionPercentage is set, use a ratio instead
-            if (extraConfig.GasDeductionPercentage > 0)
-            {
-                var latestGasFee = await GetLatestGasFee() / EthereumConstants.Wei;
-                if (null == latestGasFee || 0 == latestGasFee)
-                {
-                    throw new Exception($"LatestGasFee is invalid: {latestGasFee}");
-                }
-                var transactionCost = (21000 * latestGasFee);
-                minimumPayout = (decimal) transactionCost / extraConfig.GasDeductionPercentage;
-            }
-
-            return minimumPayout;
         }
 
         private async Task<ulong?> GetLatestGasFee()

@@ -102,6 +102,20 @@ namespace Miningcore.Persistence.Postgres.Repositories
                 .ToArray();
         }
 
+        public async Task<Balance[]> GetPoolBalancesOverThresholdAsync(IDbConnection con, string poolId, decimal minimum, int recordLimit)
+        {
+            logger.LogInvoke();
+
+            const string query = "SELECT b.poolid, b.address, b.amount, b.created, b.updated, MAX(p.created) AS paiddate FROM balances AS b " +
+                                 "LEFT JOIN payments AS p ON  p.address = b.address AND p.poolid = b.poolid " +
+                                 "WHERE b.poolid = @poolId AND b.amount >= @minimum " +
+                                 "GROUP BY b.poolid, b.address, b.amount, b.created, b.updated ORDER BY b.amount DESC LIMIT @recordLimit;";
+
+            return (await con.QueryAsync<Entities.Balance>(query, new { poolId, minimum }))
+                .Select(mapper.Map<Balance>)
+                .ToArray();
+        }
+
         public async Task<BalanceSummary> GetTotalBalanceSum(IDbConnection con, string poolId, decimal minimum)
         {
             logger.LogInvoke();
