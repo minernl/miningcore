@@ -892,7 +892,7 @@ namespace Miningcore.Blockchain.Ethereum
 
             var poolBalancesOverMinimum = await TelemetryUtil.TrackDependency(() => cf.Run(con => balanceRepo.GetPoolBalancesOverThresholdAsync(
                     con, poolConfig.Id, poolConfig.PaymentProcessing.MinimumPayment, extraConfig.MaxGasLimit, currentGasFee, extraConfig.PayoutBatchSize)),
-                DependencyType.Sql, "GetPoolBalancesOverThresholdAsync", "GetPoolBalancesOverThresholdAsync");
+                DependencyType.Sql, "GetPoolBalancesOverThresholdAsync", $"min={poolConfig.PaymentProcessing.MinimumPayment},curGas={currentGasFee},maxGas={extraConfig.MaxGasLimit}");
 
             if(poolBalancesOverMinimum.Length > 0)
             {
