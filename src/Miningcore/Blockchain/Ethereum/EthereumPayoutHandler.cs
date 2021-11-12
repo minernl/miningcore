@@ -911,7 +911,7 @@ namespace Miningcore.Blockchain.Ethereum
                 if(poolBalancesOverMinimum.Length > 0)
                 {
                     await TelemetryUtil.TrackDependency(
-                        () => PayoutBatchAsync(poolBalancesOverMinimum), 
+                        () => PayoutBatchAsync(poolBalancesOverMinimum, minimumPayout), 
                         DependencyType.Sql, 
                         "PayoutBalancesOverThresholdAsync",
                         $"miners:{poolBalancesOverMinimum.Length},minimumPayout={minimumPayout}");
@@ -927,7 +927,7 @@ namespace Miningcore.Blockchain.Ethereum
             }
         }
 
-        private async Task PayoutBatchAsync(Balance[] balances)
+        private async Task PayoutBatchAsync(Balance[] balances, decimal minimumPayout)
         {
             logger.Info(() => $"[{LogCategory}] Beginning payout to top {extraConfig.PayoutBatchSize} miners.");
 
@@ -945,6 +945,13 @@ namespace Miningcore.Blockchain.Ethereum
 
             foreach(var balance in balances)
             {
+                var balanceOverThreshold = balance.Amount - minimumPayout;
+                if (balanceOverThreshold > 0)
+                {
+                    decimal gasFeesOverchaged = (balanceOverThreshold / (1 - (extraConfig.GasDeductionPercentage/100))) - balanceOverThreshold;
+                    logger.Info(() => $"[{LogCategory}] miner:{balance.Address}, amount:{balance.Amount}, minimumPayout:{minimumPayout}, gasDeduction:{extraConfig.GasDeductionPercentage}, overcharge:{gasFeesOverchaged}");
+                }
+
                 payTasks.Add(Task.Run(async () =>
                 {
                     logInfo = $", address={balance.Address}";
