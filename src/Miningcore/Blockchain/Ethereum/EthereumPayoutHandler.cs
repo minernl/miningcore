@@ -532,7 +532,7 @@ namespace Miningcore.Blockchain.Ethereum
                         throw new Exception($"LatestGasFee is invalid: {latestGasFee}");
                     }
                     var transactionCost = (21000 * latestGasFee);
-                    minimumPayout = (decimal) transactionCost / extraConfig.GasDeductionPercentage;
+                    minimumPayout = (decimal) transactionCost / (extraConfig.GasDeductionPercentage / 100);
                 }
 
                 // Trigger payouts
