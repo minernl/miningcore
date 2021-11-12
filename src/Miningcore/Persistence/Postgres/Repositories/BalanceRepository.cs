@@ -109,7 +109,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
             const string query = "SELECT b.poolid, b.address, b.amount, b.created, b.updated, MAX(p.created) AS paiddate, " +
                                  "ROUND((b.amount/@minimum)*@maxTransactionFee) AS transactionlimit FROM balances AS b " +
                                  "LEFT JOIN payments AS p ON  p.address = b.address AND p.poolid = b.poolid " +
-                                 "WHERE b.poolid = @poolId AND b.amount >= @minimum AND @currentTransactionFee >= ROUND((b.amount/@minimum)*@maxTransactionFee) " +
+                                 "WHERE b.poolid = @poolId AND b.amount >= @minimum AND @currentTransactionFee <= ROUND((b.amount/@minimum)*@maxTransactionFee) " +
                                  "GROUP BY b.poolid, b.address, b.amount, b.created, b.updated " +
                                  "ORDER BY b.amount DESC LIMIT @recordLimit;";
 
