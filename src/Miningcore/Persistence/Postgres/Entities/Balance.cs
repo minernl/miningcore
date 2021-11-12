@@ -30,6 +30,6 @@ namespace Miningcore.Persistence.Postgres.Entities
         public DateTime Created { get; set; }
         public DateTime Updated { get; set; }
         public DateTime? PaidDate { get; set; }
-        public ulong TransactionLimit { get; set; }
+        public long TransactionLimit { get; set; }
     }
 }

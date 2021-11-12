@@ -841,7 +841,7 @@ namespace Miningcore.Blockchain.Ethereum
         {
             try
             {
-                logger.Info($"Web3Tx start. addr={balance.Address}, amt={balance.Amount}");
+                logger.Info($"[{LogCategory}] Web3Tx start. addr={balance.Address},amt={balance.Amount},txlimit={balance.TransactionLimit}");
 
                 var txService = web3Connection.Eth?.GetEtherTransferService();
                 if(txService != null)
@@ -850,13 +850,13 @@ namespace Miningcore.Blockchain.Ethereum
                         DependencyType.Web3, "TransferEtherAndWaitForReceiptAsync", $"addr={balance.Address}, amt={balance.Amount}");
                     if(transaction.HasErrors().GetValueOrDefault())
                     {
-                        logger.Error($"Web3Tx failed. status={transaction.Status}, addr={balance.Address}, amt={balance.Amount}");
+                        logger.Error($"[{LogCategory}] Web3Tx failed. status={transaction.Status}, addr={balance.Address}, amt={balance.Amount}");
                         return null;
                     }
 
                     if(string.IsNullOrEmpty(transaction.TransactionHash) || EthereumConstants.ZeroHashPattern.IsMatch(transaction.TransactionHash))
                     {
-                        logger.Error($"Web3Tx failed without a valid transaction hash. txId={transaction.TransactionHash}, addr={balance.Address}, amt={balance.Amount}");
+                        logger.Error($"[{LogCategory}] Web3Tx failed without a valid transaction hash. txId={transaction.TransactionHash}, addr={balance.Address}, amt={balance.Amount}");
                         return null;
                     }
 
@@ -868,18 +868,18 @@ namespace Miningcore.Blockchain.Ethereum
                     };
                 }
 
-                logger.Warn($"Web3Tx GetEtherTransferService is null. addr={balance.Address}, amt={balance.Amount}");
+                logger.Warn($"[{LogCategory}] Web3Tx GetEtherTransferService is null. addr={balance.Address}, amt={balance.Amount}");
             }
             catch(Nethereum.JsonRpc.Client.RpcResponseException ex)
             {
                 // Log and continue for any rpc errors
-                logger.Error(ex, $"Web3Tx failed. {ex.Message}");
+                logger.Error(ex, $"[{LogCategory}] Web3Tx failed. {ex.Message}");
 
                 // Reinitialize web3 when queue error occurs
                 if(ex.Message.Contains(TooManyTransactions, StringComparison.OrdinalIgnoreCase))
                 {
                     InitializeWeb3(daemonEndpointConfig);
-                    logger.Info(ex, $"Web3Tx reinitialized because of '{ex.Message}'");
+                    logger.Info(ex, $"[{LogCategory}] Web3Tx reinitialized because of '{ex.Message}'");
                 }
             }
 
@@ -892,7 +892,7 @@ namespace Miningcore.Blockchain.Ethereum
 
             var poolBalancesOverMinimum = await TelemetryUtil.TrackDependency(() => cf.Run(con => balanceRepo.GetPoolBalancesOverThresholdAsync(
                     con, poolConfig.Id, poolConfig.PaymentProcessing.MinimumPayment, extraConfig.MaxGasLimit, currentGasFee, extraConfig.PayoutBatchSize)),
-                DependencyType.Sql, "GetPoolBalancesOverThresholdAsync", $"min={poolConfig.PaymentProcessing.MinimumPayment},curGas={currentGasFee},maxGas={extraConfig.MaxGasLimit}");
+                DependencyType.Sql, "GetPoolBalancesOverThresholdAsync", $"curGas={currentGasFee}");
 
             if(poolBalancesOverMinimum.Length > 0)
             {
