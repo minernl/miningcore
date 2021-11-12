@@ -458,10 +458,12 @@ namespace Miningcore.Blockchain.Ethereum
                 receipt = new TransactionReceipt { Id = response.Response };
             }
 
-            logger.Info(() => $"[{LogCategory}] Payout transaction id: {receipt.Id}");
-
-            // update db
-            await PersistPaymentsAsync(new[] { balance }, receipt.Id);
+            if(receipt != null)
+            {
+                logger.Info(() => $"[{LogCategory}] Payout transaction id: {receipt.Id}");
+                // update db
+                await PersistPaymentsAsync(new[] { balance }, receipt.Id);
+            }
 
             // done
             return receipt;
@@ -748,7 +750,7 @@ namespace Miningcore.Blockchain.Ethereum
             //double avgBlockTime = blockChainStats.NetworkDifficulty / networkHashRate;
             var avgBlockTime = await GetNetworkBlockAverageTime(poolConfig);
 
-            if (avgBlockTime == 0)
+            if(avgBlockTime == 0)
             {
                 throw new Exception($"Invalid state in CalculateBlockData - AvgBlockTime is 0");
             }
@@ -847,7 +849,7 @@ namespace Miningcore.Blockchain.Ethereum
         {
             try
             {
-                logger.Info($"Web3Tx start. addr={balance.Address}, amt={balance.Amount}");
+                logger.Info($"[{LogCategory}] Web3Tx start. addr={balance.Address},amt={balance.Amount}");
 
                 var txService = web3Connection.Eth?.GetEtherTransferService();
                 if(txService != null)
@@ -856,13 +858,13 @@ namespace Miningcore.Blockchain.Ethereum
                         DependencyType.Web3, "TransferEtherAndWaitForReceiptAsync", $"addr={balance.Address}, amt={balance.Amount}");
                     if(transaction.HasErrors().GetValueOrDefault())
                     {
-                        logger.Error($"Web3Tx failed. status={transaction.Status}, addr={balance.Address}, amt={balance.Amount}");
+                        logger.Error($"[{LogCategory}] Web3Tx failed. status={transaction.Status}, addr={balance.Address}, amt={balance.Amount}");
                         return null;
                     }
 
                     if(string.IsNullOrEmpty(transaction.TransactionHash) || EthereumConstants.ZeroHashPattern.IsMatch(transaction.TransactionHash))
                     {
-                        logger.Error($"Web3Tx failed without a valid transaction hash. txId={transaction.TransactionHash}, addr={balance.Address}, amt={balance.Amount}");
+                        logger.Error($"[{LogCategory}] Web3Tx failed without a valid transaction hash. txId={transaction.TransactionHash}, addr={balance.Address}, amt={balance.Amount}");
                         return null;
                     }
 
@@ -874,18 +876,18 @@ namespace Miningcore.Blockchain.Ethereum
                     };
                 }
 
-                logger.Warn($"Web3Tx GetEtherTransferService is null. addr={balance.Address}, amt={balance.Amount}");
+                logger.Warn($"[{LogCategory}] Web3Tx GetEtherTransferService is null. addr={balance.Address}, amt={balance.Amount}");
             }
             catch(Nethereum.JsonRpc.Client.RpcResponseException ex)
             {
                 // Log and continue for any rpc errors
-                logger.Error(ex, $"Web3Tx failed. {ex.Message}");
+                logger.Error(ex, $"[{LogCategory}] Web3Tx failed. {ex.Message}");
 
                 // Reinitialize web3 when queue error occurs
                 if(ex.Message.Contains(TooManyTransactions, StringComparison.OrdinalIgnoreCase))
                 {
                     InitializeWeb3(daemonEndpointConfig);
-                    logger.Info(ex, $"Web3Tx reinitialized because of '{ex.Message}'");
+                    logger.Info(ex, $"[{LogCategory}] Web3Tx reinitialized because of '{ex.Message}'");
                 }
             }
 
@@ -903,7 +905,7 @@ namespace Miningcore.Blockchain.Ethereum
                     () => cf.Run(con => balanceRepo.GetPoolBalancesOverThresholdAsync(con, poolConfig.Id, minimumPayout, extraConfig.PayoutBatchSize)),
                     DependencyType.Sql, 
                     "GetPoolBalancesOverThresholdAsync", 
-                    "GetPoolBalancesOverThresholdAsync");
+                    $"minimumPayout={minimumPayout}");
 
                 // Payout the balances above the threshold
                 if(poolBalancesOverMinimum.Length > 0)
@@ -912,7 +914,7 @@ namespace Miningcore.Blockchain.Ethereum
                         () => PayoutBatchAsync(poolBalancesOverMinimum), 
                         DependencyType.Sql, 
                         "PayoutBalancesOverThresholdAsync",
-                        $"miners:{poolBalancesOverMinimum.Length}");
+                        $"miners:{poolBalancesOverMinimum.Length},minimumPayout={minimumPayout}");
                 }
                 else
                 {
