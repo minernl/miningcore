@@ -101,12 +101,13 @@ namespace Miningcore.Payments.PaymentSchemes
                     }
 
                     // Update the balance
-                    Logger.Info(() => $"Adding {payoutHandler.FormatAmount(amount)} to balance of {address} for {FormatUtil.FormatQuantity(shares[address])} ({shares[address]}) shares after deducting {payoutHandler.FormatAmount(actualDeduction)} out of {payoutHandler.FormatAmount(txDeduction)}");
+                    var netAmount = amount - actualDeduction;
+                    Logger.Info(() => $"address:{address}, shares:{FormatUtil.FormatQuantity(shares[address])} ({shares[address]}), grossAmount:{payoutHandler.FormatAmount(amount)}, deduction:{payoutHandler.FormatAmount(actualDeduction)} ({payoutHandler.FormatAmount(txDeduction)} possible), netAmount:{payoutHandler.FormatAmount(netAmount)}");
                     await TelemetryUtil.TrackDependency(
-                        () => balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, address, amount - actualDeduction, $"Reward for {FormatUtil.FormatQuantity(shares[address])} shares for block {block?.BlockHeight}"),
+                        () => balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, address, netAmount, $"Reward for {FormatUtil.FormatQuantity(shares[address])} shares for block {block?.BlockHeight}"),
                         DependencyType.Sql,
                         "AddBalanceAmount",
-                        $"miner:{address}, amount:{payoutHandler.FormatAmount(amount)}, txDeduction:{payoutHandler.FormatAmount(txDeduction)}, actualDeduction:{payoutHandler.FormatAmount(actualDeduction)}");
+                        $"miner:{address}, grossAmount:{payoutHandler.FormatAmount(amount)}, netAmount:{payoutHandler.FormatAmount(netAmount)}, txDeduction:{payoutHandler.FormatAmount(txDeduction)}, actualDeduction:{payoutHandler.FormatAmount(actualDeduction)}");
 
                     await TelemetryUtil.TrackDependency(
                         () => shareRepo.ProcessSharesForUserBeforeAcceptedAsync(con, tx, poolConfig.Id, address, shareCutOffDate.Value),
