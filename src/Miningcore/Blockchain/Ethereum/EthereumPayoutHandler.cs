@@ -520,20 +520,7 @@ namespace Miningcore.Blockchain.Ethereum
                     return;
                 }
 
-                // The default minimum payout is based on the configuration
-                var minimumPayout = poolConfig.PaymentProcessing.MinimumPayment;
-
-                // If the GasDeductionPercentage is set, use a ratio instead
-                if (extraConfig.GasDeductionPercentage > 0)
-                {
-                    var latestGasFee = block.BaseFeePerGas / EthereumConstants.Wei;
-                    if (latestGasFee <= 0)
-                    {
-                        throw new Exception($"LatestGasFee is invalid: {latestGasFee}");
-                    }
-                    var transactionCost = (extraConfig.Gas * latestGasFee);
-                    minimumPayout = (decimal) transactionCost / (extraConfig.GasDeductionPercentage / 100);
-                }
+                var minimumPayout = GetMinimumPayout(poolConfig.PaymentProcessing.MinimumPayment, block.BaseFeePerGas, extraConfig.GasDeductionPercentage, extraConfig.Gas);
 
                 // Trigger payouts
                 if (ondemandPayTask == null || ondemandPayTask.IsCompleted)
@@ -549,6 +536,42 @@ namespace Miningcore.Blockchain.Ethereum
         }
 
         #endregion // IPayoutHandler
+
+        public static decimal GetMinimumPayout(decimal defaultMinimumPayout, ulong baseFeePerGas, decimal gasDeductionPercentage, ulong transferGas)
+        {
+            // The default minimum payout is based on the configuration
+            var minimumPayout = defaultMinimumPayout;
+
+            // If the GasDeductionPercentage is set, use a ratio instead
+            if (gasDeductionPercentage > 0)
+            {
+                var transactionCost = GetTransactionCost(baseFeePerGas, transferGas);
+
+                // preSkimPayout = transactionCost / deductionPercentage
+                // minimumPayout = preSkimPayout - transactionCost
+                // minimumPayout = transactionCost / deductionPercentage - transactionCost
+
+                // alternatively:
+                // minimumPayout = (transactionCost / deductionPercentage) * (1 - deductionPercentage)
+                // => minimumPayout = transactionCost / deductionPercentage - transactionCost
+
+                minimumPayout = transactionCost / (gasDeductionPercentage / 100) - transactionCost;
+            }
+
+            return minimumPayout;
+        }
+
+        public static decimal GetTransactionCost(ulong baseFeePerGas, ulong transferGas)
+        {
+            var latestGasFee = baseFeePerGas / EthereumConstants.Wei;
+
+            if (latestGasFee <= 0)
+            {
+                throw new Exception($"LatestGasFee is invalid: {latestGasFee}");
+            }
+
+            return transferGas * latestGasFee;
+        }
 
         private void InitializeWeb3(DaemonEndpointConfig daemonConfig)
         {
