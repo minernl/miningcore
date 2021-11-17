@@ -4,7 +4,11 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
 
 trigger:
-- develop
+  batch: true
+  branches:
+    include:
+    - develop
+pr: none
 
 pool:
   vmImage: ubuntu-latest
