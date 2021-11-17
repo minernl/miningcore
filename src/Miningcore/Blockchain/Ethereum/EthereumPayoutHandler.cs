@@ -1020,8 +1020,8 @@ namespace Miningcore.Blockchain.Ethereum
                 var balanceOverThreshold = balance.Amount - minimumPayout;
                 if (balanceOverThreshold > 0)
                 {
-                    decimal gasFeesOverchaged = (balanceOverThreshold / (1 - (extraConfig.GasDeductionPercentage/100))) - balanceOverThreshold;
-                    logger.Info(() => $"[{LogCategory}] miner:{balance.Address}, amount:{balance.Amount}, minimumPayout:{minimumPayout}, gasDeduction:{extraConfig.GasDeductionPercentage}, overcharge:{gasFeesOverchaged}");
+                    decimal gasFeesOvercharged = (balanceOverThreshold / (1 - (extraConfig.GasDeductionPercentage/100))) - balanceOverThreshold;
+                    logger.Info(() => $"[{LogCategory}] miner:{balance.Address}, amount:{balance.Amount}, minimumPayout:{minimumPayout}, gasDeduction:{extraConfig.GasDeductionPercentage}, overcharge:{gasFeesOvercharged}");
                 }
 
                 payTasks.Add(Task.Run(async () =>
