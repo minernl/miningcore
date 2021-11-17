@@ -388,14 +388,14 @@ namespace Miningcore.Blockchain.Ethereum
             if(txHashes.Any())
                 NotifyPayoutSuccess(poolConfig.Id, txHashes, null);
 
-            logger.Info(() => $"[{LogCategory}] Payouts complete.  Successfully processed {txHashes.Count} of {balances.Length} payouts.");
+            logger.Info(() => $"[{LogCategory}] Payouts complete. Successfully processed {txHashes.Count} of {balances.Length} payouts.");
         }
 
         public async Task<TransactionReceipt> PayoutAsync(Balance balance)
         {
             if(balance.Amount.CompareTo(MaxPayout) > 0)
             {
-                logger.Error(() => $"[{LogCategory}] Aborting payout of more than maximum in a single transaction. amount: {balance.Amount} wallet {balance.Address}");
+                logger.Error(() => $"[{LogCategory}] Aborting payout of more than maximum in a single transaction amount: {balance.Amount} wallet {balance.Address}");
                 throw new Exception("Aborting payout over maximum amount");
             }
 

@@ -123,7 +123,7 @@ namespace Miningcore.Payments
 
         public void Stop()
         {
-            Logger.Info(() => "Payments Service Stopping ..");
+            Logger.Info(() => "Payments Service Stopping...");
 
             cts.Cancel();
 
