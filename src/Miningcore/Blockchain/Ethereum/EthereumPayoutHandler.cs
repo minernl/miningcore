@@ -907,10 +907,11 @@ namespace Miningcore.Blockchain.Ethereum
                                 Fees2 = Web3.Convert.FromWei(txReceipt.GasUsed)
                             };
                         }
+                        logger.Info($"[{LogCategory}] Web3Tx fetching nonce. addr={balance.Address},amt={balance.Amount},txhash={prevTxHash}");
                         // Get nonce for existing transaction
                         var prevTx = await TelemetryUtil.TrackDependency(() => txService.Transactions.GetTransactionByHash.SendRequestAsync(prevTxHash),
                             DependencyType.Web3, "GetTransactionByHash", $"addr={balance.Address},amt={balance.Amount.ToStr()},txhash={prevTxHash}");
-                        nonce = prevTx?.Nonce;
+                        nonce = prevTx?.Nonce?.Value;
                         logger.Info($"[{LogCategory}] Web3Tx receipt not found for existing tx. addr={balance.Address},amt={balance.Amount},txhash={prevTxHash},nonce={nonce}");
                     }
 
@@ -1012,7 +1013,6 @@ namespace Miningcore.Blockchain.Ethereum
             }
 
             var txHashes = new Dictionary<TransactionReceipt, Balance>();
-            var logInfo = string.Empty;
             var payTasks = new List<Task>(balances.Length);
 
             foreach(var balance in balances)
@@ -1026,7 +1026,7 @@ namespace Miningcore.Blockchain.Ethereum
 
                 payTasks.Add(Task.Run(async () =>
                 {
-                    logInfo = $", address={balance.Address}";
+                    var logInfo = $",addr={balance.Address},amt={balance.Amount.ToStr()}";
                     try
                     {
                         var receipt = await PayoutAsync(balance);
