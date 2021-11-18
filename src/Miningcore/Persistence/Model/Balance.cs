@@ -37,6 +37,5 @@ namespace Miningcore.Persistence.Model
         /// Last paid date used to decide on gas price
         /// </summary>
         public DateTime? PaidDate { get; set; }
-        public long TransactionLimit { get; set; }
     }
 }
