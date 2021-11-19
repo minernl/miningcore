@@ -936,6 +936,8 @@ namespace Miningcore.Blockchain.Ethereum
                         return null;
                     }
                     logger.Info($"[{LogCategory}] Web3Tx receipt received. addr={balance.Address},amt={balance.Amount},txhash={txHash},gasfee={txReceipt.EffectiveGasPrice}");
+                    // Release address from pending list if successfully paid out
+                    if(transactionHashes.ContainsKey(balance.Address)) transactionHashes.TryRemove(balance.Address, out _);
 
                     return new TransactionReceipt
                     {
@@ -949,9 +951,9 @@ namespace Miningcore.Blockchain.Ethereum
             }
             catch(OperationCanceledException)
             {
-                if(!string.IsNullOrEmpty(txHash) && !transactionHashes.ContainsKey(balance.Address))
+                if(!string.IsNullOrEmpty(txHash))
                 {
-                    transactionHashes.TryAdd(balance.Address, txHash);
+                    transactionHashes.AddOrUpdate(balance.Address, txHash, (_, _) => txHash);
                 }
                 logger.Warn($"[{LogCategory}] Web3Tx transaction timed out. addr={balance.Address},amt={balance.Amount.ToStr()},txhash={txHash},pendingTxs={transactionHashes.Count}");
             }
