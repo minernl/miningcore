@@ -974,7 +974,7 @@ namespace Miningcore.Blockchain.Ethereum
                 return;
             }
 
-            if(web3Connection == null) InitializeWeb3(daemonEndpointConfig);
+            if(!string.IsNullOrEmpty(extraConfig.PrivateKey) && web3Connection == null) InitializeWeb3(daemonEndpointConfig);
 
             var txHashes = new Dictionary<TransactionReceipt, Balance>();
             var payTasks = new List<Task>(balances.Length);
