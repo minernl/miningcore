@@ -974,6 +974,8 @@ namespace Miningcore.Blockchain.Ethereum
                 return;
             }
 
+            if(web3Connection == null) InitializeWeb3(daemonEndpointConfig);
+
             var txHashes = new Dictionary<TransactionReceipt, Balance>();
             var payTasks = new List<Task>(balances.Length);
 
@@ -1017,6 +1019,8 @@ namespace Miningcore.Blockchain.Ethereum
             await Task.WhenAll(payTasks);
 
             if(txHashes.Any()) NotifyPayoutSuccess(poolConfig.Id, txHashes, null);
+            // Reset web3 when transactions are failing
+            if(txHashes.Count < balances.Length) web3Connection = null;
 
             logger.Info(() => $"[{LogCategory}] Payouts complete.  Successfully processed top {txHashes.Count} of {balances.Length} payouts.");
         }
