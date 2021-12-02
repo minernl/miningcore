@@ -35,6 +35,9 @@ namespace Miningcore.DataStore.Cosmos {
             if(string.IsNullOrEmpty(cosmosConfig.AuthorizationKey))
                 logger.ThrowLogPoolStartupException("Cosmos configuration: invalid or missing 'authorizationKey'");
 
+            if(string.IsNullOrEmpty(cosmosConfig.DatabaseId))
+                logger.ThrowLogPoolStartupException("Comos configuration: invalid or missing 'databaseId'");
+
             logger.Info(() => $"Connecting to Cosmos Server {cosmosConfig.EndpointUrl}");
 
             var cosmosClientOptions = new CosmosClientOptions();

@@ -43,6 +43,9 @@
         <None Remove="Nethereum.Web3" />
         <None Remove="Microsoft.AspNetCore.Authentication.JwtBearer" />
         <None Remove="Microsoft.Azure.Cosmos" />
+        <None Remove="Persistence\Cosmos\" />
+        <None Remove="Persistence\Cosmos\Entities\" />
+        <None Remove="Persistence\Cosmos\Repositories\" />
     </ItemGroup>
     <ItemGroup>
         <None Remove="config2.json" />
@@ -114,6 +117,9 @@
     </ItemGroup>
     <ItemGroup>
         <Folder Include="Crypto\Coins\" />
+        <Folder Include="Persistence\Cosmos\" />
+        <Folder Include="Persistence\Cosmos\Entities\" />
+        <Folder Include="Persistence\Cosmos\Repositories\" />
     </ItemGroup>
     <!-- Copy pre-built library binaries on Windows  -->
     <Target Name="BuildNativeLibsWin" AfterTargets="AfterBuild" Condition="'$(IsWindows)' == 'true'">

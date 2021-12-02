@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Miningcore.Configuration;
 using Miningcore.Extensions;
 using Miningcore.Persistence;
+using Miningcore.Persistence.Cosmos.Repositories;
 using Miningcore.Persistence.Model;
 using Miningcore.Persistence.Repositories;
 using Miningcore.Util;
@@ -26,17 +27,20 @@ namespace Miningcore.Payments.PaymentSchemes
         public PPS3PaymentScheme(IConnectionFactory cf,
             IShareRepository shareRepo,
             IBlockRepository blockRepo,
-            IBalanceRepository balanceRepo)
+            IBalanceRepository balanceRepo,
+            BalanceChangeRepository balanceChangeRepo)
         {
             Contract.RequiresNonNull(cf, nameof(cf));
             Contract.RequiresNonNull(shareRepo, nameof(shareRepo));
             Contract.RequiresNonNull(blockRepo, nameof(blockRepo));
             Contract.RequiresNonNull(balanceRepo, nameof(balanceRepo));
+            Contract.RequiresNonNull(balanceChangeRepo, nameof(balanceRepo));
 
             this.cf = cf;
             this.shareRepo = shareRepo;
             this.blockRepo = blockRepo;
             this.balanceRepo = balanceRepo;
+            this.balanceChangeRepo = balanceChangeRepo;
 
             BuildFaultHandlingPolicy();
         }
@@ -45,6 +49,7 @@ namespace Miningcore.Payments.PaymentSchemes
         private readonly IBlockRepository blockRepo;
         private readonly IConnectionFactory cf;
         private readonly IShareRepository shareRepo;
+        private readonly BalanceChangeRepository balanceChangeRepo;
         private static readonly ILogger logger = LogManager.GetLogger("PPS3 Payment", typeof(PPS3PaymentScheme));
 
         private const int RetryCount = 4;
@@ -81,6 +86,18 @@ namespace Miningcore.Payments.PaymentSchemes
                 if(amount <= 0) continue;
                 logger.Info(() => $"Adding {payoutHandler.FormatAmount(amount)} to balance of {address} for {FormatUtil.FormatQuantity(shares[address])} ({shares[address]}) shares for block {block?.BlockHeight}");
                 await balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, address, amount, $"Reward for {FormatUtil.FormatQuantity(shares[address])} shares for block {block?.BlockHeight}");
+
+                var balanceChangeToday = await balanceChangeRepo.GetBalanceChangeByDate(poolConfig.Id, address, DateTime.UtcNow);
+
+                if (balanceChangeToday == null)
+                {
+                    await balanceChangeRepo.AddNewBalanceChange(poolConfig.Id, address, amount, $"Reward for {FormatUtil.FormatQuantity(shares[address])} shares for {DateTime.UtcNow.Date}");
+                }
+                else
+                {
+                    balanceChangeToday.Amount += amount;
+                    await balanceChangeRepo.UpdateBalanceChange(balanceChangeToday);
+                }
             }
 
             // delete discarded shares
