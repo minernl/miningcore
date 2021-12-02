@@ -42,6 +42,7 @@
         <None Remove="Maintenance\**" />
         <None Remove="Nethereum.Web3" />
         <None Remove="Microsoft.AspNetCore.Authentication.JwtBearer" />
+        <None Remove="Microsoft.Azure.Cosmos" />
     </ItemGroup>
     <ItemGroup>
         <None Remove="config2.json" />
@@ -90,6 +91,7 @@
         <PackageReference Include="System.Text.Json" Version="5.0.1" />
         <PackageReference Include="Nethereum.Web3" Version="4.1.1" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="5.0.10" />
+        <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.23.0" />
     </ItemGroup>
     <ItemGroup>
         <Reference Include="WebSocketManager">
@@ -130,7 +132,7 @@
     <Target Name="NativeLibsPublishIncludeWin" BeforeTargets="PrepareForPublish" Condition="'$(IsWindows)' == 'true'">
         <ItemGroup>
             <Libs Include="$(ProjectDir)..\..\libs\runtimes\win-x64\*.dll" />
-            <ContentWithTargetPath Include="@(Libs->'%(FullPath)')" RelativePath="%(Libs.Identity)" TargetPath="%(Libs.Filename)%(Libs.Extension)" CopyToPublishDirectory="PreserveNewest" />
+            <ContentWithTargetPath Include="@(Libs-&gt;'%(FullPath)')" RelativePath="%(Libs.Identity)" TargetPath="%(Libs.Filename)%(Libs.Extension)" CopyToPublishDirectory="PreserveNewest" />
         </ItemGroup>
     </Target>
     <!-- Include library binaries in publish on Linux -->

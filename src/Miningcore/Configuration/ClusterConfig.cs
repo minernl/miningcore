@@ -415,6 +415,20 @@ namespace Miningcore.Configuration
         public IDictionary<string, object> Extra { get; set; }
     }
 
+    public class CosmosConfig
+    {
+        public string EndpointUrl { get; set; }
+        public string AuthorizationKey { get; set; }
+        public string DatabaseId { get; set; }
+        public string MaxRetryAttempt { get; set; }
+        public string MaxRetryWaitTime { get; set; }
+        public string RequestTimeout { get; set; }
+        public string ConnectionMode { get; set; }
+        public string ConsistencyLevel { get; set; }
+        public string MaxPoolSize { get; set; }
+        public List<string> PreferredLocations { get; set; }
+    }
+
     public class DatabaseConfig : AuthenticatedNetworkEndpointConfig
     {
         public string Database { get; set; }
@@ -593,6 +607,7 @@ namespace Miningcore.Configuration
     public partial class PersistenceConfig
     {
         public DatabaseConfig Postgres { get; set; }
+        public CosmosConfig Cosmos { get; set; }
     }
 
     public class RewardRecipient
