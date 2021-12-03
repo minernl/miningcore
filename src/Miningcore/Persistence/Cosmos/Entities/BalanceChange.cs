@@ -21,7 +21,7 @@ namespace Miningcore.Persistence.Cosmos.Entities
 
         public string CollectionName { get => "balanceChanges"; }
 
-        public string PartitionKey { get => $"{PoolId}-{Address}-{Created}"; }
+        public string PartitionKey { get => $"{PoolId}-{Address}"; }
 
         [JsonPropertyName("_etag")]
         public string ETag { get; }

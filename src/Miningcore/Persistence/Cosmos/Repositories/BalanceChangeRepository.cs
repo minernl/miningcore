@@ -27,7 +27,7 @@ namespace Miningcore.Persistence.Cosmos.Repositories
 
             var balanceChange = new BalanceChange()
             {
-                Id = $"{poolId}-{address}-{date}",
+                Id = $"{date}",
                 PoolId = poolId,
                 Address = address,
                 Amount = amount,
@@ -52,7 +52,7 @@ namespace Miningcore.Persistence.Cosmos.Repositories
             var date = created.Date;
             var balanceChange = new BalanceChange()
             {
-                Id = $"{poolId}-{address}-{date}",
+                Id = $"{date}",
                 PoolId = poolId,
                 Address = address,
                 Created = date
