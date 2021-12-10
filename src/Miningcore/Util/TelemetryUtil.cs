@@ -108,6 +108,7 @@ namespace Miningcore.Util
         Http,
         Daemon,
         Web3,
-        EtherScan
+        EtherScan,
+        Cosmos
     }
 }
