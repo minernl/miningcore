@@ -5,10 +5,11 @@ using Miningcore.Persistence.Cosmos.Entities;
 using Miningcore.PoolCore;
 using Miningcore.Extensions;
 using NLog;
+using Miningcore.Persistence.Repositories;
 
 namespace Miningcore.Persistence.Cosmos.Repositories
 {
-    public class BalanceChangeRepository
+    public class BalanceChangeRepository: IBalanceChangeRepository
     {
         public BalanceChangeRepository(CosmosClient cosmosClient)
         {
@@ -27,7 +28,7 @@ namespace Miningcore.Persistence.Cosmos.Repositories
 
             var balanceChange = new BalanceChange()
             {
-                Id = $"{date}",
+                Id = $"{date.Year}{date.Month}{date.Day}",
                 PoolId = poolId,
                 Address = address,
                 Amount = amount,
@@ -40,7 +41,6 @@ namespace Miningcore.Persistence.Cosmos.Repositories
             {
                 requestOptions.IfMatchEtag = balanceChange.ETag;
             }
-
             await cosmosClient.GetContainer(databaseId, balanceChange.CollectionName)
                 .CreateItemAsync(balanceChange, new PartitionKey(balanceChange.PartitionKey), requestOptions);
         }
@@ -52,14 +52,21 @@ namespace Miningcore.Persistence.Cosmos.Repositories
             var date = created.Date;
             var balanceChange = new BalanceChange()
             {
-                Id = $"{date}",
+                Id = $"{date.Year}{date.Month}{date.Day}",
                 PoolId = poolId,
                 Address = address,
                 Created = date
             };
-            ItemResponse<BalanceChange> balanceChangeResponse = await cosmosClient.GetContainer(databaseId, balanceChange.CollectionName)
-                .ReadItemAsync<BalanceChange>(balanceChange.Id, new PartitionKey(balanceChange.PartitionKey));
-            return balanceChangeResponse.Resource;
+            try
+            {
+                ItemResponse<BalanceChange> balanceChangeResponse = await cosmosClient.GetContainer(databaseId, balanceChange.CollectionName)
+                    .ReadItemAsync<BalanceChange>(balanceChange.Id, new PartitionKey(balanceChange.PartitionKey));
+                return balanceChangeResponse.Resource;
+            }
+            catch(CosmosException ex) when(ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return null;
+            }
         }
 
         public async Task UpdateBalanceChange(BalanceChange balanceChange)

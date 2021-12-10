@@ -7,7 +7,6 @@ using System.Net.Sockets;
 using System.Threading.Tasks;
 using Autofac;
 using AutoMapper;
-using Microsoft.ApplicationInsights;
 using Miningcore.Configuration;
 using Miningcore.Extensions;
 using Miningcore.Persistence;
@@ -31,7 +30,8 @@ namespace Miningcore.Payments.PaymentSchemes
             IMapper mapper,
             IBlockRepository blockRepo,
             IBalanceRepository balanceRepo,
-            IPaymentRepository paymentRepo)
+            IPaymentRepository paymentRepo,
+            IBalanceChangeRepository balanceChangeRepo)
         {
             Contract.RequiresNonNull(cf, nameof(cf));
             Contract.RequiresNonNull(shareRepo, nameof(shareRepo));
@@ -43,6 +43,7 @@ namespace Miningcore.Payments.PaymentSchemes
             this.cf = cf;
             this.shareRepo = shareRepo;
             this.balanceRepo = balanceRepo;
+            this.balanceChangeRepo = balanceChangeRepo;
             this.statsRepo = statsRepo;
             this.mapper = mapper;
             this.paymentRepo = paymentRepo;
@@ -55,6 +56,7 @@ namespace Miningcore.Payments.PaymentSchemes
         private readonly IShareRepository shareRepo;
         private readonly IStatsRepository statsRepo;
         private readonly IPaymentRepository paymentRepo;
+        private readonly IBalanceChangeRepository balanceChangeRepo;
         private readonly IMapper mapper;
         private static readonly ILogger Logger = LogManager.GetLogger("PPS Payment", typeof(PPSPaymentScheme));
         private const int RetryCount = 4;
@@ -114,6 +116,37 @@ namespace Miningcore.Payments.PaymentSchemes
                         DependencyType.Sql,
                         "ProcessMinerShares",
                         $"miner:{address},cutoffDate:{shareCutOffDate.Value}");
+
+
+                    Logger.Info(() => $"Update daily balance change for miner {address}");
+                    //keep track of daily balance update
+                    var balanceChangeToday = await TelemetryUtil.TrackDependency(
+                        () => balanceChangeRepo.GetBalanceChangeByDate(poolConfig.Id, address, DateTime.UtcNow),
+                        DependencyType.Cosmos,
+                        "getBalanceChangeByDate",
+                        $"miner:{address},date:{DateTime.UtcNow.Date}"
+                    );
+
+                    if(balanceChangeToday == null)
+                    {
+                        await TelemetryUtil.TrackDependency(
+                            () => balanceChangeRepo.AddNewBalanceChange(poolConfig.Id, address, netAmount, $"Reward for {FormatUtil.FormatQuantity(shares[address])} shares for {DateTime.UtcNow.Date}"),
+                            DependencyType.Cosmos,
+                            "addNewBalanceChange",
+                            $"miner:{address}, netAmount:{netAmount}, date:{DateTime.UtcNow.Date}"
+                        );
+                    }
+                    else
+                    {
+                        balanceChangeToday.Amount += netAmount;
+
+                        await TelemetryUtil.TrackDependency(
+                            () => balanceChangeRepo.UpdateBalanceChange(balanceChangeToday),
+                            DependencyType.Cosmos,
+                            "updateBalanceChange",
+                            $"miner:{address}, netAmount:{netAmount}, date:{DateTime.UtcNow.Date}"
+                        );
+                    }
                 }
             }
 

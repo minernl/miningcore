@@ -6,6 +6,8 @@ using NLog;
 using Microsoft.Azure.Cosmos;
 using Miningcore.Configuration;
 using System;
+using System.Reflection;
+using Miningcore.Persistence.Cosmos.Repositories;
 
 namespace Miningcore.DataStore.Cosmos {
     internal class CosmosInterface {
@@ -67,6 +69,12 @@ namespace Miningcore.DataStore.Cosmos {
 
             // register CosmosClient
             builder.RegisterInstance(cosmos).AsSelf().SingleInstance();
+
+            // register repositories
+            builder.RegisterAssemblyTypes(Assembly.GetExecutingAssembly())
+                .Where(t => t.Namespace.StartsWith(typeof(BalanceChangeRepository).Namespace))
+                .AsImplementedInterfaces()
+                .SingleInstance();
         }
     }
 }
